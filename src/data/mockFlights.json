@@ -1,0 +1,553 @@
+{
+  "flights": [
+    {
+      "id": "FL-CX-239-001",
+      "flightNumber": "CX 239",
+      "airline": "Cathay Pacific",
+      "airlineCode": "CX",
+      "departureCity": "Hong Kong",
+      "departureCityCode": "HKG",
+      "departureAirport": "Hong Kong International Airport",
+      "departureAirportCode": "HKG",
+      "departureTime": "23:50",
+      "arrivalCity": "London",
+      "arrivalCityCode": "LHR",
+      "arrivalAirport": "London Heathrow Airport",
+      "arrivalAirportCode": "LHR",
+      "arrivalTime": "05:30",
+      "arrivalNextDay": true,
+      "durationMinutes": 880,
+      "stops": 0,
+      "stopCities": null,
+      "cabin": "economy",
+      "aircraftModel": "Airbus A350-1000",
+      "price": 850,
+      "currency": "USD",
+      "seatsRemaining": 6,
+      "score": {
+        "overallScore": 95,
+        "dimensions": {
+          "reliability": 9.6,
+          "comfort": 9.2,
+          "service": 9.5,
+          "value": 8.8
+        },
+        "highlights": ["Top Rated", "Direct Flight", "Wi-Fi Available", "Extra Legroom"],
+        "explanations": [
+          { "dimension": "value", "title": "Premium service at competitive price", "detail": "Cathay Pacific offers excellent value with full-service amenities", "isPositive": true },
+          { "dimension": "comfort", "title": "Extra legroom in economy class", "detail": "34-inch seat pitch provides more comfort on long-haul flights", "isPositive": true },
+          { "dimension": "service", "title": "Award-winning cabin service", "detail": "Consistently rated among the best airlines for service quality", "isPositive": true },
+          { "dimension": "value", "title": "Direct flight saves travel time", "detail": "Non-stop service means less hassle and faster arrival", "isPositive": true },
+          { "dimension": "comfort", "title": "Modern fleet with comfortable seating", "detail": "New A350 aircraft with latest cabin amenities", "isPositive": true },
+          { "dimension": "service", "title": "Includes meals and entertainment", "detail": "Complimentary meals and personal entertainment system included", "isPositive": true }
+        ]
+      },
+      "facilities": {
+        "hasWifi": true,
+        "hasPower": true,
+        "seatPitchInches": 34,
+        "seatPitchCategory": "Extra Legroom",
+        "hasIFE": true,
+        "ifeType": "Seatback Screen",
+        "mealIncluded": true,
+        "mealType": "Full Meal Service"
+      }
+    },
+    {
+      "id": "FL-LH-797-002",
+      "flightNumber": "LH 797 / LH 904",
+      "airline": "Lufthansa",
+      "airlineCode": "LH",
+      "departureCity": "Hong Kong",
+      "departureCityCode": "HKG",
+      "departureAirport": "Hong Kong International Airport",
+      "departureAirportCode": "HKG",
+      "departureTime": "23:40",
+      "arrivalCity": "London",
+      "arrivalCityCode": "LHR",
+      "arrivalAirport": "London Heathrow Airport",
+      "arrivalAirportCode": "LHR",
+      "arrivalTime": "18:40",
+      "arrivalNextDay": true,
+      "durationMinutes": 1140,
+      "stops": 1,
+      "stopCities": ["FRA"],
+      "cabin": "economy",
+      "aircraftModel": "Boeing 747-8",
+      "price": 720,
+      "currency": "USD",
+      "seatsRemaining": 12,
+      "score": {
+        "overallScore": 94,
+        "dimensions": {
+          "reliability": 9.5,
+          "comfort": 9.0,
+          "service": 9.3,
+          "value": 9.2
+        },
+        "highlights": ["Great Value", "Wi-Fi Available", "Meals Included", "Easy Connection"],
+        "explanations": [
+          { "dimension": "value", "title": "Most affordable option with quality service", "detail": "Excellent price for a premium European carrier", "isPositive": true },
+          { "dimension": "comfort", "title": "Short layover time in Frankfurt hub", "detail": "Efficient 2-hour connection at Frankfurt Airport", "isPositive": true },
+          { "dimension": "service", "title": "Reliable on-time performance", "detail": "Lufthansa maintains strong punctuality record", "isPositive": true },
+          { "dimension": "comfort", "title": "Modern fleet with comfortable seating", "detail": "Boeing 747-8 offers a premium travel experience", "isPositive": true },
+          { "dimension": "service", "title": "Includes meals and entertainment", "detail": "Full meal service and seatback entertainment", "isPositive": true },
+          { "dimension": "value", "title": "Easy connections at FRA hub", "detail": "Frankfurt is a well-organized connection hub", "isPositive": true }
+        ]
+      },
+      "facilities": {
+        "hasWifi": true,
+        "hasPower": true,
+        "seatPitchInches": 32,
+        "seatPitchCategory": "Standard",
+        "hasIFE": true,
+        "ifeType": "Seatback Screen",
+        "mealIncluded": true,
+        "mealType": "Full Meal Service"
+      }
+    },
+    {
+      "id": "FL-BA-028-003",
+      "flightNumber": "BA 028",
+      "airline": "British Airways",
+      "airlineCode": "BA",
+      "departureCity": "Hong Kong",
+      "departureCityCode": "HKG",
+      "departureAirport": "Hong Kong International Airport",
+      "departureAirportCode": "HKG",
+      "departureTime": "00:05",
+      "arrivalCity": "London",
+      "arrivalCityCode": "LHR",
+      "arrivalAirport": "London Heathrow Airport",
+      "arrivalAirportCode": "LHR",
+      "arrivalTime": "06:25",
+      "arrivalNextDay": false,
+      "durationMinutes": 800,
+      "stops": 0,
+      "stopCities": null,
+      "cabin": "economy",
+      "aircraftModel": "Boeing 777-300ER",
+      "price": 890,
+      "currency": "USD",
+      "seatsRemaining": 4,
+      "score": {
+        "overallScore": 92,
+        "dimensions": {
+          "reliability": 9.4,
+          "comfort": 8.8,
+          "service": 9.1,
+          "value": 8.5
+        },
+        "highlights": ["Direct Flight", "Fast Route", "Meals Included"],
+        "explanations": [
+          { "dimension": "comfort", "title": "Fastest route to London", "detail": "Shortest flight time among available options", "isPositive": true },
+          { "dimension": "value", "title": "Direct flight saves travel time", "detail": "Non-stop service to London Heathrow", "isPositive": true },
+          { "dimension": "service", "title": "British hospitality onboard", "detail": "Traditional British Airways service quality", "isPositive": true },
+          { "dimension": "comfort", "title": "Comfortable Boeing 777 cabin", "detail": "Spacious cabin with modern amenities", "isPositive": true },
+          { "dimension": "service", "title": "Includes meals and entertainment", "detail": "Complimentary food and entertainment", "isPositive": true },
+          { "dimension": "value", "title": "Convenient arrival time", "detail": "Early morning arrival at Heathrow", "isPositive": true }
+        ]
+      },
+      "facilities": {
+        "hasWifi": true,
+        "hasPower": true,
+        "seatPitchInches": 31,
+        "seatPitchCategory": "Standard",
+        "hasIFE": true,
+        "ifeType": "Seatback Screen",
+        "mealIncluded": true,
+        "mealType": "Full Meal Service"
+      }
+    },
+    {
+      "id": "FL-EY-831-004",
+      "flightNumber": "EY 831 / EY 019",
+      "airline": "Etihad Airways",
+      "airlineCode": "EY",
+      "departureCity": "Hong Kong",
+      "departureCityCode": "HKG",
+      "departureAirport": "Hong Kong International Airport",
+      "departureAirportCode": "HKG",
+      "departureTime": "22:15",
+      "arrivalCity": "London",
+      "arrivalCityCode": "LHR",
+      "arrivalAirport": "London Heathrow Airport",
+      "arrivalAirportCode": "LHR",
+      "arrivalTime": "14:30",
+      "arrivalNextDay": true,
+      "durationMinutes": 1095,
+      "stops": 1,
+      "stopCities": ["AUH"],
+      "cabin": "economy",
+      "aircraftModel": "Boeing 787-9 Dreamliner",
+      "price": 680,
+      "currency": "USD",
+      "seatsRemaining": 9,
+      "score": {
+        "overallScore": 87,
+        "dimensions": {
+          "reliability": 9.0,
+          "comfort": 8.6,
+          "service": 8.8,
+          "value": 9.0
+        },
+        "highlights": ["Best Price", "Meals Included", "Entertainment"],
+        "explanations": [
+          { "dimension": "value", "title": "Most affordable option with quality service", "detail": "Best value for money among all options", "isPositive": true },
+          { "dimension": "comfort", "title": "Short layover time in Abu Dhabi hub", "detail": "2.5-hour connection at Abu Dhabi International", "isPositive": true },
+          { "dimension": "service", "title": "Reliable on-time performance", "detail": "Etihad maintains excellent punctuality", "isPositive": true },
+          { "dimension": "comfort", "title": "Modern fleet with comfortable seating", "detail": "Dreamliner aircraft offers superior comfort", "isPositive": true },
+          { "dimension": "service", "title": "Includes meals and entertainment", "detail": "Award-winning food and entertainment", "isPositive": true },
+          { "dimension": "value", "title": "Easy connections at AUH", "detail": "Abu Dhabi is a modern, efficient hub", "isPositive": true }
+        ]
+      },
+      "facilities": {
+        "hasWifi": true,
+        "hasPower": true,
+        "seatPitchInches": 32,
+        "seatPitchCategory": "Standard",
+        "hasIFE": true,
+        "ifeType": "Seatback Screen",
+        "mealIncluded": true,
+        "mealType": "Full Meal Service"
+      }
+    },
+    {
+      "id": "FL-SQ-321-005",
+      "flightNumber": "SQ 321 / SQ 308",
+      "airline": "Singapore Airlines",
+      "airlineCode": "SQ",
+      "departureCity": "Hong Kong",
+      "departureCityCode": "HKG",
+      "departureAirport": "Hong Kong International Airport",
+      "departureAirportCode": "HKG",
+      "departureTime": "18:35",
+      "arrivalCity": "London",
+      "arrivalCityCode": "LHR",
+      "arrivalAirport": "London Heathrow Airport",
+      "arrivalAirportCode": "LHR",
+      "arrivalTime": "08:15",
+      "arrivalNextDay": true,
+      "durationMinutes": 1000,
+      "stops": 1,
+      "stopCities": ["SIN"],
+      "cabin": "economy",
+      "aircraftModel": "Airbus A380-800",
+      "price": 785,
+      "currency": "USD",
+      "seatsRemaining": 8,
+      "score": {
+        "overallScore": 96,
+        "dimensions": {
+          "reliability": 9.7,
+          "comfort": 9.4,
+          "service": 9.8,
+          "value": 8.9
+        },
+        "highlights": ["Top Rated", "Best Service", "Extra Legroom", "A380 Experience"],
+        "explanations": [
+          { "dimension": "service", "title": "Award-winning cabin service", "detail": "Consistently rated world's best airline", "isPositive": true },
+          { "dimension": "comfort", "title": "A380 superjumbo experience", "detail": "Quieter, smoother flight on the A380", "isPositive": true },
+          { "dimension": "service", "title": "Legendary Singapore Girl service", "detail": "World-famous cabin crew hospitality", "isPositive": true },
+          { "dimension": "comfort", "title": "Extra legroom in economy class", "detail": "Generous 32-inch seat pitch", "isPositive": true },
+          { "dimension": "service", "title": "Book the Cook meal service", "detail": "Pre-order your preferred meal", "isPositive": true },
+          { "dimension": "value", "title": "Easy connections at Changi hub", "detail": "World's best airport for transit", "isPositive": true }
+        ]
+      },
+      "facilities": {
+        "hasWifi": true,
+        "hasPower": true,
+        "seatPitchInches": 32,
+        "seatPitchCategory": "Standard",
+        "hasIFE": true,
+        "ifeType": "Seatback Screen",
+        "mealIncluded": true,
+        "mealType": "Full Meal Service"
+      }
+    },
+    {
+      "id": "FL-EK-381-006",
+      "flightNumber": "EK 381 / EK 003",
+      "airline": "Emirates",
+      "airlineCode": "EK",
+      "departureCity": "Hong Kong",
+      "departureCityCode": "HKG",
+      "departureAirport": "Hong Kong International Airport",
+      "departureAirportCode": "HKG",
+      "departureTime": "20:55",
+      "arrivalCity": "London",
+      "arrivalCityCode": "LHR",
+      "arrivalAirport": "London Heathrow Airport",
+      "arrivalAirportCode": "LHR",
+      "arrivalTime": "12:40",
+      "arrivalNextDay": true,
+      "durationMinutes": 1065,
+      "stops": 1,
+      "stopCities": ["DXB"],
+      "cabin": "economy",
+      "aircraftModel": "Airbus A380-800",
+      "price": 745,
+      "currency": "USD",
+      "seatsRemaining": 15,
+      "score": {
+        "overallScore": 93,
+        "dimensions": {
+          "reliability": 9.3,
+          "comfort": 9.2,
+          "service": 9.4,
+          "value": 8.7
+        },
+        "highlights": ["A380 Experience", "ICE Entertainment", "Meals Included", "Great Value"],
+        "explanations": [
+          { "dimension": "comfort", "title": "Iconic A380 experience", "detail": "Fly on the world's largest passenger aircraft", "isPositive": true },
+          { "dimension": "service", "title": "Award-winning ICE entertainment", "detail": "Over 5,000 channels of entertainment", "isPositive": true },
+          { "dimension": "comfort", "title": "Spacious cabin design", "detail": "Wider seats and more personal space", "isPositive": true },
+          { "dimension": "service", "title": "Regionally inspired cuisine", "detail": "Multi-course meals with menu choices", "isPositive": true },
+          { "dimension": "value", "title": "Competitive pricing", "detail": "Premium experience at reasonable cost", "isPositive": true },
+          { "dimension": "comfort", "title": "Dubai duty-free shopping", "detail": "World-class shopping during transit", "isPositive": true }
+        ]
+      },
+      "facilities": {
+        "hasWifi": true,
+        "hasPower": true,
+        "seatPitchInches": 32,
+        "seatPitchCategory": "Standard",
+        "hasIFE": true,
+        "ifeType": "Seatback Screen",
+        "mealIncluded": true,
+        "mealType": "Full Meal Service"
+      }
+    },
+    {
+      "id": "FL-QR-815-007",
+      "flightNumber": "QR 815 / QR 003",
+      "airline": "Qatar Airways",
+      "airlineCode": "QR",
+      "departureCity": "Hong Kong",
+      "departureCityCode": "HKG",
+      "departureAirport": "Hong Kong International Airport",
+      "departureAirportCode": "HKG",
+      "departureTime": "00:30",
+      "arrivalCity": "London",
+      "arrivalCityCode": "LHR",
+      "arrivalAirport": "London Heathrow Airport",
+      "arrivalAirportCode": "LHR",
+      "arrivalTime": "13:25",
+      "arrivalNextDay": false,
+      "durationMinutes": 1015,
+      "stops": 1,
+      "stopCities": ["DOH"],
+      "cabin": "economy",
+      "aircraftModel": "Boeing 777-300ER",
+      "price": 710,
+      "currency": "USD",
+      "seatsRemaining": 11,
+      "score": {
+        "overallScore": 91,
+        "dimensions": {
+          "reliability": 9.2,
+          "comfort": 8.9,
+          "service": 9.3,
+          "value": 9.1
+        },
+        "highlights": ["World's Best Airline", "Qsuite Service", "Great Value"],
+        "explanations": [
+          { "dimension": "service", "title": "World's best airline 2024", "detail": "Skytrax World Airline Awards winner", "isPositive": true },
+          { "dimension": "value", "title": "Premium experience at great value", "detail": "5-star service at competitive prices", "isPositive": true },
+          { "dimension": "comfort", "title": "Doha Hamad transit experience", "detail": "Award-winning airport lounge access", "isPositive": true },
+          { "dimension": "service", "title": "Oryx entertainment system", "detail": "Thousands of movies, TV shows, games", "isPositive": true },
+          { "dimension": "comfort", "title": "Comfortable economy seating", "detail": "Ergonomic seats with good legroom", "isPositive": true },
+          { "dimension": "service", "title": "On-demand dining", "detail": "Eat when you want during the flight", "isPositive": true }
+        ]
+      },
+      "facilities": {
+        "hasWifi": true,
+        "hasPower": true,
+        "seatPitchInches": 32,
+        "seatPitchCategory": "Standard",
+        "hasIFE": true,
+        "ifeType": "Seatback Screen",
+        "mealIncluded": true,
+        "mealType": "Full Meal Service"
+      }
+    },
+    {
+      "id": "FL-TK-071-008",
+      "flightNumber": "TK 071 / TK 1979",
+      "airline": "Turkish Airlines",
+      "airlineCode": "TK",
+      "departureCity": "Hong Kong",
+      "departureCityCode": "HKG",
+      "departureAirport": "Hong Kong International Airport",
+      "departureAirportCode": "HKG",
+      "departureTime": "01:45",
+      "arrivalCity": "London",
+      "arrivalCityCode": "LHR",
+      "arrivalAirport": "London Heathrow Airport",
+      "arrivalAirportCode": "LHR",
+      "arrivalTime": "16:10",
+      "arrivalNextDay": false,
+      "durationMinutes": 1105,
+      "stops": 1,
+      "stopCities": ["IST"],
+      "cabin": "economy",
+      "aircraftModel": "Boeing 787-9 Dreamliner",
+      "price": 625,
+      "currency": "USD",
+      "seatsRemaining": 18,
+      "score": {
+        "overallScore": 88,
+        "dimensions": {
+          "reliability": 8.9,
+          "comfort": 8.5,
+          "service": 8.8,
+          "value": 9.3
+        },
+        "highlights": ["Lowest Price", "Great Food", "Wide Network"],
+        "explanations": [
+          { "dimension": "value", "title": "Most affordable premium option", "detail": "Lowest price among 5-star carriers", "isPositive": true },
+          { "dimension": "service", "title": "Award-winning Turkish cuisine", "detail": "Flying Chef service on long-haul", "isPositive": true },
+          { "dimension": "comfort", "title": "Istanbul Airport experience", "detail": "Modern mega-hub with great facilities", "isPositive": true },
+          { "dimension": "service", "title": "Full service included", "detail": "Meals, entertainment, and baggage", "isPositive": true },
+          { "dimension": "comfort", "title": "Dreamliner cabin comfort", "detail": "Larger windows, better air quality", "isPositive": true },
+          { "dimension": "value", "title": "Competitive luggage allowance", "detail": "Generous checked baggage included", "isPositive": true }
+        ]
+      },
+      "facilities": {
+        "hasWifi": true,
+        "hasPower": true,
+        "seatPitchInches": 31,
+        "seatPitchCategory": "Standard",
+        "hasIFE": true,
+        "ifeType": "Seatback Screen",
+        "mealIncluded": true,
+        "mealType": "Full Meal Service"
+      }
+    },
+    {
+      "id": "FL-AF-185-009",
+      "flightNumber": "AF 185 / AF 1680",
+      "airline": "Air France",
+      "airlineCode": "AF",
+      "departureCity": "Hong Kong",
+      "departureCityCode": "HKG",
+      "departureAirport": "Hong Kong International Airport",
+      "departureAirportCode": "HKG",
+      "departureTime": "23:25",
+      "arrivalCity": "London",
+      "arrivalCityCode": "LHR",
+      "arrivalAirport": "London Heathrow Airport",
+      "arrivalAirportCode": "LHR",
+      "arrivalTime": "15:45",
+      "arrivalNextDay": true,
+      "durationMinutes": 1100,
+      "stops": 1,
+      "stopCities": ["CDG"],
+      "cabin": "economy",
+      "aircraftModel": "Boeing 777-300ER",
+      "price": 755,
+      "currency": "USD",
+      "seatsRemaining": 7,
+      "score": {
+        "overallScore": 89,
+        "dimensions": {
+          "reliability": 9.1,
+          "comfort": 8.7,
+          "service": 9.0,
+          "value": 8.6
+        },
+        "highlights": ["French Hospitality", "Paris Connection", "Gourmet Dining"],
+        "explanations": [
+          { "dimension": "service", "title": "French art de vivre", "detail": "Elegant French hospitality onboard", "isPositive": true },
+          { "dimension": "comfort", "title": "Paris CDG transit experience", "detail": "Quick connection at Charles de Gaulle", "isPositive": true },
+          { "dimension": "service", "title": "Gourmet French cuisine", "detail": "Meals designed by French chefs", "isPositive": true },
+          { "dimension": "comfort", "title": "Comfortable long-haul seating", "detail": "Well-designed economy cabin", "isPositive": true },
+          { "dimension": "service", "title": "Entertainment variety", "detail": "Latest movies and French content", "isPositive": true },
+          { "dimension": "value", "title": "Good value for European carrier", "detail": "Competitive pricing with full service", "isPositive": true }
+        ]
+      },
+      "facilities": {
+        "hasWifi": true,
+        "hasPower": true,
+        "seatPitchInches": 32,
+        "seatPitchCategory": "Standard",
+        "hasIFE": true,
+        "ifeType": "Seatback Screen",
+        "mealIncluded": true,
+        "mealType": "Full Meal Service"
+      }
+    },
+    {
+      "id": "FL-CX-251-010",
+      "flightNumber": "CX 251",
+      "airline": "Cathay Pacific",
+      "airlineCode": "CX",
+      "departureCity": "Hong Kong",
+      "departureCityCode": "HKG",
+      "departureAirport": "Hong Kong International Airport",
+      "departureAirportCode": "HKG",
+      "departureTime": "09:15",
+      "arrivalCity": "London",
+      "arrivalCityCode": "LHR",
+      "arrivalAirport": "London Heathrow Airport",
+      "arrivalAirportCode": "LHR",
+      "arrivalTime": "15:55",
+      "arrivalNextDay": false,
+      "durationMinutes": 880,
+      "stops": 0,
+      "stopCities": null,
+      "cabin": "economy",
+      "aircraftModel": "Airbus A350-900",
+      "price": 920,
+      "currency": "USD",
+      "seatsRemaining": 3,
+      "score": {
+        "overallScore": 94,
+        "dimensions": {
+          "reliability": 9.5,
+          "comfort": 9.1,
+          "service": 9.4,
+          "value": 8.4
+        },
+        "highlights": ["Direct Flight", "Daytime Flight", "Top Rated", "A350 Comfort"],
+        "explanations": [
+          { "dimension": "comfort", "title": "Convenient daytime departure", "detail": "Ideal schedule for day travelers", "isPositive": true },
+          { "dimension": "value", "title": "Direct flight saves travel time", "detail": "Non-stop service to London", "isPositive": true },
+          { "dimension": "comfort", "title": "A350 cabin experience", "detail": "Latest generation widebody comfort", "isPositive": true },
+          { "dimension": "service", "title": "Cathay Pacific hospitality", "detail": "Award-winning Asian service", "isPositive": true },
+          { "dimension": "comfort", "title": "Arrive refreshed", "detail": "Evening arrival in London", "isPositive": true },
+          { "dimension": "service", "title": "Premium dining experience", "detail": "Hong Kong-inspired menu selections", "isPositive": true }
+        ]
+      },
+      "facilities": {
+        "hasWifi": true,
+        "hasPower": true,
+        "seatPitchInches": 33,
+        "seatPitchCategory": "Extra Legroom",
+        "hasIFE": true,
+        "ifeType": "Seatback Screen",
+        "mealIncluded": true,
+        "mealType": "Full Meal Service"
+      }
+    }
+  ],
+  "priceHistory": {
+    "trend": "stable",
+    "points": [
+      { "date": "2026-01-11", "price": 745 },
+      { "date": "2026-01-12", "price": 760 },
+      { "date": "2026-01-13", "price": 755 },
+      { "date": "2026-01-14", "price": 780 },
+      { "date": "2026-01-15", "price": 770 },
+      { "date": "2026-01-16", "price": 765 },
+      { "date": "2026-01-17", "price": 790 },
+      { "date": "2026-01-18", "price": 785 },
+      { "date": "2026-01-19", "price": 775 },
+      { "date": "2026-01-20", "price": 780 },
+      { "date": "2026-01-21", "price": 770 },
+      { "date": "2026-01-22", "price": 760 },
+      { "date": "2026-01-23", "price": 755 },
+      { "date": "2026-01-24", "price": 750 }
+    ]
+  }
+}

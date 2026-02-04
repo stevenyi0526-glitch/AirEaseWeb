@@ -1,0 +1,333 @@
+import React from 'react';
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+} from 'recharts';
+import { Info } from 'lucide-react';
+import type { FlightWithScore } from '../../api/types';
+import { formatPrice, formatDuration } from '../../utils/formatters';
+
+interface CompareRadarChartProps {
+  flights: FlightWithScore[];
+}
+
+// Color palette for different flights
+const COLORS = [
+  '#3b82f6', // Blue
+  '#10b981', // Green
+  '#f59e0b', // Amber
+];
+
+// Score explanations for each dimension with calculation formula
+const DIMENSION_EXPLANATIONS: Record<string, { description: string; goodScore: string; badScore: string; formula: string[] }> = {
+  'Overall': {
+    description: 'Weighted average of all score dimensions based on your travel profile',
+    goodScore: 'Excellent flight choice with balanced performance across all factors',
+    badScore: 'This flight may have trade-offs in some areas',
+    formula: ['Score ≥85: Excellent', 'Score 70-84: Good', 'Score <70: Fair'],
+  },
+  'Reliability': {
+    description: 'Based on airline on-time performance rate (OTP) from historical data',
+    goodScore: 'Airline has excellent on-time performance (90%+)',
+    badScore: 'This airline may experience delays more frequently',
+    formula: ['OTP ≥90%: Excellent (8-10)', 'OTP 75-90%: Good (5-8)', 'OTP <75%: Fair (0-5)'],
+  },
+  'Comfort': {
+    description: 'Seat pitch, width, recline, cabin noise, and overall passenger experience',
+    goodScore: 'Spacious seating with generous legroom and modern cabin',
+    badScore: 'Limited seat space or older cabin interiors',
+    formula: ['Pitch ≥34": +2.5pts', 'Width ≥18": +1.5pts', 'Recline ≥5": +1pt', 'New aircraft: +1pt'],
+  },
+  'Service': {
+    description: 'Crew hospitality, meal quality, entertainment, and onboard amenities',
+    goodScore: 'Award-winning service with premium amenities',
+    badScore: 'Basic service level with limited amenities',
+    formula: ['Rating ≥4.5/5: +3pts', 'Food ≥4/5: +2pts', 'Crew ≥4/5: +1.5pts'],
+  },
+  'Value': {
+    description: 'Price relative to service quality, route, and included amenities',
+    goodScore: 'Excellent value for money with good inclusions',
+    badScore: 'May be overpriced for the service level',
+    formula: ['≥20% below avg: Excellent', '±10% of avg: Good', '>30% above avg: Fair'],
+  },
+  'Price': {
+    description: 'Ticket price compared to other flights on this route (normalized)',
+    goodScore: 'Among the lowest prices available',
+    badScore: 'Higher priced compared to alternatives',
+    formula: ['Lowest 33%: Budget', 'Middle 33%: Moderate', 'Top 33%: Premium'],
+  },
+  'Duration': {
+    description: 'Total flight time including layovers (normalized)',
+    goodScore: 'Shortest travel time option',
+    badScore: 'Longer journey compared to alternatives',
+    formula: ['≤6 hours: Short', '6-12 hours: Medium', '>12 hours: Long'],
+  },
+  'Stops': {
+    description: 'Number of connections - direct flights score highest',
+    goodScore: 'Direct flight with no connections',
+    badScore: 'Multiple stops may increase travel time and hassle',
+    formula: ['0 stops: Direct (10pts)', '1 stop: 7pts', '2+ stops: 2-4pts'],
+  },
+};
+
+/**
+ * 3-Stage Classification System for Radar Chart
+ * Each dimension is classified into 3 tiers: Excellent (100), Good (60), Fair (30)
+ */
+
+// Stage labels for display
+const STAGE_LABELS = {
+  stops: { excellent: 'Direct', good: '1 Stop', fair: 'Multiple' },
+  duration: { excellent: 'Short', good: 'Medium', fair: 'Long' },
+  price: { excellent: 'Budget', good: 'Moderate', fair: 'Premium' },
+  overall: { excellent: 'Excellent', good: 'Good', fair: 'Fair' },
+  reliability: { excellent: 'Punctual', good: 'Reliable', fair: 'Delays likely' },
+  comfort: { excellent: 'Premium', good: 'Comfortable', fair: 'Basic' },
+  service: { excellent: 'Exceptional', good: 'Good', fair: 'Basic' },
+  value: { excellent: 'Great Value', good: 'Fair Value', fair: 'Low Value' },
+};
+
+/**
+ * Radar Chart for comparing flight scores across multiple dimensions
+ * Uses 3-stage classification: Excellent (100), Good (60), Fair (30)
+ */
+const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
+  // 3-Stage scoring: Excellent = 100, Good = 60, Fair = 30
+  const EXCELLENT = 100;
+  const GOOD = 60;
+  const FAIR = 30;
+
+  // Classify dimension scores (0-10 scale) into 3 stages
+  const classifyDimensionScore = (score: number): number => {
+    if (score >= 8) return EXCELLENT;  // Excellent: 8-10
+    if (score >= 5) return GOOD;       // Good: 5-7.9
+    return FAIR;                        // Fair: 0-4.9
+  };
+
+  // Classify overall score (0-100 scale) into 3 stages
+  const classifyOverallScore = (score: number): number => {
+    if (score >= 85) return EXCELLENT;  // Excellent: 85-100
+    if (score >= 70) return GOOD;       // Good: 70-84
+    return FAIR;                         // Fair: 0-69
+  };
+
+  // Classify price into 3 stages based on relative comparison
+  const classifyPrice = (price: number, flights: FlightWithScore[]): number => {
+    const prices = flights.map(f => f.flight.price).sort((a, b) => a - b);
+    const percentile = prices.indexOf(price) / Math.max(prices.length - 1, 1);
+    
+    if (percentile <= 0.33) return EXCELLENT;  // Budget: lowest third
+    if (percentile <= 0.66) return GOOD;       // Moderate: middle third
+    return FAIR;                                // Premium: highest third
+  };
+
+  // Classify duration into 3 stages: Short (<6h), Medium (6-12h), Long (>12h)
+  const classifyDuration = (durationMinutes: number): number => {
+    const hours = durationMinutes / 60;
+    if (hours <= 6) return EXCELLENT;   // Short: under 6 hours
+    if (hours <= 12) return GOOD;       // Medium: 6-12 hours
+    return FAIR;                         // Long: over 12 hours
+  };
+
+  // Classify stops into 3 stages: Direct (0), 1 Stop (1), Multiple (2+)
+  const classifyStops = (stops: number): number => {
+    if (stops === 0) return EXCELLENT;  // Direct
+    if (stops === 1) return GOOD;       // 1 Stop
+    return FAIR;                         // Multiple (2+)
+  };
+
+  // Helper to get stage label for tooltip display
+  const getStageLabel = (dimension: string, score: number): string => {
+    const key = dimension.toLowerCase() as keyof typeof STAGE_LABELS;
+    const labels = STAGE_LABELS[key] || STAGE_LABELS.overall;
+    if (score >= 100) return labels.excellent;
+    if (score >= 60) return labels.good;
+    return labels.fair;
+  };
+
+  // Build radar chart data using 3-stage classification
+  const radarData = [
+    {
+      dimension: 'Overall',
+      fullMark: 100,
+      ...Object.fromEntries(
+        flights.map((f, idx) => [`flight${idx}`, classifyOverallScore(f.score.overallScore)])
+      ),
+    },
+    {
+      dimension: 'Reliability',
+      fullMark: 100,
+      ...Object.fromEntries(
+        flights.map((f, idx) => [`flight${idx}`, classifyDimensionScore(f.score.dimensions.reliability)])
+      ),
+    },
+    {
+      dimension: 'Comfort',
+      fullMark: 100,
+      ...Object.fromEntries(
+        flights.map((f, idx) => [`flight${idx}`, classifyDimensionScore(f.score.dimensions.comfort)])
+      ),
+    },
+    {
+      dimension: 'Service',
+      fullMark: 100,
+      ...Object.fromEntries(
+        flights.map((f, idx) => [`flight${idx}`, classifyDimensionScore(f.score.dimensions.service)])
+      ),
+    },
+    {
+      dimension: 'Value',
+      fullMark: 100,
+      ...Object.fromEntries(
+        flights.map((f, idx) => [`flight${idx}`, classifyDimensionScore(f.score.dimensions.value)])
+      ),
+    },
+    {
+      dimension: 'Price',
+      fullMark: 100,
+      ...Object.fromEntries(
+        flights.map((f, idx) => [`flight${idx}`, classifyPrice(f.flight.price, flights)])
+      ),
+    },
+    {
+      dimension: 'Duration',
+      fullMark: 100,
+      ...Object.fromEntries(
+        flights.map((f, idx) => [`flight${idx}`, classifyDuration(f.flight.durationMinutes)])
+      ),
+    },
+    {
+      dimension: 'Stops',
+      fullMark: 100,
+      ...Object.fromEntries(
+        flights.map((f, idx) => [`flight${idx}`, classifyStops(f.flight.stops)])
+      ),
+    },
+  ];
+
+  return (
+    <div className="bg-surface rounded-2xl shadow-card p-6">
+      <h3 className="text-lg font-semibold text-text-primary mb-2 text-center">
+        Flight Comparison Radar
+      </h3>
+      <p className="text-sm text-text-secondary text-center mb-4">
+        3-Stage Classification: <span className="font-medium text-green-600">Excellent</span> • <span className="font-medium text-blue-600">Good</span> • <span className="font-medium text-amber-600">Fair</span>
+      </p>
+      
+      <div className="h-[420px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+            <PolarGrid 
+              stroke="#e5e7eb"
+              strokeDasharray="3 3"
+            />
+            <PolarAngleAxis 
+              dataKey="dimension" 
+              tick={{ 
+                fill: '#6b7280', 
+                fontSize: 11,
+                fontWeight: 500,
+              }}
+              tickLine={false}
+            />
+            <PolarRadiusAxis 
+              angle={22.5} 
+              domain={[0, 100]} 
+              tick={false}
+              axisLine={false}
+            />
+            
+            {flights.map((flight, idx) => (
+              <Radar
+                key={flight.flight.id}
+                name={`${flight.flight.airline} (${flight.flight.flightNumber})`}
+                dataKey={`flight${idx}`}
+                stroke={COLORS[idx]}
+                fill={COLORS[idx]}
+                fillOpacity={0.15}
+                strokeWidth={2}
+              />
+            ))}
+            
+            <Legend 
+              wrapperStyle={{
+                paddingTop: '20px',
+              }}
+              formatter={(value) => (
+                <span className="text-sm font-medium text-text-primary">{value}</span>
+              )}
+            />
+            
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                padding: '12px 16px',
+              }}
+              formatter={(value, name, props) => {
+                const score = value as number;
+                const dimension = props.payload?.dimension || '';
+                const stageLabel = getStageLabel(dimension, score);
+                return [stageLabel, name];
+              }}
+              labelStyle={{
+                color: '#374151',
+                fontWeight: 600,
+                marginBottom: '4px',
+              }}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Score Explanations with Calculation Formulas */}
+      <div className="mt-6 pt-4 border-t border-divider">
+        <div className="flex items-center gap-2 mb-4">
+          <Info className="w-4 h-4 text-primary" />
+          <h4 className="font-medium text-text-primary">Score Calculation Reference</h4>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Object.entries(DIMENSION_EXPLANATIONS).map(([key, explanation]) => (
+            <div key={key} className="bg-surface-alt rounded-lg p-3">
+              <h5 className="font-medium text-text-primary text-sm mb-1">{key}</h5>
+              <p className="text-xs text-text-secondary mb-2">{explanation.description}</p>
+              <div className="bg-white rounded p-2 border border-gray-100">
+                <p className="text-xs font-semibold text-gray-600 mb-1">Formula:</p>
+                {explanation.formula.map((line, i) => (
+                  <p key={i} className="text-xs text-gray-500">{line}</p>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Original values reference */}
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+          <h5 className="font-medium text-blue-800 text-sm mb-2">Original Values Reference</h5>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            {flights.map((f, idx) => (
+              <div key={f.flight.id} className="text-xs">
+                <span className="font-medium" style={{ color: COLORS[idx] }}>
+                  {f.flight.airline}:
+                </span>
+                <span className="text-blue-700 ml-1">
+                  {formatPrice(f.flight.price, f.flight.currency)} · {formatDuration(f.flight.durationMinutes)} · {f.flight.stops === 0 ? 'Direct' : `${f.flight.stops} stop${f.flight.stops > 1 ? 's' : ''}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CompareRadarChart;

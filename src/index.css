@@ -1,0 +1,391 @@
+@import "tailwindcss";
+
+/* Custom theme configuration */
+@theme {
+  /* Background system */
+  --color-background: #F6F8FB;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #F2F6FF;
+
+  /* Text hierarchy */
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94A3B8;
+
+  /* Borders */
+  --color-border: #E2E8F0;
+  --color-divider: #EDF2F7;
+
+  /* Primary brand */
+  --color-primary: #1A73E8;
+  --color-primary-hover: #155CC4;
+  --color-primary-light: #E8F0FE;
+
+  /* Accent (price) */
+  --color-accent: #FF7A00;
+
+  /* Score badge (GREEN) */
+  --color-score: #22C55E;
+  --color-score-excellent: #22C55E;
+  --color-score-good: #3B82F6;
+  --color-score-fair: #F59E0B;
+  --color-score-poor: #6B7280;
+
+  /* Semantic */
+  --color-success: #16A34A;
+  --color-success-light: #DCFCE7;
+  --color-warning: #F59E0B;
+  --color-danger: #DC2626;
+
+  /* AirEase brand (for gradient) */
+  --color-airease-blue: #2196F3;
+  --color-airease-blue-dark: #1976D2;
+  --color-airease-blue-light: #64B5F6;
+  --color-airease-blue-50: #E3F2FD;
+
+  /* Custom border radius */
+  --radius-card: 14px;
+  --radius-input: 12px;
+  --radius-button: 12px;
+  --radius-chip: 999px;
+
+  /* Custom shadows */
+  --shadow-card: 0 6px 20px rgba(15, 23, 42, 0.06);
+  --shadow-card-hover: 0 8px 30px rgba(15, 23, 42, 0.10);
+  --shadow-sticky: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-dropdown: 0 10px 40px rgba(15, 23, 42, 0.12);
+}
+
+/* Base layer */
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-text-primary;
+    font-size: 16px;
+    line-height: 1.45;
+  }
+
+  /* Better focus styles */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* Component styles */
+@layer components {
+  /* Gradient header matching iOS design */
+  .header-gradient {
+    background: linear-gradient(135deg, var(--color-airease-blue) 0%, var(--color-airease-blue-dark) 100%);
+  }
+
+  /* Primary button - gradient like iOS */
+  .btn-primary {
+    @apply px-6 py-3 text-white font-semibold transition-all duration-200;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    background: linear-gradient(135deg, var(--color-airease-blue) 0%, var(--color-airease-blue-dark) 100%);
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.25);
+    border-radius: var(--radius-button);
+  }
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.35);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  /* Secondary button (outline) */
+  .btn-secondary {
+    @apply px-6 py-3 font-semibold transition-all duration-200;
+    @apply bg-white border border-border text-text-primary;
+    border-radius: var(--radius-button);
+  }
+  .btn-secondary:hover {
+    @apply bg-surface-alt border-primary text-primary;
+  }
+
+  /* Thin scrollbar for sidebars */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-text-muted);
+  }
+
+  /* Hide scrollbar for horizontal carousel */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply px-4 py-2 font-medium transition-colors;
+    @apply text-primary hover:bg-primary-light;
+    border-radius: var(--radius-button);
+  }
+
+  /* Input field */
+  .input-field {
+    @apply w-full px-4 py-3 bg-white border border-border transition-all duration-200;
+    @apply text-text-primary placeholder:text-text-muted;
+    border-radius: var(--radius-input);
+  }
+  .input-field:hover {
+    @apply border-text-muted;
+  }
+  .input-field:focus {
+    @apply outline-none border-primary ring-2 ring-primary/20;
+  }
+  .input-field.error {
+    @apply border-danger ring-2 ring-danger/20;
+  }
+
+  /* Select dropdown */
+  .select-field {
+    @apply w-full px-4 py-3 bg-white border border-border transition-all duration-200;
+    @apply text-text-primary placeholder:text-text-muted appearance-none cursor-pointer pr-10;
+    border-radius: var(--radius-input);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  .select-field:hover {
+    @apply border-text-muted;
+  }
+  .select-field:focus {
+    @apply outline-none border-primary ring-2 ring-primary/20;
+  }
+
+  /* Flight card */
+  .flight-card {
+    @apply bg-surface transition-all duration-200;
+    box-shadow: var(--shadow-card);
+    border-radius: var(--radius-card);
+  }
+  .flight-card:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Score badge - GREEN as per iOS design */
+  .score-badge {
+    @apply inline-flex flex-col items-center justify-center px-3 py-2 rounded-lg text-white font-bold;
+    background-color: var(--color-score);
+  }
+  .score-badge-sm {
+    @apply px-2 py-1 text-sm rounded-md;
+  }
+  .score-badge-lg {
+    @apply px-4 py-3 text-xl rounded-xl;
+  }
+  .score-badge-excellent {
+    background-color: var(--color-score-excellent);
+  }
+  .score-badge-good {
+    background-color: var(--color-score-good);
+  }
+  .score-badge-fair {
+    background-color: var(--color-score-fair);
+  }
+  .score-badge-poor {
+    background-color: var(--color-score-poor);
+  }
+
+  /* Highlight tag */
+  .highlight-tag {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium;
+    color: var(--color-primary);
+    background-color: var(--color-primary-light);
+    border-radius: var(--radius-chip);
+  }
+
+  /* Chip / segmented control */
+  .chip {
+    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium transition-all duration-200;
+    @apply border border-border text-text-secondary bg-white cursor-pointer;
+    border-radius: var(--radius-chip);
+  }
+  .chip:hover {
+    @apply border-text-muted bg-surface-alt;
+  }
+  .chip.active {
+    @apply border-primary bg-primary text-white;
+  }
+
+  /* Filter panel */
+  .filter-panel {
+    @apply bg-surface p-4;
+    box-shadow: var(--shadow-card);
+    border-radius: var(--radius-card);
+  }
+
+  /* Compare tray */
+  .compare-tray {
+    @apply bg-surface;
+    box-shadow: var(--shadow-card);
+    border-radius: var(--radius-card);
+  }
+
+  /* Stepper button (circular +/- like iOS) */
+  .stepper-btn {
+    @apply w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold text-white transition-all duration-200;
+    background: linear-gradient(135deg, var(--color-airease-blue) 0%, var(--color-airease-blue-dark) 100%);
+  }
+  .stepper-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+  }
+  .stepper-btn:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  /* Price text */
+  .price-text {
+    color: var(--color-primary);
+    @apply font-bold;
+  }
+
+  /* Next day indicator (+1) */
+  .next-day {
+    @apply text-sm text-accent font-medium;
+  }
+
+  /* Why this flight - numbered circle */
+  .reason-number {
+    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white;
+    background-color: var(--color-primary);
+  }
+
+  /* Reason card */
+  .reason-card {
+    @apply flex items-center gap-3 p-4 bg-surface-alt;
+    border-radius: var(--radius-card);
+  }
+
+  /* Dropdown menu */
+  .dropdown-menu {
+    @apply bg-surface border border-border overflow-hidden;
+    box-shadow: var(--shadow-dropdown);
+    border-radius: var(--radius-card);
+  }
+
+  /* Bottom sheet (mobile) */
+  .bottom-sheet {
+    @apply fixed inset-x-0 bottom-0 bg-surface rounded-t-3xl;
+    box-shadow: 0 -4px 30px rgba(15, 23, 42, 0.15);
+  }
+  .bottom-sheet-handle {
+    @apply w-12 h-1.5 bg-border rounded-full mx-auto mt-3;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-surface-alt rounded animate-pulse;
+  }
+
+  /* Sticky compare bar (mobile) */
+  .sticky-compare-bar {
+    @apply fixed bottom-0 left-0 right-0 bg-surface border-t border-border px-4 py-3;
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  /* Blur overlay for restricted content */
+  .blur-overlay {
+    @apply backdrop-blur-sm;
+    background-color: rgba(255, 255, 255, 0.6);
+  }
+
+  /* Hide scrollbar */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-surface-alt rounded-full;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-text-muted;
+  }
+
+  /* Text truncate */
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Safe area padding for mobile */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* Flying plane animation */
+  @keyframes fly-plane {
+    0% {
+      left: 0;
+      transform: translateY(-50%) translateX(-100%);
+    }
+    100% {
+      left: 100%;
+      transform: translateY(-50%) translateX(0%);
+    }
+  }
+
+  .animate-fly-plane {
+    animation: fly-plane 2s ease-in-out infinite;
+  }
+}
+
+/* Leaflet map z-index fix - ensure map stays below header */
+.leaflet-container {
+  z-index: 0 !important;
+}
+
+.leaflet-pane {
+  z-index: 0 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 1 !important;
+}
+
+/* Custom airport marker styling */
+.custom-airport-marker {
+  background: transparent !important;
+  border: none !important;
+}
