@@ -13,6 +13,8 @@ interface FlightCardProps {
   flightWithScore: FlightWithScore;
   onSelect?: () => void;
   showCompare?: boolean;
+  isRoundTrip?: boolean;
+  returnDate?: string;
 }
 
 /**
@@ -29,6 +31,8 @@ const FlightCard: React.FC<FlightCardProps> = ({
   flightWithScore,
   onSelect,
   showCompare = true,
+  isRoundTrip = false,
+  returnDate,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { flight, score, facilities } = flightWithScore;
@@ -37,6 +41,11 @@ const FlightCard: React.FC<FlightCardProps> = ({
   const departureDate = new Date(flight.departureTime);
   const arrivalDate = new Date(flight.arrivalTime);
   const isNextDay = arrivalDate.getDate() !== departureDate.getDate();
+
+  // Calculate estimated individual leg prices for round trips
+  // Typically outbound is slightly more expensive than return (55/45 split)
+  const outboundPrice = isRoundTrip ? Math.round(flight.price * 0.55) : flight.price;
+  const returnPrice = isRoundTrip ? Math.round(flight.price * 0.45) : 0;
 
   const getStopsText = () => {
     if (flight.stops === 0) return 'Direct';
@@ -129,8 +138,22 @@ const FlightCard: React.FC<FlightCardProps> = ({
 
           {/* Price + Carbon Emissions */}
           <div className="text-right ml-2 md:ml-4">
-            <p className="text-2xl font-bold text-primary">{formatPrice(flight.price, flight.currency)}</p>
-            <p className="text-xs text-text-muted">per person</p>
+            {isRoundTrip ? (
+              <>
+                {/* Round trip total with breakdown */}
+                <p className="text-2xl font-bold text-primary">{formatPrice(flight.price, flight.currency)}</p>
+                <p className="text-xs text-text-muted">round trip total</p>
+                <div className="text-xs text-text-secondary mt-1 space-y-0.5">
+                  <p>Outbound: ~{formatPrice(outboundPrice, flight.currency)}</p>
+                  <p>Return: ~{formatPrice(returnPrice, flight.currency)}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-primary">{formatPrice(flight.price, flight.currency)}</p>
+                <p className="text-xs text-text-muted">per person</p>
+              </>
+            )}
             
             {/* Carbon Emissions Badge */}
             {flight.carbonEmissions && (

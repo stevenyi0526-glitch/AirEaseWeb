@@ -30,7 +30,7 @@ const DIMENSION_EXPLANATIONS: Record<string, { description: string; goodScore: s
     description: 'Weighted average of all score dimensions based on your travel profile',
     goodScore: 'Excellent flight choice with balanced performance across all factors',
     badScore: 'This flight may have trade-offs in some areas',
-    formula: ['Score ≥85: Excellent', 'Score 70-84: Good', 'Score <70: Fair'],
+    formula: ['Score ≥8.5: Excellent', 'Score 7-8.4: Good', 'Score <7: Fair'],
   },
   'Reliability': {
     description: 'Based on airline on-time performance rate (OTP) from historical data',
@@ -95,118 +95,110 @@ const STAGE_LABELS = {
 
 /**
  * Radar Chart for comparing flight scores across multiple dimensions
- * Uses 3-stage classification: Excellent (100), Good (60), Fair (30)
+ * Uses 0-10 scale consistent with ScoreRadarChart
+ * Dimensions classified for labels: Excellent (8-10), Good (5-7.9), Fair (0-4.9)
  */
 const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
-  // 3-Stage scoring: Excellent = 100, Good = 60, Fair = 30
-  const EXCELLENT = 100;
-  const GOOD = 60;
-  const FAIR = 30;
 
-  // Classify dimension scores (0-10 scale) into 3 stages
-  const classifyDimensionScore = (score: number): number => {
-    if (score >= 8) return EXCELLENT;  // Excellent: 8-10
-    if (score >= 5) return GOOD;       // Good: 5-7.9
-    return FAIR;                        // Fair: 0-4.9
-  };
-
-  // Classify overall score (0-100 scale) into 3 stages
-  const classifyOverallScore = (score: number): number => {
-    if (score >= 85) return EXCELLENT;  // Excellent: 85-100
-    if (score >= 70) return GOOD;       // Good: 70-84
-    return FAIR;                         // Fair: 0-69
-  };
-
-  // Classify price into 3 stages based on relative comparison
-  const classifyPrice = (price: number, flights: FlightWithScore[]): number => {
-    const prices = flights.map(f => f.flight.price).sort((a, b) => a - b);
-    const percentile = prices.indexOf(price) / Math.max(prices.length - 1, 1);
-    
-    if (percentile <= 0.33) return EXCELLENT;  // Budget: lowest third
-    if (percentile <= 0.66) return GOOD;       // Moderate: middle third
-    return FAIR;                                // Premium: highest third
-  };
-
-  // Classify duration into 3 stages: Short (<6h), Medium (6-12h), Long (>12h)
-  const classifyDuration = (durationMinutes: number): number => {
-    const hours = durationMinutes / 60;
-    if (hours <= 6) return EXCELLENT;   // Short: under 6 hours
-    if (hours <= 12) return GOOD;       // Medium: 6-12 hours
-    return FAIR;                         // Long: over 12 hours
-  };
-
-  // Classify stops into 3 stages: Direct (0), 1 Stop (1), Multiple (2+)
-  const classifyStops = (stops: number): number => {
-    if (stops === 0) return EXCELLENT;  // Direct
-    if (stops === 1) return GOOD;       // 1 Stop
-    return FAIR;                         // Multiple (2+)
-  };
-
-  // Helper to get stage label for tooltip display
+  // Get stage label based on 0-10 score for tooltip display
   const getStageLabel = (dimension: string, score: number): string => {
     const key = dimension.toLowerCase() as keyof typeof STAGE_LABELS;
     const labels = STAGE_LABELS[key] || STAGE_LABELS.overall;
-    if (score >= 100) return labels.excellent;
-    if (score >= 60) return labels.good;
+    if (score >= 8) return labels.excellent;
+    if (score >= 5) return labels.good;
     return labels.fair;
   };
 
-  // Build radar chart data using 3-stage classification
+  // Note: overallScore is already on 0-10 scale (weighted avg of dimension scores)
+  // No normalization needed
+
+  // Get price score (0-10) based on relative comparison
+  const getPriceScore = (price: number, flights: FlightWithScore[]): number => {
+    const prices = flights.map(f => f.flight.price).sort((a, b) => a - b);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    
+    if (maxPrice === minPrice) return 10; // All same price
+    
+    // Higher score for lower price (inverted)
+    const normalized = 1 - ((price - minPrice) / (maxPrice - minPrice));
+    return 2 + normalized * 8; // Scale to 2-10 range
+  };
+
+  // Get duration score (0-10): Short (<6h) = 10, Medium (6-12h) = 6, Long (>12h) = 3
+  const getDurationScore = (durationMinutes: number): number => {
+    const hours = durationMinutes / 60;
+    if (hours <= 3) return 10;
+    if (hours <= 6) return 8;
+    if (hours <= 9) return 6;
+    if (hours <= 12) return 4;
+    return 2;
+  };
+
+  // Get stops score (0-10): Direct = 10, 1 Stop = 7, 2+ = 3
+  const getStopsScore = (stops: number): number => {
+    if (stops === 0) return 10;
+    if (stops === 1) return 7;
+    if (stops === 2) return 4;
+    return 2;
+  };
+
+  // Build radar chart data using 0-10 scale
   const radarData = [
     {
       dimension: 'Overall',
-      fullMark: 100,
+      fullMark: 10,
       ...Object.fromEntries(
-        flights.map((f, idx) => [`flight${idx}`, classifyOverallScore(f.score.overallScore)])
+        flights.map((f, idx) => [`flight${idx}`, f.score.overallScore])
       ),
     },
     {
       dimension: 'Reliability',
-      fullMark: 100,
+      fullMark: 10,
       ...Object.fromEntries(
-        flights.map((f, idx) => [`flight${idx}`, classifyDimensionScore(f.score.dimensions.reliability)])
+        flights.map((f, idx) => [`flight${idx}`, f.score.dimensions.reliability])
       ),
     },
     {
       dimension: 'Comfort',
-      fullMark: 100,
+      fullMark: 10,
       ...Object.fromEntries(
-        flights.map((f, idx) => [`flight${idx}`, classifyDimensionScore(f.score.dimensions.comfort)])
+        flights.map((f, idx) => [`flight${idx}`, f.score.dimensions.comfort])
       ),
     },
     {
       dimension: 'Service',
-      fullMark: 100,
+      fullMark: 10,
       ...Object.fromEntries(
-        flights.map((f, idx) => [`flight${idx}`, classifyDimensionScore(f.score.dimensions.service)])
+        flights.map((f, idx) => [`flight${idx}`, f.score.dimensions.service])
       ),
     },
     {
       dimension: 'Value',
-      fullMark: 100,
+      fullMark: 10,
       ...Object.fromEntries(
-        flights.map((f, idx) => [`flight${idx}`, classifyDimensionScore(f.score.dimensions.value)])
+        flights.map((f, idx) => [`flight${idx}`, f.score.dimensions.value])
       ),
     },
     {
       dimension: 'Price',
-      fullMark: 100,
+      fullMark: 10,
       ...Object.fromEntries(
-        flights.map((f, idx) => [`flight${idx}`, classifyPrice(f.flight.price, flights)])
+        flights.map((f, idx) => [`flight${idx}`, getPriceScore(f.flight.price, flights)])
       ),
     },
     {
       dimension: 'Duration',
-      fullMark: 100,
+      fullMark: 10,
       ...Object.fromEntries(
-        flights.map((f, idx) => [`flight${idx}`, classifyDuration(f.flight.durationMinutes)])
+        flights.map((f, idx) => [`flight${idx}`, getDurationScore(f.flight.durationMinutes)])
       ),
     },
     {
       dimension: 'Stops',
-      fullMark: 100,
+      fullMark: 10,
       ...Object.fromEntries(
-        flights.map((f, idx) => [`flight${idx}`, classifyStops(f.flight.stops)])
+        flights.map((f, idx) => [`flight${idx}`, getStopsScore(f.flight.stops)])
       ),
     },
   ];
@@ -217,7 +209,7 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
         Flight Comparison Radar
       </h3>
       <p className="text-sm text-text-secondary text-center mb-4">
-        3-Stage Classification: <span className="font-medium text-green-600">Excellent</span> • <span className="font-medium text-blue-600">Good</span> • <span className="font-medium text-amber-600">Fair</span>
+        Score Scale: 0-10 · <span className="font-medium text-green-600">8-10 Excellent</span> • <span className="font-medium text-blue-600">5-7.9 Good</span> • <span className="font-medium text-amber-600">0-4.9 Fair</span>
       </p>
       
       <div className="h-[420px] w-full">
@@ -238,7 +230,7 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
             />
             <PolarRadiusAxis 
               angle={22.5} 
-              domain={[0, 100]} 
+              domain={[0, 10]} 
               tick={false}
               axisLine={false}
             />
@@ -276,7 +268,7 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
                 const score = value as number;
                 const dimension = props.payload?.dimension || '';
                 const stageLabel = getStageLabel(dimension, score);
-                return [stageLabel, name];
+                return [`${score.toFixed(1)}/10 (${stageLabel})`, name];
               }}
               labelStyle={{
                 color: '#374151',

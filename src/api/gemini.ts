@@ -5,8 +5,14 @@
  * and extract structured flight search parameters.
  */
 
-const GEMINI_API_KEY = 'AIzaSyAXHMBg_tJiQCrpYzaqFFGzRgRKRp_HHt8';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+// Load API key from environment variables - NEVER hardcode API keys!
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const GEMINI_API_URL = import.meta.env.VITE_GEMINI_API_URL || 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+
+// Validate API key on module load
+if (!GEMINI_API_KEY) {
+  console.warn('⚠️ VITE_GEMINI_API_KEY is not configured. AI search features will not work.');
+}
 
 export interface AISearchParams {
   departure_city: string;

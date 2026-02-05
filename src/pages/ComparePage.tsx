@@ -8,6 +8,13 @@ import CompareRadarChart from '../components/compare/CompareRadarChart';
 import ComparePDFExport from '../components/compare/ComparePDFExport';
 import { cn } from '../utils/cn';
 
+// Color palette matching CompareRadarChart for flight identification
+const FLIGHT_COLORS = [
+  { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300', hex: '#3b82f6' },
+  { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300', hex: '#10b981' },
+  { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300', hex: '#f59e0b' },
+];
+
 /**
  * Compare Page - Apple-style vertical flight comparison
  * - Flights displayed as vertical columns/cards
@@ -210,8 +217,9 @@ const ComparePage: React.FC = () => {
       <main className="max-w-6xl mx-auto px-4 py-6">
         {/* Flight Cards Header - Apple Style */}
         <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: `repeat(${flights.length}, 1fr)` }}>
-          {flights.map((f) => {
+          {flights.map((f, index) => {
             const isBestOverall = f.score.overallScore === bestScore && f.flight.price === bestPrice;
+            const flightColor = FLIGHT_COLORS[index % FLIGHT_COLORS.length];
             return (
               <div
                 key={f.flight.id}
@@ -245,7 +253,11 @@ const ComparePage: React.FC = () => {
                 <h2 className="text-xl font-bold text-text-primary mb-1">
                   {f.flight.airline}
                 </h2>
-                <p className="text-sm text-text-secondary mb-3">
+                <p className={cn(
+                  "text-sm font-medium px-3 py-1 rounded-full inline-block mb-3",
+                  flightColor.bg,
+                  flightColor.text
+                )}>
                   {f.flight.flightNumber}
                 </p>
 
@@ -326,16 +338,24 @@ const ComparePage: React.FC = () => {
             style={{ gridTemplateColumns: `180px repeat(${flights.length}, 1fr)` }}
           >
             <div className="px-6 py-4" />
-            {flights.map((f) => (
-              <div key={f.flight.id} className="p-4 border-l border-divider">
-                <Link
-                  to={`/flights/${f.flight.id}`}
-                  className="block w-full py-3 btn-primary text-center"
-                >
-                  Select {f.flight.airline.split(' ')[0]}
-                </Link>
-              </div>
-            ))}
+            {flights.map((f, index) => {
+              const flightColor = FLIGHT_COLORS[index % FLIGHT_COLORS.length];
+              return (
+                <div key={f.flight.id} className="p-4 border-l border-divider">
+                  <Link
+                    to={`/flights/${f.flight.id}`}
+                    state={{ flightWithScore: f }}
+                    className="block w-full py-3 text-center font-semibold rounded-xl transition-all hover:opacity-90"
+                    style={{ 
+                      backgroundColor: flightColor.hex,
+                      color: 'white'
+                    }}
+                  >
+                    Select {f.flight.airline.split(' ')[0]}
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -457,6 +477,7 @@ const ComparePage: React.FC = () => {
                 <div className="p-4 bg-surface-alt">
                   <Link
                     to={`/flights/${f.flight.id}`}
+                    state={{ flightWithScore: f }}
                     className="block w-full py-3 btn-primary text-center"
                   >
                     Select {f.flight.airline}

@@ -9,10 +9,10 @@ interface UserProfileDropdownProps {
   isHomePage?: boolean;
 }
 
-const labelConfig: Record<UserLabel, { icon: typeof Briefcase; label: string; color: string }> = {
-  business: { icon: Briefcase, label: 'Business', color: 'text-blue-600 bg-blue-100' },
-  family: { icon: Users, label: 'Family', color: 'text-green-600 bg-green-100' },
-  student: { icon: GraduationCap, label: 'Student', color: 'text-purple-600 bg-purple-100' },
+const labelConfig: Record<UserLabel, { icon: typeof Briefcase; label: string; color: string; bgColor: string }> = {
+  business: { icon: Briefcase, label: 'Business', color: 'text-blue-600 bg-blue-100', bgColor: 'bg-blue-500' },
+  family: { icon: Users, label: 'Family', color: 'text-green-600 bg-green-100', bgColor: 'bg-emerald-500' },
+  student: { icon: GraduationCap, label: 'Student', color: 'text-purple-600 bg-purple-100', bgColor: 'bg-purple-500' },
 };
 
 const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = false }) => {
@@ -99,10 +99,12 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
             <p className="font-semibold text-gray-900">{user.username}</p>
             <p className="text-sm text-gray-500">{user.email}</p>
             
-            {/* Current Label Badge */}
+            {/* Current Label Badge with distinct colors */}
             <div className={cn(
-              'inline-flex items-center gap-1.5 mt-2 px-2 py-1 rounded-full text-xs font-medium',
-              labelConfig[currentLabel].color
+              'inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-xs font-semibold text-white',
+              currentLabel === 'business' && 'bg-blue-500',
+              currentLabel === 'family' && 'bg-emerald-500',
+              currentLabel === 'student' && 'bg-purple-500'
             )}>
               <LabelIcon className="w-3 h-3" />
               {labelConfig[currentLabel].label} Traveler
@@ -136,16 +138,41 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                       onClick={() => handleLabelChange(label)}
                       disabled={isUpdating}
                       className={cn(
-                        'w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
-                        isSelected ? 'bg-white shadow-sm' : 'hover:bg-white/50',
+                        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all mb-1.5 last:mb-0',
+                        isSelected 
+                          ? 'bg-white shadow-md ring-2 ring-offset-1' 
+                          : 'hover:bg-white/70 hover:shadow-sm',
+                        isSelected && label === 'business' && 'ring-blue-500',
+                        isSelected && label === 'family' && 'ring-emerald-500',
+                        isSelected && label === 'student' && 'ring-purple-500',
                         isUpdating && 'opacity-50 cursor-not-allowed'
                       )}
                     >
-                      <config.icon className={cn('w-4 h-4', isSelected ? 'text-primary' : 'text-gray-400')} />
-                      <span className={cn('flex-1 text-left text-sm', isSelected && 'font-medium')}>
-                        {config.label}
-                      </span>
-                      {isSelected && <Check className="w-4 h-4 text-primary" />}
+                      {/* Colored icon background */}
+                      <div className={cn(
+                        'w-8 h-8 rounded-lg flex items-center justify-center',
+                        label === 'business' && 'bg-blue-500',
+                        label === 'family' && 'bg-emerald-500',
+                        label === 'student' && 'bg-purple-500'
+                      )}>
+                        <config.icon className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <span className={cn('text-sm block', isSelected ? 'font-semibold text-gray-900' : 'font-medium text-gray-700')}>
+                          {config.label}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {label === 'business' && 'Prioritize reliability & service'}
+                          {label === 'family' && 'Prioritize comfort & service'}
+                          {label === 'student' && 'Prioritize price & value'}
+                        </span>
+                      </div>
+                      {isSelected && <Check className={cn(
+                        'w-5 h-5',
+                        label === 'business' && 'text-blue-500',
+                        label === 'family' && 'text-emerald-500',
+                        label === 'student' && 'text-purple-500'
+                      )} />}
                     </button>
                   );
                 })}

@@ -28,6 +28,9 @@ export interface Flight {
   // Booking and purchase link
   bookingToken?: string;
   
+  // Departure token for round trip - used to fetch return flights
+  departureToken?: string;
+  
   // Airline branding
   airlineLogo?: string;
   
@@ -171,6 +174,9 @@ export interface SearchMeta {
   cachedAt?: string;
   restrictedCount: number;
   isAuthenticated: boolean;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
 }
 
 export interface PriceInsights {
@@ -184,6 +190,14 @@ export interface FlightSearchResponse {
   flights: FlightWithScore[];
   meta: SearchMeta;
   priceInsights?: PriceInsights;
+}
+
+export interface RoundTripSearchResponse {
+  departureFlights: FlightWithScore[];
+  returnFlights: FlightWithScore[];
+  meta: SearchMeta;
+  departurePriceInsights?: PriceInsights;
+  returnPriceInsights?: PriceInsights;
 }
 
 export interface FlightDetail {
@@ -252,6 +266,9 @@ export interface SearchParams {
   maxPrice?: number;           // Maximum ticket price
   maxDuration?: number;        // Maximum flight duration in minutes
   sortBy?: string;             // Sort by: score/price/duration/departure/arrival
+  
+  // === TRAVELER TYPE FOR PERSONALIZED SCORING ===
+  travelerType?: 'student' | 'business' | 'family' | 'default';  // Affects score weights
 }
 
 // === PLACEHOLDERS FOR USER REVIEWS (Connect to SQL Database) ===

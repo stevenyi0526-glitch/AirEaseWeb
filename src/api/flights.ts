@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { FlightSearchResponse, FlightDetail, PriceHistory, SearchParams } from './types';
+import type { FlightSearchResponse, FlightDetail, PriceHistory, SearchParams, RoundTripSearchResponse } from './types';
 
 export const flightsApi = {
   /**
@@ -14,9 +14,19 @@ export const flightsApi = {
    *   - adults: Number of adult passengers (1-9)
    *   - currency: Currency code (USD, CNY, EUR, etc.)
    *   - stops: Stop filter (0=any, 1=nonstop only, 2=1 stop or fewer)
+   *   - travelerType: User profile type (student/business/family) for personalized scoring
+   *   - limit: Number of flights per page (default 40)
+   *   - offset: Number of flights to skip (for pagination)
    */
-  search: async (params: SearchParams): Promise<FlightSearchResponse> => {
-    const response = await apiClient.get('/v1/flights/search', { params });
+  search: async (params: SearchParams & { limit?: number; offset?: number }): Promise<FlightSearchResponse> => {
+    // Map travelerType to traveler_type for backend
+    const apiParams = {
+      ...params,
+      traveler_type: params.travelerType || 'default',
+      limit: params.limit || 40,
+      offset: params.offset || 0,
+    };
+    const response = await apiClient.get('/v1/flights/search', { params: apiParams });
     return response.data;
   },
 
@@ -60,5 +70,84 @@ export const flightsApi = {
     // This is a simplified version - in production you may want to use
     // SerpAPI's booking API endpoint for more accurate deep links
     return `https://www.google.com/travel/flights?booking_token=${encodeURIComponent(bookingToken)}`;
+  },
+
+  /**
+   * Get return flight options for a selected departure flight (Round Trip)
+   * 
+   * @param params - Parameters including:
+   *   - departureToken: The departure_token from the selected outbound flight
+   *   - from: Original departure city/airport code
+   *   - to: Original arrival city/airport code
+   *   - date: Outbound date (YYYY-MM-DD)
+   *   - returnDate: Return date (YYYY-MM-DD)
+   *   - cabin: Cabin class
+   *   - adults: Number of passengers
+   *   - currency: Currency code
+   *   - travelerType: User profile type
+   * 
+   * @returns Return flight options with combined round trip prices
+   */
+  getReturnFlights: async (params: {
+    departureToken: string;
+    from: string;
+    to: string;
+    date: string;
+    returnDate: string;
+    cabin?: string;
+    adults?: number;
+    currency?: string;
+    travelerType?: string;
+  }): Promise<FlightSearchResponse> => {
+    const apiParams = {
+      departure_token: params.departureToken,
+      from: params.from,
+      to: params.to,
+      date: params.date,
+      return_date: params.returnDate,
+      cabin: params.cabin || 'economy',
+      adults: params.adults || 1,
+      currency: params.currency || 'USD',
+      traveler_type: params.travelerType || 'default',
+    };
+    const response = await apiClient.get('/v1/flights/return-flights', { params: apiParams });
+    return response.data;
+  },
+
+  /**
+   * Search round trip flights with separate one-way prices
+   * 
+   * Makes two separate one-way searches to get individual prices for each leg.
+   * This shows the exact cost of departure and return flights separately.
+   * 
+   * Note: One-way prices may be higher than bundled round-trip prices.
+   * 
+   * @param params - Search parameters
+   * @returns Separate departure and return flights with individual prices
+   */
+  searchRoundTrip: async (params: {
+    from: string;
+    to: string;
+    date: string;
+    returnDate: string;
+    cabin?: string;
+    adults?: number;
+    currency?: string;
+    stops?: number;
+    travelerType?: string;
+  }): Promise<RoundTripSearchResponse> => {
+    const apiParams = {
+      from: params.from,
+      to: params.to,
+      date: params.date,
+      return_date: params.returnDate,
+      cabin: params.cabin || 'economy',
+      adults: params.adults || 1,
+      currency: params.currency || 'USD',
+      stops: params.stops,
+      traveler_type: params.travelerType || 'default',
+    };
+    const response = await apiClient.get('/v1/flights/search-roundtrip', { params: apiParams });
+    return response.data;
   },
 };

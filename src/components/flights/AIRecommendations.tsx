@@ -86,7 +86,7 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
             <Link
               key={flight.id}
               to={`/flights/${flight.id}`}
-              state={{ flight: rec }}
+              state={{ flightWithScore: rec }}
               onClick={() => onFlightClick?.(rec)}
               className={cn(
                 "bg-white rounded-xl p-4 hover:shadow-lg transition-all hover:-translate-y-1 border",

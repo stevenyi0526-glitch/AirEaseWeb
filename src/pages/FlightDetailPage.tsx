@@ -81,9 +81,15 @@ const FlightDetailPage: React.FC = () => {
   const location = useLocation();
   const [showSharePoster, setShowSharePoster] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  
+  // Round trip sub-tab state
+  const [activeTab, setActiveTab] = useState<'departure' | 'return'>('departure');
 
   // Check if we have flight data passed via router state (from SerpAPI)
   const stateFlightData = location.state?.flightWithScore as FlightWithScore | undefined;
+  const returnFlightData = location.state?.returnFlight as FlightWithScore | undefined;
+  const isRoundTrip = location.state?.isRoundTrip as boolean | undefined;
+  const totalPrice = location.state?.totalPrice as number | undefined;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isFromSerpAPI = !!stateFlightData && id?.startsWith('serp-');
 
@@ -127,7 +133,12 @@ const FlightDetailPage: React.FC = () => {
     );
   }
 
-  const { flight, score, facilities } = flightData;
+  // For round trips, switch between departure and return flight data based on active tab
+  const displayFlightData = isRoundTrip && activeTab === 'return' && returnFlightData 
+    ? returnFlightData 
+    : flightData;
+
+  const { flight, score, facilities } = displayFlightData;
   
   // Price history - currently mock data, will be replaced with real data
   // when we have historical price tracking
@@ -139,7 +150,7 @@ const FlightDetailPage: React.FC = () => {
     isMock?: boolean;
   };
   
-  const priceHistory: PriceHistoryType = (flightData as { priceHistory?: PriceHistoryType }).priceHistory || {
+  const priceHistory: PriceHistoryType = (displayFlightData as { priceHistory?: PriceHistoryType }).priceHistory || {
     flightId: flight.id,
     points: generateMockPriceHistory(flight.price),
     currentPrice: flight.price,
@@ -200,6 +211,48 @@ const FlightDetailPage: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Round Trip Sub-tabs - only shown when viewing round trip flights */}
+      {isRoundTrip && returnFlightData && (
+        <div className="max-w-4xl mx-auto px-4 pt-4">
+          <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl p-4 mb-4">
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+              <span className="text-sm font-medium text-text-primary">Round Trip Summary</span>
+              <span className="text-lg font-bold text-primary">Total: ${totalPrice}</span>
+            </div>
+            
+            {/* Tab buttons */}
+            <div className="flex border border-divider rounded-lg overflow-hidden bg-white">
+              <button
+                onClick={() => setActiveTab('departure')}
+                className={cn(
+                  "flex-1 px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2",
+                  activeTab === 'departure' 
+                    ? "bg-primary text-white" 
+                    : "text-text-secondary hover:bg-gray-50"
+                )}
+              >
+                <Plane className="w-4 h-4" />
+                Departure Flight
+                <span className="text-xs opacity-80">${stateFlightData?.flight.price}</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('return')}
+                className={cn(
+                  "flex-1 px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2",
+                  activeTab === 'return' 
+                    ? "bg-primary text-white" 
+                    : "text-text-secondary hover:bg-gray-50"
+                )}
+              >
+                <Plane className="w-4 h-4 rotate-180" />
+                Return Flight
+                <span className="text-xs opacity-80">${returnFlightData.flight.price}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         {/* Flight Summary Card */}

@@ -154,15 +154,28 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
   const activeDimensions = getActiveDimensions();
 
   // Calculate amenities score based on available amenities
+  // Must match backend ScoringService.calculate_amenities_score logic
   const calculateAmenitiesScore = () => {
     if (!flightData) return activeDimensions.comfort;
+    
+    // Check if any amenity data is available
+    const hasAmenityData = flightData.hasWifi !== undefined || 
+                           flightData.hasPower !== undefined || 
+                           flightData.hasIFE !== undefined || 
+                           flightData.mealIncluded !== undefined;
+    
+    if (!hasAmenityData) return activeDimensions.comfort;
+    
+    // Calculate raw score from available amenities
     let score = 0;
-    let factors = 0;
-    if (flightData.hasWifi !== undefined) { factors++; if (flightData.hasWifi) score += 2.5; }
-    if (flightData.hasPower !== undefined) { factors++; if (flightData.hasPower) score += 2.5; }
-    if (flightData.hasIFE !== undefined) { factors++; if (flightData.hasIFE) score += 2.5; }
-    if (flightData.mealIncluded !== undefined) { factors++; if (flightData.mealIncluded) score += 2.5; }
-    return factors > 0 ? score : activeDimensions.comfort;
+    if (flightData.hasWifi) score += 2.5;
+    if (flightData.hasPower) score += 2.5;
+    if (flightData.hasIFE) score += 2.5;
+    if (flightData.mealIncluded) score += 2.5;
+    
+    // Apply baseline minimum (matching backend BASELINE_SCORE = 6.5)
+    // But for display, show actual score to be transparent
+    return score;
   };
 
   // Calculate efficiency score based on stops
@@ -202,17 +215,35 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
     return DIMENSION_EXPLANATIONS[subject]?.getExplanation(score) || '';
   };
 
-  // Normalize to 0-100 scale for display
-  const normalizeScore = (score: number) => Math.round(score * 10);
-
+  // Keep scores in 0-10 scale for display
   const data = [
-    { subject: 'Reliability', A: normalizeScore(activeDimensions.reliability), rawValue: activeDimensions.reliability, fullMark: 100 },
-    { subject: 'Comfort', A: normalizeScore(activeDimensions.comfort), rawValue: activeDimensions.comfort, fullMark: 100 },
-    { subject: 'Service', A: normalizeScore(activeDimensions.service), rawValue: activeDimensions.service, fullMark: 100 },
-    { subject: 'Value', A: normalizeScore(activeDimensions.value), rawValue: activeDimensions.value, fullMark: 100 },
-    { subject: 'Amenities', A: normalizeScore(calculateAmenitiesScore()), rawValue: calculateAmenitiesScore(), fullMark: 100 },
-    { subject: 'Efficiency', A: normalizeScore(calculateEfficiencyScore()), rawValue: calculateEfficiencyScore(), fullMark: 100 },
+    { subject: 'Reliability', A: activeDimensions.reliability, rawValue: activeDimensions.reliability, fullMark: 10 },
+    { subject: 'Comfort', A: activeDimensions.comfort, rawValue: activeDimensions.comfort, fullMark: 10 },
+    { subject: 'Service', A: activeDimensions.service, rawValue: activeDimensions.service, fullMark: 10 },
+    { subject: 'Value', A: activeDimensions.value, rawValue: activeDimensions.value, fullMark: 10 },
+    { subject: 'Amenities', A: calculateAmenitiesScore(), rawValue: calculateAmenitiesScore(), fullMark: 10 },
+    { subject: 'Efficiency', A: calculateEfficiencyScore(), rawValue: calculateEfficiencyScore(), fullMark: 10 },
   ];
+
+  // Generate dynamic calculation reference for Amenities based on actual flight data
+  const getDynamicCalcReference = (subject: string): string[] => {
+    if (subject === 'Amenities' && flightData) {
+      const lines: string[] = [];
+      if (flightData.hasWifi) lines.push('• WiFi available: +2.5 pts');
+      if (flightData.hasPower) lines.push('• Power outlets: +2.5 pts');
+      if (flightData.hasIFE) lines.push('• In-flight entertainment: +2.5 pts');
+      if (flightData.mealIncluded) lines.push('• Meals included: +2.5 pts');
+      
+      if (lines.length === 0) {
+        lines.push('• No amenities data available');
+      }
+      
+      const totalScore = calculateAmenitiesScore();
+      lines.push(`• Total: ${totalScore.toFixed(1)} pts`);
+      return lines;
+    }
+    return DIMENSION_CALC_REFERENCE[subject] || [];
+  };
 
   // Size configurations
   const sizes = {
@@ -347,7 +378,7 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
           const style = DIMENSION_STYLES[item.subject];
           const Icon = style.icon;
           const isExpanded = expandedCards.has(item.subject);
-          const calcRef = DIMENSION_CALC_REFERENCE[item.subject];
+          const calcRef = getDynamicCalcReference(item.subject);
 
           return (
             <div
@@ -369,7 +400,7 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
                   <span className="font-bold text-gray-700">{item.subject}</span>
                 </div>
                 <span className={`text-lg font-bold ${style.color}`}>
-                  {item.A}<span className="text-gray-400 text-sm">/100</span>
+                  {item.A.toFixed(1)}<span className="text-gray-400 text-sm">/10</span>
                 </span>
               </div>
               <p className="text-xs text-gray-500 font-medium leading-relaxed mb-2">
