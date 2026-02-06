@@ -71,15 +71,11 @@ const FlightsPage: React.FC = () => {
   // Fetch flights using real SerpAPI - always sort by price initially (Google Flights default)
   // This query is used for one-way searches (or roundtrip without return date as fallback)
   const { data: rawData, isLoading, error, isFetching } = useQuery({
-    queryKey: ['flights', filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, filters.children, currency, filters.stops, travelerType],
+    queryKey: ['flights', filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, filters.children, currency, travelerType],
     queryFn: async () => {
       const apiParams = filtersToApiParams(filters);
-      // Convert stops to number for SerpAPI
-      let stopsNum: number | undefined;
-      if (apiParams.stops === '0') stopsNum = 1;      // Nonstop only
-      else if (apiParams.stops === '1') stopsNum = 2;  // 1 stop or fewer
-      else if (apiParams.stops === '2+') stopsNum = 3; // 2 stops or fewer
-      else stopsNum = undefined;                       // Any
+      // NOTE: Stops filter is applied client-side to avoid extra SerpAPI charges
+      // Always fetch all flights (any stops) and filter locally
       
       const response = await flightsApi.search({
         from: apiParams.from,
@@ -90,7 +86,6 @@ const FlightsPage: React.FC = () => {
         adults: apiParams.adults,
         children: apiParams.children,
         currency,
-        stops: stopsNum,
         maxPrice: apiParams.maxPrice,
         // Always fetch sorted by price from API (Google Flights default)
         sortBy: 'price',
@@ -122,14 +117,10 @@ const FlightsPage: React.FC = () => {
     isLoading: isLoadingRoundTrip, 
     isFetching: isFetchingRoundTrip 
   } = useQuery({
-    queryKey: ['roundtrip-flights', filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, currency, filters.stops, travelerType],
+    queryKey: ['roundtrip-flights', filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, currency, travelerType],
     queryFn: async () => {
       const apiParams = filtersToApiParams(filters);
-      let stopsNum: number | undefined;
-      if (apiParams.stops === '0') stopsNum = 1;
-      else if (apiParams.stops === '1') stopsNum = 2;
-      else if (apiParams.stops === '2+') stopsNum = 3;
-      else stopsNum = undefined;
+      // NOTE: Stops filter is applied client-side to avoid extra SerpAPI charges
       
       const response = await flightsApi.searchRoundTrip({
         from: apiParams.from,
@@ -139,7 +130,6 @@ const FlightsPage: React.FC = () => {
         cabin: apiParams.cabin,
         adults: apiParams.adults,
         currency,
-        stops: stopsNum,
         travelerType: travelerType as 'student' | 'business' | 'family' | 'default',
       });
       
@@ -178,13 +168,9 @@ const FlightsPage: React.FC = () => {
     isLoading: isLoadingMultiCity,
     isFetching: isFetchingMultiCity,
   } = useQuery({
-    queryKey: ['multicity-flights', filters.multiCityLegs, filters.cabin, filters.adults, currency, filters.stops, travelerType],
+    queryKey: ['multicity-flights', filters.multiCityLegs, filters.cabin, filters.adults, currency, travelerType],
     queryFn: async () => {
-      let stopsNum: number | undefined;
-      if (filters.stops === '0') stopsNum = 1;
-      else if (filters.stops === '1') stopsNum = 2;
-      else if (filters.stops === '2+') stopsNum = 3;
-      else stopsNum = undefined;
+      // NOTE: Stops filter is applied client-side to avoid extra SerpAPI charges
       
       const results = await flightsApi.searchMultiCity(
         filters.multiCityLegs,
@@ -192,7 +178,6 @@ const FlightsPage: React.FC = () => {
           cabin: filters.cabin,
           adults: filters.adults,
           currency,
-          stops: stopsNum,
           travelerType: travelerType as 'student' | 'business' | 'family' | 'default',
         }
       );
@@ -397,8 +382,9 @@ const FlightsPage: React.FC = () => {
     const isMultiCity = filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2;
     
     if (isMultiCity) {
-      // Multi-city: return the active leg's flights
-      return multiCityData?.[activeMultiCityLeg]?.flights || [];
+      // Multi-city: return the active leg's flights, filtered client-side
+      const rawFlights = multiCityData?.[activeMultiCityLeg]?.flights || [];
+      return filterAndSortFlights(rawFlights);
     }
     
     if (isRoundTrip) {

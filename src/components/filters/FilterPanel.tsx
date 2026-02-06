@@ -115,6 +115,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           ].map((option) => (
             <label
               key={option.value}
+              onClick={() => onUpdateFilters({ stops: option.value as FlightSearchFilters['stops'] })}
               className="flex items-center gap-3 cursor-pointer group"
             >
               <div
