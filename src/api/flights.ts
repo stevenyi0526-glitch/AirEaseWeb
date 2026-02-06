@@ -23,7 +23,7 @@ export const flightsApi = {
     const apiParams = {
       ...params,
       traveler_type: params.travelerType || 'default',
-      limit: params.limit || 40,
+      limit: params.limit || 200, // Fetch all flights for accuracy
       offset: params.offset || 0,
     };
     const response = await apiClient.get('/v1/flights/search', { params: apiParams });
@@ -149,5 +149,88 @@ export const flightsApi = {
     };
     const response = await apiClient.get('/v1/flights/search-roundtrip', { params: apiParams });
     return response.data;
+  },
+
+  /**
+   * Get airline user reviews on-demand
+   * 
+   * This is called when user selects a specific flight to view details.
+   * Reviews are NOT included in initial search results for performance.
+   * 
+   * @param airline - Airline name (e.g., "Cathay Pacific", "Japan Airlines")
+   * @param cabin - Cabin class (economy/business)
+   * @param limit - Maximum number of reviews
+   */
+  getAirlineReviews: async (
+    airline: string,
+    cabin: string = 'economy',
+    limit: number = 10
+  ): Promise<{
+    airline: string;
+    cabin: string;
+    count: number;
+    reviews: Array<{
+      title: string;
+      review: string;
+      foodRating: number;
+      groundServiceRating: number;
+      seatComfortRating: number;
+      serviceRating: number;
+      recommended: boolean;
+      travelType: string;
+      route: string;
+      aircraft: string;
+      cabinType: string;
+      ratings: {
+        food: number;
+        groundService: number;
+        seatComfort: number;
+        service: number;
+        overall: number | null;
+      };
+    }>;
+  }> => {
+    const response = await apiClient.get('/v1/flights/reviews', {
+      params: { airline, cabin, limit }
+    });
+    return response.data;
+  },
+
+  /**
+   * Search multi-city flights - searches each leg independently
+   * 
+   * @param legs - Array of flight legs with from, to, date
+   * @param options - Common options like cabin, adults, currency
+   * @returns Array of search results, one per leg
+   */
+  searchMultiCity: async (
+    legs: Array<{ from: string; to: string; date: string }>,
+    options: {
+      cabin?: string;
+      adults?: number;
+      currency?: string;
+      stops?: number;
+      travelerType?: string;
+    } = {}
+  ): Promise<FlightSearchResponse[]> => {
+    // Search each leg in parallel
+    const results = await Promise.all(
+      legs.map(async (leg) => {
+        const apiParams = {
+          from: leg.from,
+          to: leg.to,
+          date: leg.date,
+          cabin: options.cabin || 'economy',
+          adults: options.adults || 1,
+          currency: options.currency || 'USD',
+          stops: options.stops,
+          traveler_type: options.travelerType || 'default',
+          limit: 200,
+        };
+        const response = await apiClient.get('/v1/flights/search', { params: apiParams });
+        return response.data as FlightSearchResponse;
+      })
+    );
+    return results;
   },
 };

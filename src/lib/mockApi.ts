@@ -271,6 +271,9 @@ export const mockApi = {
         cachedAt: new Date().toISOString(),
         restrictedCount: 0,
         isAuthenticated: true,
+        limit: 200,
+        offset: 0,
+        hasMore: false,
       },
     };
   },

@@ -1,6 +1,7 @@
 import React from 'react';
 import { RotateCcw, Sun, Sunset, Moon, Sunrise } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { trackTimeFilter } from '../../api/preferences';
 import type { FlightSearchFilters } from '../../hooks/useFlightSearchParams';
 
 interface FilterPanelProps {
@@ -10,6 +11,8 @@ interface FilterPanelProps {
   availableAirlines: Array<{ code: string; name: string; count?: number }>;
   priceRange: { min: number; max: number };
   className?: string;
+  /** Whether to track filter changes for personalization (requires auth) */
+  trackPreferences?: boolean;
 }
 
 // Time period options
@@ -49,6 +52,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   availableAirlines,
   priceRange,
   className,
+  trackPreferences = false,
 }) => {
   // Check if any filters are active
   const hasActiveFilters =
@@ -67,6 +71,11 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
       onUpdateFilters({ departureTimeMin: undefined, departureTimeMax: undefined });
     } else {
       onUpdateFilters({ departureTimeMin: minHour, departureTimeMax: maxHour });
+      
+      // Track the time filter selection for personalization
+      if (trackPreferences) {
+        trackTimeFilter(`${minHour}-${maxHour}`);
+      }
     }
   };
 

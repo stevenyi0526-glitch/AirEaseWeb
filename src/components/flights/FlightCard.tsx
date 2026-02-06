@@ -32,7 +32,7 @@ const FlightCard: React.FC<FlightCardProps> = ({
   onSelect,
   showCompare = true,
   isRoundTrip = false,
-  returnDate,
+  returnDate: _returnDate,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { flight, score, facilities } = flightWithScore;

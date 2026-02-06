@@ -5,6 +5,12 @@ export type TripType = 'roundtrip' | 'oneway' | 'multicity';
 export type SortBy = 'score' | 'price' | 'duration' | 'departure' | 'arrival';
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
 
+export interface MultiCityLeg {
+  from: string;
+  to: string;
+  date: string;
+}
+
 export interface FlightSearchFilters {
   // Search params
   from: string;
@@ -15,6 +21,9 @@ export interface FlightSearchFilters {
   adults: number;
   children: number;
   cabin: CabinClass;
+  
+  // Multi-city legs
+  multiCityLegs: MultiCityLeg[];
 
   // Filter params
   stops: string; // 'any', '0', '1', '2+'
@@ -39,6 +48,7 @@ const DEFAULT_FILTERS: FlightSearchFilters = {
   adults: 1,
   children: 0,
   cabin: 'economy',
+  multiCityLegs: [],
   stops: 'any',
   minPrice: undefined,
   maxPrice: undefined,
@@ -56,6 +66,17 @@ export function useFlightSearchParams() {
   // Parse filters from URL
   const filters: FlightSearchFilters = useMemo(() => {
     const airlines = searchParams.get('airlines');
+    
+    // Parse multi-city legs from URL
+    let multiCityLegs: MultiCityLeg[] = [];
+    const multiCityLegsParam = searchParams.get('multiCityLegs');
+    if (multiCityLegsParam) {
+      try {
+        multiCityLegs = JSON.parse(multiCityLegsParam);
+      } catch (e) {
+        console.error('Failed to parse multiCityLegs:', e);
+      }
+    }
 
     return {
       from: searchParams.get('from') || '',
@@ -66,6 +87,7 @@ export function useFlightSearchParams() {
       adults: parseInt(searchParams.get('adults') || '1', 10),
       children: parseInt(searchParams.get('children') || '0', 10),
       cabin: (searchParams.get('cabin') as CabinClass) || 'economy',
+      multiCityLegs,
       stops: searchParams.get('stops') || 'any',
       minPrice: searchParams.get('minPrice') ? parseInt(searchParams.get('minPrice')!, 10) : undefined,
       maxPrice: searchParams.get('maxPrice') ? parseInt(searchParams.get('maxPrice')!, 10) : undefined,

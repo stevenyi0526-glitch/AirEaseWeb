@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Plane, SlidersHorizontal, Search, Calendar, ChevronDown } from 'lucide-react';
 import { flightsApi } from '../api/flights';
-import { generateRecommendations, updateSortPreference, trackFlightSelection } from '../api/recommendations';
+import { generateRecommendations } from '../api/recommendations';
+import { trackSortAction, trackFlightSelection } from '../api/preferences';
 import { AIRLINES } from '../lib/mockApi';
 import { useFlightSearchParams, filtersToApiParams, type SortBy } from '../hooks/useFlightSearchParams';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +12,7 @@ import FilterPanel from '../components/filters/FilterPanel';
 import SortDropdown from '../components/filters/SortDropdown';
 import FlightCard from '../components/flights/FlightCard';
 import FlightCardSkeleton from '../components/flights/FlightCardSkeleton';
+import PriceTrendChart from '../components/flights/PriceTrendChart';
 import CompareTray from '../components/compare/CompareTray';
 import FilterBottomSheet from '../components/filters/FilterBottomSheet';
 import SearchLoading from '../components/common/SearchLoading';
@@ -61,8 +63,13 @@ const FlightsPage: React.FC = () => {
   // Get user's traveler type for personalized scoring
   const travelerType = user?.label || 'default';
 
+  // Determine if this is effectively a one-way search
+  // (explicit one-way, OR roundtrip without return date)
+  const isEffectivelyOneWay = filters.tripType === 'oneway' || 
+    (filters.tripType === 'roundtrip' && !filters.returnDate);
+
   // Fetch flights using real SerpAPI - always sort by price initially (Google Flights default)
-  // This query is used for one-way searches
+  // This query is used for one-way searches (or roundtrip without return date as fallback)
   const { data: rawData, isLoading, error, isFetching } = useQuery({
     queryKey: ['flights', filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, filters.children, currency, filters.stops, travelerType],
     queryFn: async () => {
@@ -103,8 +110,8 @@ const FlightsPage: React.FC = () => {
         }
       };
     },
-    // Only run for one-way searches
-    enabled: isValidSearch && filters.tripType !== 'roundtrip',
+    // Run for one-way searches OR roundtrip without return date (fallback)
+    enabled: isValidSearch && isEffectivelyOneWay && filters.tripType !== 'multicity',
     staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   });
@@ -137,17 +144,73 @@ const FlightsPage: React.FC = () => {
       });
       
       // Filter out flights with price = 0
-      return {
+      const result = {
         ...response,
         departureFlights: response.departureFlights.filter(f => f.flight.price > 0),
         returnFlights: response.returnFlights.filter(f => f.flight.price > 0),
       };
+      
+      // Debug logging for round trip data
+      console.log('[RoundTrip API Response]', {
+        departureFlightsCount: result.departureFlights.length,
+        returnFlightsCount: result.returnFlights.length,
+        departurePriceInsights: response.departurePriceInsights ? {
+          lowestPrice: response.departurePriceInsights.lowestPrice,
+          priceLevel: response.departurePriceInsights.priceLevel,
+        } : 'NOT AVAILABLE',
+        returnPriceInsights: response.returnPriceInsights ? {
+          lowestPrice: response.returnPriceInsights.lowestPrice,
+          priceLevel: response.returnPriceInsights.priceLevel,
+        } : 'NOT AVAILABLE',
+      });
+      
+      return result;
     },
     // Only run for round trip searches with return date
     enabled: isValidSearch && filters.tripType === 'roundtrip' && !!filters.returnDate,
     staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   });
+
+  // Multi-city query - searches each leg independently
+  const {
+    data: multiCityData,
+    isLoading: isLoadingMultiCity,
+    isFetching: isFetchingMultiCity,
+  } = useQuery({
+    queryKey: ['multicity-flights', filters.multiCityLegs, filters.cabin, filters.adults, currency, filters.stops, travelerType],
+    queryFn: async () => {
+      let stopsNum: number | undefined;
+      if (filters.stops === '0') stopsNum = 1;
+      else if (filters.stops === '1') stopsNum = 2;
+      else if (filters.stops === '2+') stopsNum = 3;
+      else stopsNum = undefined;
+      
+      const results = await flightsApi.searchMultiCity(
+        filters.multiCityLegs,
+        {
+          cabin: filters.cabin,
+          adults: filters.adults,
+          currency,
+          stops: stopsNum,
+          travelerType: travelerType as 'student' | 'business' | 'family' | 'default',
+        }
+      );
+      
+      // Filter out flights with price = 0 from each leg
+      return results.map(legData => ({
+        ...legData,
+        flights: legData.flights.filter(f => f.flight.price > 0),
+      }));
+    },
+    // Only run for multi-city searches with valid legs
+    enabled: isValidSearch && filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
+
+  // Active leg tab for multi-city (0-indexed)
+  const [activeMultiCityLeg, setActiveMultiCityLeg] = useState(0);
 
   // Filter and sort flights locally based on user's filter/sort selection (no API call needed)
   const sortedFlights = useMemo(() => {
@@ -318,6 +381,142 @@ const FlightsPage: React.FC = () => {
     return filterAndSortFlights(roundTripData.returnFlights);
   }, [roundTripData?.returnFlights, filters.sortBy, filters.stops, filters.departureTimeMin, filters.departureTimeMax, filters.minPrice, filters.maxPrice, filters.airlines, filters.aircraftType]);
 
+  // ============================================================================
+  // UNIFIED ACTIVE LEG FLIGHTS
+  // ============================================================================
+  // All trip types are ultimately single-way searches:
+  // - One-way: 1 search
+  // - Round-trip: 2 single-way searches (departure + return)
+  // - Multi-city: N single-way searches (leg1, leg2, ...)
+  //
+  // This computed value returns the CURRENTLY ACTIVE leg's flights,
+  // which powers AI Recommendations and Price Analysis consistently.
+  // ============================================================================
+  const currentLegFlights = useMemo(() => {
+    const isRoundTrip = filters.tripType === 'roundtrip' && filters.returnDate;
+    const isMultiCity = filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2;
+    
+    if (isMultiCity) {
+      // Multi-city: return the active leg's flights
+      return multiCityData?.[activeMultiCityLeg]?.flights || [];
+    }
+    
+    if (isRoundTrip) {
+      // Round-trip: return departure or return flights based on active tab
+      return activeFlightTab === 'departure' 
+        ? filteredDepartureFlights 
+        : filteredReturnFlights;
+    }
+    
+    // One-way (or round-trip without return date as fallback)
+    return sortedFlights;
+  }, [
+    filters.tripType, 
+    filters.returnDate, 
+    filters.multiCityLegs.length,
+    activeFlightTab, 
+    activeMultiCityLeg,
+    sortedFlights, 
+    filteredDepartureFlights, 
+    filteredReturnFlights,
+    multiCityData
+  ]);
+
+  // Current leg's price insights (for Price Analysis chart)
+  const currentLegPriceInsights = useMemo(() => {
+    const isRoundTrip = filters.tripType === 'roundtrip' && filters.returnDate;
+    const isMultiCity = filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2;
+    
+    // Debug logging for price insights
+    console.log('[PriceInsights Debug]', {
+      tripType: filters.tripType,
+      returnDate: filters.returnDate,
+      activeFlightTab,
+      isRoundTrip,
+      isMultiCity,
+      departurePriceInsights: roundTripData?.departurePriceInsights ? 'YES' : 'NO',
+      returnPriceInsights: roundTripData?.returnPriceInsights ? 'YES' : 'NO',
+      rawDataPriceInsights: rawData?.priceInsights ? 'YES' : 'NO',
+    });
+    
+    if (isMultiCity) {
+      return multiCityData?.[activeMultiCityLeg]?.priceInsights || null;
+    }
+    
+    if (isRoundTrip) {
+      const result = activeFlightTab === 'departure' 
+        ? roundTripData?.departurePriceInsights 
+        : roundTripData?.returnPriceInsights;
+      console.log('[PriceInsights] Selected for', activeFlightTab, ':', result ? 'Available' : 'Not available');
+      return result;
+    }
+    
+    return rawData?.priceInsights || null;
+  }, [
+    filters.tripType, 
+    filters.returnDate, 
+    filters.multiCityLegs.length,
+    activeFlightTab, 
+    activeMultiCityLeg,
+    rawData?.priceInsights,
+    roundTripData?.departurePriceInsights,
+    roundTripData?.returnPriceInsights,
+    multiCityData
+  ]);
+
+  // Current leg's route info (for Price Analysis chart labels)
+  const currentLegRoute = useMemo(() => {
+    const isRoundTrip = filters.tripType === 'roundtrip' && filters.returnDate;
+    const isMultiCity = filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2;
+    
+    if (isMultiCity) {
+      const leg = filters.multiCityLegs[activeMultiCityLeg];
+      return { from: leg?.from || '', to: leg?.to || '' };
+    }
+    
+    if (isRoundTrip) {
+      return activeFlightTab === 'departure' 
+        ? { from: filters.from, to: filters.to }
+        : { from: filters.to, to: filters.from }; // Reversed for return
+    }
+    
+    return { from: filters.from, to: filters.to };
+  }, [
+    filters.tripType, 
+    filters.returnDate, 
+    filters.multiCityLegs,
+    filters.from,
+    filters.to,
+    activeFlightTab, 
+    activeMultiCityLeg
+  ]);
+
+  // Is currently loading the active leg?
+  const isLoadingCurrentLeg = useMemo(() => {
+    const isRoundTrip = filters.tripType === 'roundtrip' && filters.returnDate;
+    const isMultiCity = filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2;
+    
+    if (isMultiCity) {
+      return isLoadingMultiCity || isFetchingMultiCity;
+    }
+    
+    if (isRoundTrip) {
+      return isLoadingRoundTrip || isFetchingRoundTrip;
+    }
+    
+    return isLoading || isFetching;
+  }, [
+    filters.tripType, 
+    filters.returnDate, 
+    filters.multiCityLegs.length,
+    isLoading, 
+    isFetching,
+    isLoadingRoundTrip, 
+    isFetchingRoundTrip,
+    isLoadingMultiCity, 
+    isFetchingMultiCity
+  ]);
+
   // Handle date change and search
   const handleNewSearch = () => {
     updateFilters({ 
@@ -337,23 +536,32 @@ const FlightsPage: React.FC = () => {
     setDisplayCount(FLIGHTS_PER_PAGE);
   }, [filters.sortBy, filters.stops, filters.departureTimeMin, filters.departureTimeMax, filters.minPrice, filters.maxPrice, filters.airlines, filters.aircraftType]);
 
-  // Fetch AI recommendations when flights are loaded
+  // ============================================================================
+  // AI RECOMMENDATIONS - Always based on currentLegFlights (single-way focus)
+  // ============================================================================
+  // Since all searches are ultimately single-way:
+  // - One-way: direct search result
+  // - Round-trip: departure leg OR return leg (based on active tab)
+  // - Multi-city: active leg's search result
+  // We always generate recommendations for the CURRENT ACTIVE LEG.
+  // ============================================================================
   useEffect(() => {
     const fetchRecommendations = async () => {
-      if (!rawData?.flights || rawData.flights.length === 0) {
+      // Use currentLegFlights - works for all trip types!
+      if (!currentLegFlights || currentLegFlights.length === 0) {
         setRecommendations([]);
         return;
       }
       
       setIsLoadingRecommendations(true);
       try {
-        const result = await generateRecommendations(rawData.flights);
+        const result = await generateRecommendations(currentLegFlights);
         setRecommendations(result.recommendations);
         setRecommendationExplanation(result.explanation);
       } catch (error) {
         console.error('Failed to fetch recommendations:', error);
         // Fallback: use top 3 by score
-        const top3 = [...rawData.flights]
+        const top3 = [...currentLegFlights]
           .sort((a, b) => b.score.overallScore - a.score.overallScore)
           .slice(0, 3);
         setRecommendations(top3);
@@ -364,31 +572,34 @@ const FlightsPage: React.FC = () => {
     };
 
     fetchRecommendations();
-  }, [rawData?.flights]);
+  }, [currentLegFlights]); // Simple dependency - just the current leg's flights!
 
   // Track sort preference changes
-  const handleSortChange = async (sortBy: SortBy) => {
+  const handleSortChange = (sortBy: SortBy) => {
     updateFilters({ sortBy });
     
     // Track sort preference for AI recommendations (fire and forget)
     if (isAuthenticated) {
-      updateSortPreference(sortBy).catch(console.error);
+      trackSortAction(sortBy);
     }
   };
 
   // Track flight selection when user clicks to view details
-  const handleFlightClick = async (flight: FlightWithScore) => {
+  const handleFlightClick = (flight: FlightWithScore) => {
     if (isAuthenticated) {
+      const depTime = flight.flight.departureTime;
       trackFlightSelection({
         flight_id: flight.flight.id,
+        flight_number: flight.flight.flightNumber,
         departure_city: flight.flight.departureCityCode,
         arrival_city: flight.flight.arrivalCityCode,
-        departure_time: flight.flight.departureTime,
+        departure_time: typeof depTime === 'string' ? depTime : String(depTime),
         airline: flight.flight.airline,
+        airline_code: flight.flight.airlineCode,
         price: flight.flight.price,
         overall_score: flight.score.overallScore,
-        cabin_class: flight.flight.cabin,
-      }).catch(console.error);
+        cabin: flight.flight.cabin,
+      });
     }
   };
 
@@ -458,20 +669,42 @@ const FlightsPage: React.FC = () => {
 
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-2 md:gap-3">
-                  <span className="text-lg md:text-xl font-bold text-text-primary">
-                    {filters.from}
-                  </span>
-                  {filters.tripType === 'roundtrip' ? (
-                    <div className="flex items-center gap-1 text-primary">
-                      <Plane className="w-4 h-4 md:w-5 md:h-5" />
-                      <Plane className="w-4 h-4 md:w-5 md:h-5 rotate-180" />
+                  {filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2 ? (
+                    // Multi-city: show all cities in sequence
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {filters.multiCityLegs.map((leg, i) => (
+                        <React.Fragment key={i}>
+                          {i === 0 && (
+                            <span className="text-lg md:text-xl font-bold text-text-primary">
+                              {leg.from}
+                            </span>
+                          )}
+                          <Plane className="w-4 h-4 text-primary flex-shrink-0" />
+                          <span className="text-lg md:text-xl font-bold text-text-primary">
+                            {leg.to}
+                          </span>
+                        </React.Fragment>
+                      ))}
                     </div>
                   ) : (
-                    <Plane className="w-4 h-4 md:w-5 md:h-5 text-primary flex-shrink-0" />
+                    // One-way or Round-trip: simple from → to
+                    <>
+                      <span className="text-lg md:text-xl font-bold text-text-primary">
+                        {filters.from}
+                      </span>
+                      {filters.tripType === 'roundtrip' ? (
+                        <div className="flex items-center gap-1 text-primary">
+                          <Plane className="w-4 h-4 md:w-5 md:h-5" />
+                          <Plane className="w-4 h-4 md:w-5 md:h-5 rotate-180" />
+                        </div>
+                      ) : (
+                        <Plane className="w-4 h-4 md:w-5 md:h-5 text-primary flex-shrink-0" />
+                      )}
+                      <span className="text-lg md:text-xl font-bold text-text-primary">
+                        {filters.to}
+                      </span>
+                    </>
                   )}
-                  <span className="text-lg md:text-xl font-bold text-text-primary">
-                    {filters.to}
-                  </span>
                 </div>
                 {/* Trip Type Badge */}
                 <div className="flex items-center gap-2 mt-0.5">
@@ -484,7 +717,7 @@ const FlightsPage: React.FC = () => {
                         : "bg-gray-100 text-gray-600"
                   )}>
                     {filters.tripType === 'roundtrip' ? 'Round Trip' : 
-                     filters.tripType === 'multicity' ? 'Multi-city' : 'One Way'}
+                     filters.tripType === 'multicity' ? `Multi-city (${filters.multiCityLegs.length} flights)` : 'One Way'}
                   </span>
                   {filters.tripType === 'roundtrip' && filters.returnDate && (
                     <span className="text-xs text-text-muted">
@@ -584,14 +817,15 @@ const FlightsPage: React.FC = () => {
                 onResetFilters={resetFilters}
                 availableAirlines={availableAirlines}
                 priceRange={priceRange}
+                trackPreferences={isAuthenticated}
               />
             </div>
           </div>
 
           {/* Center: Flight Results */}
           <div className="flex-1 min-w-0">
-            {/* AI Recommendations Section */}
-            {!isLoading && !isFetching && !error && sortedFlights.length > 0 && (
+            {/* AI Recommendations Section - Uses currentLegFlights (single-way focus) */}
+            {!isLoadingCurrentLeg && !error && currentLegFlights.length > 0 && (
               <AIRecommendations
                 recommendations={recommendations}
                 explanation={recommendationExplanation}
@@ -600,29 +834,32 @@ const FlightsPage: React.FC = () => {
               />
             )}
 
+            {/* Price Insights Chart - Uses currentLegPriceInsights (single-way focus) */}
+            {!isLoadingCurrentLeg && !error && currentLegPriceInsights && (
+              <PriceTrendChart
+                priceInsights={currentLegPriceInsights}
+                currency={currency}
+                departureCity={currentLegRoute.from}
+                arrivalCity={currentLegRoute.to}
+                className="mb-4"
+              />
+            )}
+
             {/* Results Header */}
             <div className="mb-4">
               <h1 className="text-xl md:text-2xl font-bold text-text-primary">
-                {(filters.tripType === 'roundtrip' ? isLoadingRoundTrip : isLoading) ? (
+                {isLoadingCurrentLeg ? (
                   'Searching...'
                 ) : error ? (
                   'Search error'
                 ) : (
-                  // Show correct count based on trip type and active tab
-                  (() => {
-                    const isRoundTrip = filters.tripType === 'roundtrip' && filters.returnDate;
-                    if (isRoundTrip) {
-                      const departureCount = filteredDepartureFlights.length;
-                      const returnCount = filteredReturnFlights.length;
-                      const currentCount = activeFlightTab === 'departure' ? departureCount : returnCount;
-                      return `${currentCount} ${activeFlightTab === 'departure' ? 'Departure' : 'Return'} Flights Available`;
-                    }
-                    return `${sortedFlights.length} Flights Available`;
-                  })()
+                  // Show correct count based on current leg
+                  `${currentLegFlights.length} Flights Available`
                 )}
               </h1>
               <p className="text-sm text-text-secondary mt-1">
-                Sorted by {filters.sortBy === 'score' 
+                {currentLegRoute.from} → {currentLegRoute.to}
+                {' • '}Sorted by {filters.sortBy === 'score' 
                   ? (travelerType === 'student' ? 'Best Price' : 'Airease Score') 
                   : filters.sortBy}
                 {hasActiveFilters && ' • Filters applied'}
@@ -630,7 +867,7 @@ const FlightsPage: React.FC = () => {
             </div>
 
             {/* Round Trip Notice Banner */}
-            {filters.tripType === 'roundtrip' && filters.returnDate && !isLoading && sortedFlights.length > 0 && (
+            {filters.tripType === 'roundtrip' && filters.returnDate && !isLoadingCurrentLeg && currentLegFlights.length > 0 && (
               <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center gap-3">
                 <div className="p-2 rounded-full bg-primary/10">
                   <Plane className="w-4 h-4 text-primary" />
@@ -646,13 +883,30 @@ const FlightsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Flight List - Different view for Round Trip vs One-Way */}
+            {/* Multi-city Notice Banner */}
+            {filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2 && !isLoadingMultiCity && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3">
+                <div className="p-2 rounded-full bg-amber-100">
+                  <Plane className="w-4 h-4 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-900">
+                    Multi-city Trip - {filters.multiCityLegs.length} Flights
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    Select flights for each leg using the tabs above. Each leg is priced independently.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Flight List - Uses currentLegFlights (single-way focus) */}
             <div className="space-y-4">
-              {/* Loading state - check both one-way and round trip loading */}
-              {(filters.tripType === 'roundtrip' ? (isLoadingRoundTrip || isFetchingRoundTrip) : (isLoading || isFetching)) ? (
+              {/* Loading state */}
+              {isLoadingCurrentLeg ? (
                 // Loading state with animated plane and skeletons
                 <>
-                  <SearchLoading from={filters.from} to={filters.to} />
+                  <SearchLoading from={currentLegRoute.from} to={currentLegRoute.to} />
                   {Array.from({ length: 3 }).map((_, i) => (
                     <FlightCardSkeleton key={i} />
                   ))}
@@ -673,7 +927,7 @@ const FlightsPage: React.FC = () => {
                     Try Again
                   </button>
                 </div>
-              ) : (filters.tripType === 'roundtrip' ? (roundTripData?.departureFlights?.length === 0 && roundTripData?.returnFlights?.length === 0) : sortedFlights.length === 0) ? (
+              ) : currentLegFlights.length === 0 ? (
                 // Empty state
                 <div className="text-center py-12">
                   <Plane className="w-16 h-16 text-text-muted mx-auto mb-4" />
@@ -787,18 +1041,62 @@ const FlightsPage: React.FC = () => {
                       )}
                     </div>
                   )}
+
+                  {/* Sub-tabs for Multi-city */}
+                  {filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2 && (
+                    <div className="mb-4">
+                      {/* Tab buttons for each leg */}
+                      <div className="flex border-b border-divider bg-white rounded-t-xl overflow-hidden">
+                        {filters.multiCityLegs.map((leg, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setActiveMultiCityLeg(index)}
+                            className={cn(
+                              "flex-1 px-3 py-3 text-sm font-medium transition-colors relative",
+                              activeMultiCityLeg === index 
+                                ? "text-primary bg-primary/5" 
+                                : "text-text-secondary hover:text-text-primary hover:bg-gray-50"
+                            )}
+                          >
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs font-bold text-gray-400">#{index + 1}</span>
+                                <Plane className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="text-xs font-semibold">{leg.from} → {leg.to}</span>
+                              <span className="text-xs text-gray-400">{leg.date}</span>
+                            </div>
+                            {activeMultiCityLeg === index && (
+                              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      
+                      {/* Current leg info banner */}
+                      <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-3 flex items-center gap-3 border-x border-b border-amber-200">
+                        <div className="p-2 rounded-full bg-amber-100">
+                          <Plane className="w-4 h-4 text-amber-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-amber-900">
+                            Flight {activeMultiCityLeg + 1}: {filters.multiCityLegs[activeMultiCityLeg]?.from} → {filters.multiCityLegs[activeMultiCityLeg]?.to}
+                          </p>
+                          <p className="text-xs text-amber-700">
+                            {filters.multiCityLegs[activeMultiCityLeg]?.date} • {multiCityData?.[activeMultiCityLeg]?.flights?.length || 0} flights available
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
-                  {/* Flight List - Same UI for all types */}
+                  {/* Flight List - Uses currentLegFlights (single-way focus) */}
                   {(() => {
-                    // Determine which flights to show based on trip type and active tab
+                    // All trip types use currentLegFlights - already computed above!
                     const isRoundTrip = filters.tripType === 'roundtrip' && filters.returnDate;
-                    const flightsToShow = isRoundTrip 
-                      ? (activeFlightTab === 'departure' 
-                          ? filteredDepartureFlights
-                          : filteredReturnFlights)
-                      : sortedFlights;
                     
-                    const handleFlightClick = isRoundTrip 
+                    // For round-trip, clicking selects the flight for that leg
+                    const handleFlightSelect = isRoundTrip 
                       ? (flight: FlightWithScore) => {
                           if (activeFlightTab === 'departure') {
                             setSelectedDepartureFlight(flight);
@@ -814,10 +1112,10 @@ const FlightsPage: React.FC = () => {
                     
                     return (
                       <>
-                        {flightsToShow.slice(0, displayCount).map((flight) => (
+                        {currentLegFlights.slice(0, displayCount).map((flight) => (
                           <div 
                             key={flight.flight.id}
-                            onClick={() => handleFlightClick?.(flight)}
+                            onClick={() => handleFlightSelect?.(flight)}
                             className={cn(
                               isRoundTrip && "cursor-pointer",
                               isRoundTrip && activeFlightTab === 'departure' && selectedDepartureFlight?.flight.id === flight.flight.id && "ring-2 ring-primary rounded-xl",
@@ -831,7 +1129,7 @@ const FlightsPage: React.FC = () => {
                         ))}
                         
                         {/* Load More Button */}
-                        {displayCount < flightsToShow.length && (
+                        {displayCount < currentLegFlights.length && (
                           <div className="flex justify-center pt-4">
                             <button
                               onClick={() => setDisplayCount(prev => prev + FLIGHTS_PER_PAGE)}
@@ -840,17 +1138,43 @@ const FlightsPage: React.FC = () => {
                               <ChevronDown className="w-5 h-5" />
                               Load More Flights
                               <span className="text-sm opacity-80">
-                                ({flightsToShow.length - displayCount} more)
+                                ({currentLegFlights.length - displayCount} more)
                               </span>
                             </button>
                           </div>
                         )}
                         
                         {/* Showing count indicator */}
-                        {flightsToShow.length > FLIGHTS_PER_PAGE && (
+                        {currentLegFlights.length > FLIGHTS_PER_PAGE && (
                           <p className="text-center text-sm text-text-muted pt-2">
-                            Showing {Math.min(displayCount, flightsToShow.length)} of {flightsToShow.length} flights
+                            Showing {Math.min(displayCount, currentLegFlights.length)} of {currentLegFlights.length} flights
                           </p>
+                        )}
+
+                        {/* Login prompt for non-authenticated users */}
+                        {!isAuthenticated && rawData?.meta?.restrictedCount && rawData.meta.restrictedCount > 0 && (
+                          <div className="flex flex-col items-center justify-center py-6 mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                            <div className="flex items-center gap-2 text-blue-600 mb-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                              </svg>
+                              <span className="font-medium">
+                                {rawData.meta.restrictedCount} more flight{rawData.meta.restrictedCount > 1 ? 's' : ''} available
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-3">
+                              Login to see all search results
+                            </p>
+                            <button
+                              onClick={() => {
+                                // Trigger login modal - dispatch custom event
+                                window.dispatchEvent(new CustomEvent('open-login-modal'));
+                              }}
+                              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm hover:shadow-md"
+                            >
+                              Login to see more results
+                            </button>
+                          </div>
                         )}
                       </>
                     );

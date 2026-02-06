@@ -63,16 +63,16 @@ const DIMENSION_EXPLANATIONS: Record<string, { description: string; goodScore: s
     formula: ['Lowest 33%: Budget', 'Middle 33%: Moderate', 'Top 33%: Premium'],
   },
   'Duration': {
-    description: 'Total flight time including layovers (normalized)',
-    goodScore: 'Shortest travel time option',
-    badScore: 'Longer journey compared to alternatives',
-    formula: ['≤6 hours: Short', '6-12 hours: Medium', '>12 hours: Long'],
+    description: 'Total flight time relative to fastest option on this route',
+    goodScore: 'Fastest or near-fastest flight option',
+    badScore: 'Significantly longer than fastest option',
+    formula: ['Shortest = 10pts', '-1 pt per 30 min over shortest', 'Max 10pts'],
   },
   'Stops': {
-    description: 'Number of connections - direct flights score highest',
+    description: 'Number of connections - multiplies duration score',
     goodScore: 'Direct flight with no connections',
-    badScore: 'Multiple stops may increase travel time and hassle',
-    formula: ['0 stops: Direct (10pts)', '1 stop: 7pts', '2+ stops: 2-4pts'],
+    badScore: 'Multiple stops add travel time and hassle',
+    formula: ['0 stops: × 1.0 (direct)', '1 stop: × 0.8 (-20%)', '2+ stops: × 0.6 (-40%)'],
   },
 };
 
@@ -125,23 +125,47 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
     return 2 + normalized * 8; // Scale to 2-10 range
   };
 
-  // Get duration score (0-10): Short (<6h) = 10, Medium (6-12h) = 6, Long (>12h) = 3
-  const getDurationScore = (durationMinutes: number): number => {
-    const hours = durationMinutes / 60;
-    if (hours <= 3) return 10;
-    if (hours <= 6) return 8;
-    if (hours <= 9) return 6;
-    if (hours <= 12) return 4;
-    return 2;
+  // Get duration score (0-10) based on relative comparison to shortest flight
+  // NEW ALGORITHM: Shortest flight = 10, deduct based on absolute difference
+  // Every 30 minutes over shortest = -1 point
+  const getDurationScore = (durationMinutes: number, flights: FlightWithScore[]): number => {
+    const durations = flights.map(f => f.flight.durationMinutes);
+    const shortestDuration = Math.min(...durations);
+    
+    if (durationMinutes <= shortestDuration) return 10;
+    
+    // Penalty: -1 point per 30 minutes over shortest
+    const extraMinutes = durationMinutes - shortestDuration;
+    const penalty = extraMinutes / 30;
+    return Math.max(1, 10 - penalty);
   };
 
-  // Get stops score (0-10): Direct = 10, 1 Stop = 7, 2+ = 3
+  // Get stops multiplier for efficiency
+  // 0 stops = 1.0, 1 stop = 0.8, 2+ stops = 0.6
+  const getStopsMultiplier = (stops: number): number => {
+    if (stops === 0) return 1.0;
+    if (stops === 1) return 0.8;
+    return 0.6;
+  };
+
+  // Get stops score (0-10): Direct = 10, 1 Stop = 8, 2 stops = 6, 3+ = 4
   const getStopsScore = (stops: number): number => {
     if (stops === 0) return 10;
-    if (stops === 1) return 7;
-    if (stops === 2) return 4;
-    return 2;
+    if (stops === 1) return 8;
+    if (stops === 2) return 6;
+    return 4;
   };
+
+  // Get efficiency score (combined duration + stops)
+  // NEW: Efficiency = duration_score * stops_multiplier
+  // This ensures long flights with stops get appropriately penalized
+  const _getEfficiencyScore = (durationMinutes: number, stops: number, flights: FlightWithScore[]): number => {
+    const durationScore = getDurationScore(durationMinutes, flights);
+    const stopsMultiplier = getStopsMultiplier(stops);
+    return Math.max(1, durationScore * stopsMultiplier);
+  };
+  // Suppress unused variable warning
+  void _getEfficiencyScore;
 
   // Build radar chart data using 0-10 scale
   const radarData = [
@@ -191,7 +215,7 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
       dimension: 'Duration',
       fullMark: 10,
       ...Object.fromEntries(
-        flights.map((f, idx) => [`flight${idx}`, getDurationScore(f.flight.durationMinutes)])
+        flights.map((f, idx) => [`flight${idx}`, getDurationScore(f.flight.durationMinutes, flights)])
       ),
     },
     {

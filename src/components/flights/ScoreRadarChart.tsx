@@ -20,6 +20,7 @@ interface ScoreRadarChartProps {
   flightData?: {
     price?: number;
     durationMinutes?: number;
+    shortestDuration?: number;  // NEW: Shortest flight duration for this route (baseline for scoring)
     stops?: number;
     hasWifi?: boolean;
     hasPower?: boolean;
@@ -66,11 +67,12 @@ const DIMENSION_CALC_REFERENCE: Record<string, string[]> = {
     '• Max score: 10 (all amenities)',
   ],
   'Efficiency': [
-    '• Direct flight (0 stops): 10 pts',
-    '• 1 stop: 7 pts',
-    '• 2 stops: 4 pts',
-    '• 3+ stops: 2 pts',
-    '• Layover time also considered',
+    '• Duration score: shortest flight = 10',
+    '• -1 point per 30 min over shortest',
+    '• Direct (0 stops): × 1.0 multiplier',
+    '• 1 stop: × 0.8 multiplier',
+    '• 2+ stops: × 0.6 multiplier',
+    '• Final = duration × stop multiplier',
   ],
 };
 
@@ -97,8 +99,8 @@ const DIMENSION_EXPLANATIONS: Record<string, { description: string; getExplanati
     getExplanation: (score) => score >= 8 ? 'Full amenities (WiFi+Power+IFE+Meal)' : score >= 5 ? 'Partial amenities included' : 'Limited onboard amenities'
   },
   'Efficiency': {
-    description: 'Flight duration & connection quality',
-    getExplanation: (score) => score >= 8 ? 'Direct flight - no stops' : score >= 6 ? '1 stop connection' : score >= 4 ? '2 stop connection' : 'Multiple stops'
+    description: 'Flight duration relative to fastest option',
+    getExplanation: (score) => score >= 9 ? 'Fastest/near-fastest direct flight' : score >= 7 ? 'Quick flight with minimal stops' : score >= 5 ? 'Moderate journey time' : 'Long journey with stops'
   },
 };
 
@@ -178,14 +180,53 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
     return score;
   };
 
-  // Calculate efficiency score based on stops
+  // Calculate efficiency score based on duration and stops
+  // NEW ALGORITHM:
+  // 1. Duration is the PRIMARY factor - shorter = better
+  // 2. If shortestDuration is provided, score is relative to that baseline
+  // 3. Stops act as a MULTIPLIER (0 stop = 1.0, 1 stop = 0.8, 2+ stops = 0.6)
+  // 4. Final efficiency = duration_score * stop_multiplier
   const calculateEfficiencyScore = () => {
-    if (!flightData || flightData.stops === undefined) return activeDimensions.value;
-    const stops = flightData.stops;
-    if (stops === 0) return 10;
-    if (stops === 1) return 7;
-    if (stops === 2) return 4;
-    return 2;
+    if (!flightData) return activeDimensions.value;
+    
+    const stops = flightData.stops ?? 0;
+    const durationMinutes = flightData.durationMinutes;
+    const shortestDuration = flightData.shortestDuration;
+    
+    // Step 1: Calculate duration score (primary factor)
+    let durationScore: number;
+    if (durationMinutes && shortestDuration && shortestDuration > 0) {
+      // Relative scoring: shortest flight = 10, deduct based on difference
+      // Every 30 minutes over shortest = -1 point
+      const extraMinutes = durationMinutes - shortestDuration;
+      if (extraMinutes <= 0) {
+        durationScore = 10.0;
+      } else {
+        const penalty = extraMinutes / 30.0;
+        durationScore = Math.max(1.0, 10.0 - penalty);
+      }
+    } else if (durationMinutes) {
+      // No baseline provided - use absolute scale
+      const hours = durationMinutes / 60.0;
+      if (hours <= 2) durationScore = 10.0;
+      else if (hours <= 4) durationScore = 9.0;
+      else if (hours <= 6) durationScore = 8.0;
+      else if (hours <= 10) durationScore = 6.0;
+      else if (hours <= 15) durationScore = 4.0;
+      else if (hours <= 24) durationScore = 2.5;
+      else durationScore = 1.5;  // Very long flights (>24h)
+    } else {
+      durationScore = 7.0;  // No duration data - neutral score
+    }
+    
+    // Step 2: Apply stop multiplier (secondary factor)
+    let stopMultiplier: number;
+    if (stops === 0) stopMultiplier = 1.0;     // Direct flight - full score
+    else if (stops === 1) stopMultiplier = 0.8; // 1 stop - 20% reduction
+    else stopMultiplier = 0.6;                  // 2+ stops - 40% reduction
+    
+    // Step 3: Calculate final efficiency
+    return Math.max(1.0, Math.min(10.0, durationScore * stopMultiplier));
   };
 
   // Get service explanation based on serviceHighlights

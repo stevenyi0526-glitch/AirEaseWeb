@@ -1,10 +1,7 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Sparkles, Clock, DollarSign, Plane, Star, ChevronRight } from 'lucide-react';
+import { Sparkles, Star } from 'lucide-react';
 import type { FlightWithScore } from '../../api/types';
-import { formatTime, formatDuration, formatPrice } from '../../utils/formatters';
-import ScoreBadge from './ScoreBadge';
-import { cn } from '../../utils/cn';
+import FlightCard from './FlightCard';
 
 interface AIRecommendationsProps {
   recommendations: Array<FlightWithScore & {
@@ -19,8 +16,8 @@ interface AIRecommendationsProps {
 /**
  * AI Recommendations Component
  * 
- * Displays the top 3 AI-recommended flights at the top of search results.
- * Shows personalized reasons for each recommendation.
+ * Displays the TOP 1 AI-recommended flight with a special frame.
+ * Reuses FlightCard component and wraps it with AI recommendation styling.
  */
 const AIRecommendations: React.FC<AIRecommendationsProps> = ({
   recommendations,
@@ -30,24 +27,31 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-6 border border-purple-100">
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 mb-6 border-2 border-purple-200 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500">
             <Sparkles className="w-5 h-5 text-white animate-pulse" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800">AI Recommendations</h3>
-            <p className="text-sm text-gray-500">Analyzing your preferences...</p>
+            <h3 className="font-semibold text-gray-800">AI Top Pick</h3>
+            <p className="text-sm text-gray-500">Finding your perfect flight...</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-xl p-4 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
-              <div className="h-3 bg-gray-200 rounded w-1/2 mb-2" />
-              <div className="h-3 bg-gray-200 rounded w-2/3" />
+        <div className="bg-white rounded-xl p-5 animate-pulse">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-11 h-11 rounded-xl bg-gray-200" />
+            <div className="flex-1">
+              <div className="h-4 bg-gray-200 rounded w-1/3 mb-2" />
+              <div className="h-3 bg-gray-200 rounded w-1/4" />
             </div>
-          ))}
+            <div className="w-16 h-8 bg-gray-200 rounded-lg" />
+          </div>
+          <div className="flex items-center gap-4 mb-4">
+            <div className="h-8 bg-gray-200 rounded w-16" />
+            <div className="flex-1 h-1 bg-gray-200 rounded" />
+            <div className="h-8 bg-gray-200 rounded w-16" />
+            <div className="h-6 bg-gray-200 rounded w-20" />
+          </div>
         </div>
       </div>
     );
@@ -57,126 +61,57 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
     return null;
   }
 
+  // Get only the top pick
+  const topPick = recommendations[0];
+  const reasons = topPick.recommendation_reasons || [];
+
   return (
-    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-6 border border-purple-100 shadow-sm">
+    <div className="bg-gradient-to-r from-purple-50 via-pink-50 to-purple-50 rounded-2xl p-4 mb-6 border-2 border-purple-200 shadow-md relative overflow-hidden">
+      {/* Decorative background sparkles */}
+      <div className="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none">
+        <Sparkles className="w-full h-full text-purple-500" />
+      </div>
+
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-center justify-between mb-3 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg">
+          <div className="p-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800 text-lg">AI Recommendations</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-gray-800 text-lg">AI Top Pick</h3>
+              <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-0.5 rounded-full font-medium">
+                #1 For You
+              </span>
+            </div>
             <p className="text-sm text-gray-600">{explanation}</p>
           </div>
         </div>
-        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium">
-          Personalized
-        </span>
       </div>
 
-      {/* Recommendation Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {recommendations.slice(0, 3).map((rec, index) => {
-          const flight = rec.flight;
-          const score = rec.score;
-          const reasons = rec.recommendation_reasons || [];
-
-          return (
-            <Link
-              key={flight.id}
-              to={`/flights/${flight.id}`}
-              state={{ flightWithScore: rec }}
-              onClick={() => onFlightClick?.(rec)}
-              className={cn(
-                "bg-white rounded-xl p-4 hover:shadow-lg transition-all hover:-translate-y-1 border",
-                index === 0 ? "border-purple-200 ring-2 ring-purple-100" : "border-gray-100"
-              )}
+      {/* AI Recommendation Reasons */}
+      {reasons.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3 relative z-10">
+          {reasons.map((reason, i) => (
+            <span
+              key={i}
+              className="text-xs bg-white/80 backdrop-blur-sm text-purple-700 px-3 py-1.5 rounded-full border border-purple-200 font-medium flex items-center gap-1"
             >
-              {/* Rank Badge */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className={cn(
-                    "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                    index === 0 
-                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white" 
-                      : "bg-gray-100 text-gray-600"
-                  )}>
-                    {index + 1}
-                  </span>
-                  {index === 0 && (
-                    <span className="text-xs text-purple-600 font-medium">Top Pick</span>
-                  )}
-                </div>
-                <ScoreBadge score={score.overallScore} size="sm" />
-              </div>
+              <Star className="w-3 h-3 text-purple-500" />
+              {reason}
+            </span>
+          ))}
+        </div>
+      )}
 
-              {/* Airline & Route */}
-              <div className="mb-3">
-                <p className="font-semibold text-gray-800 truncate">
-                  {flight.airline}
-                </p>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <span>{flight.departureCityCode}</span>
-                  <Plane className="w-3 h-3" />
-                  <span>{flight.arrivalCityCode}</span>
-                </div>
-              </div>
-
-              {/* Flight Details */}
-              <div className="flex items-center gap-4 text-sm mb-3">
-                <div className="flex items-center gap-1 text-gray-600">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>{formatTime(flight.departureTime)}</span>
-                </div>
-                <div className="flex items-center gap-1 text-gray-600">
-                  <span>{formatDuration(flight.durationMinutes)}</span>
-                </div>
-              </div>
-
-              {/* Price */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-1">
-                  <DollarSign className="w-4 h-4 text-emerald-600" />
-                  <span className="font-bold text-emerald-600">
-                    {formatPrice(flight.price, flight.currency)}
-                  </span>
-                </div>
-                <span className={cn(
-                  "text-xs px-2 py-0.5 rounded",
-                  flight.stops === 0 
-                    ? "bg-green-100 text-green-700" 
-                    : "bg-gray-100 text-gray-600"
-                )}>
-                  {flight.stops === 0 ? 'Direct' : `${flight.stops} stop${flight.stops > 1 ? 's' : ''}`}
-                </span>
-              </div>
-
-              {/* Recommendation Reasons */}
-              {reasons.length > 0 && (
-                <div className="pt-3 border-t border-gray-100">
-                  <div className="flex flex-wrap gap-1">
-                    {reasons.slice(0, 2).map((reason, i) => (
-                      <span
-                        key={i}
-                        className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full"
-                      >
-                        <Star className="w-3 h-3 inline mr-1" />
-                        {reason}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* View Details Arrow */}
-              <div className="flex items-center justify-end mt-2 text-purple-600">
-                <span className="text-xs font-medium">View Details</span>
-                <ChevronRight className="w-4 h-4" />
-              </div>
-            </Link>
-          );
-        })}
+      {/* Reuse FlightCard component */}
+      <div className="relative z-10">
+        <FlightCard
+          flightWithScore={topPick}
+          showCompare={true}
+          onSelect={() => onFlightClick?.(topPick)}
+        />
       </div>
     </div>
   );

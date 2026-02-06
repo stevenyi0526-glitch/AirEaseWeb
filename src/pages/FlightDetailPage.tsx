@@ -19,8 +19,10 @@ import {
   PlaneLanding,
   Map,
   MessageSquareWarning,
+  ExternalLink,
 } from 'lucide-react';
 import { flightsApi } from '../api/flights';
+import { bookingApi } from '../api/booking';
 import { formatTime, formatDuration, formatPrice, formatDate } from '../utils/formatters';
 import ScoreBadge from '../components/flights/ScoreBadge';
 import WhyThisFlight from '../components/flights/WhyThisFlight';
@@ -102,6 +104,24 @@ const FlightDetailPage: React.FC = () => {
 
   // Use state data if available, otherwise use API data
   const flightData = stateFlightData || apiData;
+  
+  // Get the current display flight for the active tab
+  const currentDisplayFlight = isRoundTrip && activeTab === 'return' && returnFlightData 
+    ? returnFlightData 
+    : flightData;
+  
+  // Fetch user reviews on-demand when page loads
+  // Reviews are NOT included in search results for performance optimization
+  const { data: reviewsData, isLoading: isLoadingReviews } = useQuery({
+    queryKey: ['airline-reviews', currentDisplayFlight?.flight.airline, currentDisplayFlight?.flight.cabin],
+    queryFn: () => flightsApi.getAirlineReviews(
+      currentDisplayFlight!.flight.airline,
+      currentDisplayFlight!.flight.cabin || 'economy',
+      10
+    ),
+    enabled: !!currentDisplayFlight?.flight.airline,
+    staleTime: 5 * 60 * 1000, // Cache reviews for 5 minutes
+  });
 
   if (isLoading && !stateFlightData) {
     return (
@@ -690,21 +710,72 @@ const FlightDetailPage: React.FC = () => {
           </div>
         )}
 
-        {/* User Reviews Carousel */}
-        {score.userReviews && score.userReviews.length > 0 && (
+        {/* User Reviews Carousel - fetched on-demand for performance */}
+        {isLoadingReviews ? (
+          <div className="bg-surface rounded-card shadow-card p-5 md:p-6">
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 text-primary animate-spin mr-2" />
+              <span className="text-text-secondary">Loading reviews...</span>
+            </div>
+          </div>
+        ) : reviewsData && reviewsData.reviews.length > 0 ? (
           <div className="bg-surface rounded-card shadow-card p-5 md:p-6">
             <UserReviewsCarousel
-              reviews={score.userReviews}
+              reviews={reviewsData.reviews.map(r => ({
+                title: r.title,
+                review: r.review,
+                foodRating: r.foodRating,
+                groundServiceRating: r.groundServiceRating,
+                seatComfortRating: r.seatComfortRating,
+                serviceRating: r.serviceRating,
+                recommended: r.recommended,
+                travelType: r.travelType,
+                route: r.route,
+                aircraft: r.aircraft,
+                cabinType: r.cabinType,
+                ratings: {
+                  ...r.ratings,
+                  overall: r.ratings.overall ?? undefined
+                }
+              }))}
               airlineName={flight.airline}
             />
           </div>
-        )}
+        ) : null}
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <button className="flex-1 py-4 btn-primary text-lg">
-            Select This Flight
-          </button>
+          {/* Book on Airline Button */}
+          {bookingApi.hasBookingToken(flight.bookingToken) ? (
+            <button
+              onClick={() => {
+                // Extract departure date in YYYY-MM-DD format
+                const outboundDate = new Date(flight.departureTime)
+                  .toISOString()
+                  .split('T')[0];
+                
+                bookingApi.openBookingPage({
+                  bookingToken: flight.bookingToken!,
+                  airlineName: flight.airline,
+                  departureId: flight.departureAirportCode || flight.departureCityCode,
+                  arrivalId: flight.arrivalAirportCode || flight.arrivalCityCode,
+                  outboundDate,
+                });
+              }}
+              className="flex-1 py-4 btn-primary text-lg flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
+            >
+              <span>Book on {flight.airline}</span>
+              <ExternalLink className="w-5 h-5" />
+            </button>
+          ) : (
+            <button
+              disabled
+              className="flex-1 py-4 bg-gray-300 text-gray-500 rounded-lg text-lg cursor-not-allowed"
+              title="Booking not available for this flight"
+            >
+              Booking Not Available
+            </button>
+          )}
           <CompareButton
             flightWithScore={flightData}
             variant="outline"
