@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User, LogOut, Settings, Heart, Users, Briefcase, GraduationCap, ChevronDown, Check } from 'lucide-react';
+import { User, LogOut, Settings, Heart, Users, Briefcase, GraduationCap, ChevronDown, Check, KeyRound, Trash2, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { authApi } from '../../api/auth';
 import type { UserLabel } from '../../api/types';
 import { cn } from '../../utils/cn';
 
@@ -20,6 +21,16 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
   const [isOpen, setIsOpen] = useState(false);
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -198,9 +209,85 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
               <Users className="w-4 h-4 text-gray-400" />
               <span className="text-sm">Saved Travelers</span>
             </Link>
+
+            {/* Change Password */}
+            <button
+              onClick={() => setShowChangePassword(!showChangePassword)}
+              className="w-full px-4 py-2.5 flex items-center gap-3 text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <KeyRound className="w-4 h-4 text-gray-400" />
+              <span className="flex-1 text-left text-sm">Change Password</span>
+              <ChevronDown className={cn(
+                'w-4 h-4 text-gray-400 transition-transform',
+                showChangePassword && 'rotate-180'
+              )} />
+            </button>
+
+            {showChangePassword && (
+              <div className="px-3 py-3 bg-gray-50 mx-2 rounded-lg mb-2 space-y-2">
+                {pwError && (
+                  <div className="p-2 bg-red-50 border border-red-200 rounded text-red-600 text-xs">
+                    {pwError}
+                  </div>
+                )}
+                {pwSuccess && (
+                  <div className="p-2 bg-green-50 border border-green-200 rounded text-green-600 text-xs">
+                    {pwSuccess}
+                  </div>
+                )}
+                <input
+                  type="password"
+                  placeholder="Current password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none text-gray-900"
+                />
+                <input
+                  type="password"
+                  placeholder="New password (min 6 chars)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none text-gray-900"
+                />
+                <input
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none text-gray-900"
+                />
+                <button
+                  onClick={async () => {
+                    setPwError('');
+                    setPwSuccess('');
+                    if (!currentPassword) { setPwError('Enter current password'); return; }
+                    if (newPassword.length < 6) { setPwError('New password must be at least 6 characters'); return; }
+                    if (newPassword !== confirmPassword) { setPwError('Passwords do not match'); return; }
+                    setPwLoading(true);
+                    try {
+                      await authApi.changePassword(currentPassword, newPassword);
+                      setPwSuccess('Password changed successfully!');
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                      setTimeout(() => { setPwSuccess(''); setShowChangePassword(false); }, 2000);
+                    } catch (err: unknown) {
+                      const error = err as { response?: { data?: { detail?: string } } };
+                      setPwError(error.response?.data?.detail || 'Failed to change password');
+                    } finally {
+                      setPwLoading(false);
+                    }
+                  }}
+                  disabled={pwLoading}
+                  className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {pwLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Changing...</> : 'Update Password'}
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Logout */}
+          {/* Logout & Delete Account */}
           <div className="border-t border-gray-100 pt-1 mt-1">
             <button
               onClick={() => {
@@ -212,6 +299,56 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
               <LogOut className="w-4 h-4" />
               <span className="text-sm">Logout</span>
             </button>
+
+            {/* Delete Account */}
+            <button
+              onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
+              className="w-full px-4 py-2.5 flex items-center gap-3 text-red-400 hover:bg-red-50 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="text-sm">Delete Account</span>
+            </button>
+
+            {showDeleteConfirm && (
+              <div className="px-3 py-3 bg-red-50 mx-2 rounded-lg mb-2 space-y-2">
+                <p className="text-xs text-red-700 font-medium">
+                  ⚠️ This will permanently delete your account and all data. This action cannot be undone.
+                </p>
+                {deleteError && (
+                  <div className="p-2 bg-red-100 border border-red-300 rounded text-red-700 text-xs">
+                    {deleteError}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowDeleteConfirm(false); setDeleteError(''); }}
+                    className="flex-1 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setDeleteLoading(true);
+                      setDeleteError('');
+                      try {
+                        await authApi.deleteAccount();
+                        logout();
+                        setIsOpen(false);
+                      } catch (err: unknown) {
+                        const error = err as { response?: { data?: { detail?: string } } };
+                        setDeleteError(error.response?.data?.detail || 'Failed to delete account');
+                      } finally {
+                        setDeleteLoading(false);
+                      }
+                    }}
+                    disabled={deleteLoading}
+                    className="flex-1 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {deleteLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Deleting...</> : 'Delete Forever'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

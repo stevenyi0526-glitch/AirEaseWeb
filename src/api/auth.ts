@@ -38,6 +38,26 @@ export const authApi = {
   logout: async (): Promise<void> => {
     await apiClient.post('/v1/auth/logout');
   },
+
+  forgotPassword: async (email: string): Promise<{ message: string; email: string; expiresInMinutes: number }> => {
+    const response = await apiClient.post('/v1/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  resetPassword: async (email: string, code: string, newPassword: string): Promise<{ message: string }> => {
+    const response = await apiClient.post('/v1/auth/reset-password', { email, code, new_password: newPassword });
+    return response.data;
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
+    const response = await apiClient.post('/v1/auth/change-password', { current_password: currentPassword, new_password: newPassword });
+    return response.data;
+  },
+
+  deleteAccount: async (): Promise<{ message: string }> => {
+    const response = await apiClient.delete('/v1/auth/me');
+    return response.data;
+  },
 };
 
 export const citiesApi = {

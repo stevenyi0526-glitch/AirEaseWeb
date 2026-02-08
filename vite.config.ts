@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: ['judi-shuttlelike-rectally.ngrok-free.dev'],
+    allowedHosts: ['airease.ai', 'www.airease.ai'],
     proxy: {
       '/v1': {
         target: 'http://localhost:8000',

@@ -73,13 +73,13 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
 
         // Card background
         if (isBestOverall) {
-          pdf.setFillColor(236, 253, 245); // Light green for best
-          pdf.setDrawColor(16, 185, 129); // Green border
+          pdf.setFillColor(236, 253, 245);
+          pdf.setDrawColor(16, 185, 129);
         } else {
-          pdf.setFillColor(249, 250, 251); // Light gray
-          pdf.setDrawColor(229, 231, 235); // Gray border
+          pdf.setFillColor(249, 250, 251);
+          pdf.setDrawColor(229, 231, 235);
         }
-        pdf.roundedRect(xPos, yPosition, cardWidth, 85, 3, 3, 'FD');
+        pdf.roundedRect(xPos, yPosition, cardWidth, 90, 3, 3, 'FD');
 
         // Best badge
         if (isBestOverall) {
@@ -93,12 +93,14 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
 
         let cardY = yPosition + 12;
 
-        // Airline name
+        // Airline name — use flight number as primary identifier
         pdf.setTextColor(31, 41, 55);
-        pdf.setFontSize(12);
+        pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        const airlineName = flight.flight.airline.length > 18 
-          ? flight.flight.airline.substring(0, 16) + '...' 
+        // Truncate long airline names to fit card width
+        const maxChars = Math.floor(cardWidth / 5);
+        const airlineName = flight.flight.airline.length > maxChars
+          ? flight.flight.airline.substring(0, maxChars - 2) + '..'
           : flight.flight.airline;
         pdf.text(airlineName, xPos + cardWidth/2, cardY, { align: 'center' });
         cardY += 5;
@@ -117,16 +119,17 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
         pdf.text(`${flight.flight.departureCityCode} → ${flight.flight.arrivalCityCode}`, xPos + cardWidth/2, cardY, { align: 'center' });
         cardY += 8;
 
-        // Score
-        const scoreColor = flight.score.overallScore >= 80 ? [16, 185, 129] : 
-                          flight.score.overallScore >= 60 ? [59, 130, 246] : [245, 158, 11];
+        // Score badge (scores are on 0-10 scale)
+        const score = flight.score.overallScore;
+        const scoreColor = score >= 8 ? [16, 185, 129] :
+                          score >= 6 ? [245, 158, 11] : [239, 68, 68];
         pdf.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2]);
         pdf.roundedRect(xPos + cardWidth/2 - 12, cardY - 4, 24, 12, 2, 2, 'F');
         pdf.setTextColor(255, 255, 255);
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(`${flight.score.overallScore}`, xPos + cardWidth/2, cardY + 4, { align: 'center' });
-        cardY += 12;
+        pdf.text(`${score}`, xPos + cardWidth/2, cardY + 4, { align: 'center' });
+        cardY += 14;
 
         // Price
         pdf.setTextColor(37, 99, 235);
@@ -140,23 +143,21 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
         }
         cardY += 10;
 
-        // Duration
+        // Duration & Stops & Time — left-aligned within card
         pdf.setTextColor(55, 65, 81);
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'normal');
         pdf.text(`Duration: ${formatDuration(flight.flight.durationMinutes)}${isBestDuration ? ' ⚡' : ''}`, xPos + cardWidth/2, cardY, { align: 'center' });
         cardY += 5;
 
-        // Stops
         const stopsText = flight.flight.stops === 0 ? 'Direct' : `${flight.flight.stops} stop${flight.flight.stops > 1 ? 's' : ''}`;
         pdf.text(`Stops: ${stopsText}`, xPos + cardWidth/2, cardY, { align: 'center' });
         cardY += 5;
 
-        // Time
         pdf.text(`${formatTime(flight.flight.departureTime)} - ${formatTime(flight.flight.arrivalTime)}`, xPos + cardWidth/2, cardY, { align: 'center' });
       });
 
-      yPosition += 95;
+      yPosition += 100;
 
       // Score Dimensions Section
       pdf.setTextColor(31, 41, 55);
@@ -176,8 +177,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       pdf.text('Dimension', margin + 3, yPosition + 5);
       
       flights.forEach((flight, idx) => {
-        const shortName = flight.flight.airline.split(' ')[0].substring(0, 10);
-        pdf.text(shortName, margin + colWidth * (idx + 1) + colWidth/2, yPosition + 5, { align: 'center' });
+        pdf.text(flight.flight.flightNumber, margin + colWidth * (idx + 1) + colWidth/2, yPosition + 5, { align: 'center' });
       });
       yPosition += 10;
 
@@ -206,7 +206,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
 
         flights.forEach((flight, idx) => {
           const value = dim.getValue(flight);
-          const isBest = value === maxValue;
+          const isBest = value === maxValue && flights.length > 1;
           
           if (isBest) {
             pdf.setTextColor(16, 185, 129);
@@ -215,7 +215,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
             pdf.setTextColor(55, 65, 81);
             pdf.setFont('helvetica', 'normal');
           }
-          pdf.text(`${value}${isBest ? ' ★' : ''}`, margin + colWidth * (idx + 1) + colWidth/2, yPosition + 3, { align: 'center' });
+          pdf.text(`${value}${isBest ? ' *' : ''}`, margin + colWidth * (idx + 1) + colWidth/2, yPosition + 3, { align: 'center' });
         });
 
         yPosition += 7;
@@ -240,17 +240,16 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       pdf.text('Amenity', margin + 3, yPosition + 5);
       
       flights.forEach((flight, idx) => {
-        const shortName = flight.flight.airline.split(' ')[0].substring(0, 10);
-        pdf.text(shortName, margin + colWidth * (idx + 1) + colWidth/2, yPosition + 5, { align: 'center' });
+        pdf.text(flight.flight.flightNumber, margin + colWidth * (idx + 1) + colWidth/2, yPosition + 5, { align: 'center' });
       });
       yPosition += 10;
 
       const amenities = [
-        { label: 'WiFi', getValue: (f: FlightWithScore) => f.facilities?.hasWifi ? '✓' : '✗' },
-        { label: 'Power Outlets', getValue: (f: FlightWithScore) => f.facilities?.hasPower ? '✓' : '✗' },
-        { label: 'Entertainment', getValue: (f: FlightWithScore) => f.facilities?.hasIFE ? f.facilities.ifeType || '✓' : '✗' },
-        { label: 'Seat Pitch', getValue: (f: FlightWithScore) => f.facilities?.seatPitchInches ? `${f.facilities.seatPitchInches}"` : '—' },
-        { label: 'Meals', getValue: (f: FlightWithScore) => f.facilities?.mealIncluded ? f.facilities.mealType || '✓' : '✗' },
+        { label: 'WiFi', getValue: (f: FlightWithScore) => f.facilities?.hasWifi ? 'Yes' : 'No' },
+        { label: 'Power Outlets', getValue: (f: FlightWithScore) => f.facilities?.hasPower ? 'Yes' : 'No' },
+        { label: 'Entertainment', getValue: (f: FlightWithScore) => f.facilities?.hasIFE ? (f.facilities.ifeType || 'Yes') : 'No' },
+        { label: 'Seat Pitch', getValue: (f: FlightWithScore) => f.facilities?.seatPitchInches ? `${f.facilities.seatPitchInches}"` : '-' },
+        { label: 'Meals', getValue: (f: FlightWithScore) => f.facilities?.mealIncluded ? (f.facilities.mealType || 'Yes') : 'No' },
       ];
 
       amenities.forEach((amenity, rowIdx) => {
@@ -266,13 +265,14 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
 
         flights.forEach((flight, idx) => {
           const value = amenity.getValue(flight);
-          if (value === '✓' || (value !== '✗' && value !== '—')) {
+          if (value === 'Yes' || (value !== 'No' && value !== '-')) {
             pdf.setTextColor(16, 185, 129);
-          } else if (value === '✗') {
+          } else if (value === 'No') {
             pdf.setTextColor(239, 68, 68);
           } else {
             pdf.setTextColor(156, 163, 175);
           }
+          pdf.setFont('helvetica', 'normal');
           pdf.text(value, margin + colWidth * (idx + 1) + colWidth/2, yPosition + 3, { align: 'center' });
         });
 

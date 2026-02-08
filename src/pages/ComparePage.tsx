@@ -351,7 +351,7 @@ const ComparePage: React.FC = () => {
                       color: 'white'
                     }}
                   >
-                    Select {f.flight.airline.split(' ')[0]}
+                    Select {f.flight.flightNumber}
                   </Link>
                 </div>
               );
@@ -480,7 +480,7 @@ const ComparePage: React.FC = () => {
                     state={{ flightWithScore: f }}
                     className="block w-full py-3 btn-primary text-center"
                   >
-                    Select {f.flight.airline}
+                    Select {f.flight.flightNumber}
                   </Link>
                 </div>
               </div>

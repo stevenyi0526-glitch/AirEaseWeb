@@ -4,6 +4,7 @@ import { Plane, History, X, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import LoginModal from '../auth/LoginModal';
 import RegisterModal from '../auth/RegisterModal';
+import ForgotPasswordModal from '../auth/ForgotPasswordModal';
 import UserProfileDropdown from '../auth/UserProfileDropdown';
 import { cn } from '../../utils/cn';
 import { apiClient } from '../../api/client';
@@ -24,6 +25,7 @@ const Header: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -202,6 +204,10 @@ const Header: React.FC = () => {
           setShowLoginModal(false);
           setShowRegisterModal(true);
         }}
+        onSwitchToForgotPassword={() => {
+          setShowLoginModal(false);
+          setShowForgotPasswordModal(true);
+        }}
       />
 
       <RegisterModal
@@ -209,6 +215,15 @@ const Header: React.FC = () => {
         onClose={() => setShowRegisterModal(false)}
         onSwitchToLogin={() => {
           setShowRegisterModal(false);
+          setShowLoginModal(true);
+        }}
+      />
+
+      <ForgotPasswordModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+        onSwitchToLogin={() => {
+          setShowForgotPasswordModal(false);
           setShowLoginModal(true);
         }}
       />
