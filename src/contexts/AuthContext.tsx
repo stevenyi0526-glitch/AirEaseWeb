@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/auth';
-import type { User, LoginCredentials, RegisterData, UpdateUserData } from '../api/types';
+import type { User, LoginCredentials, RegisterData, UpdateUserData, VerificationResponse } from '../api/types';
 
 interface AuthContextType {
   user: User | null;
@@ -8,7 +8,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  register: (data: RegisterData) => Promise<VerificationResponse>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
+  resendVerification: (email: string) => Promise<VerificationResponse>;
   updateUser: (data: UpdateUserData) => Promise<void>;
   logout: () => void;
 }
@@ -64,11 +66,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('airease_token', response.accessToken);
   };
 
-  const register = async (data: RegisterData) => {
+  const register = async (data: RegisterData): Promise<VerificationResponse> => {
+    // Step 1: Initiate registration — sends verification code, does NOT create user yet
     const response = await authApi.register(data);
+    return response;
+  };
+
+  const verifyEmail = async (email: string, code: string) => {
+    // Step 2: Verify code and complete registration — returns JWT token
+    const response = await authApi.verifyEmail(email, code);
     setToken(response.accessToken);
     setUser(response.user);
     localStorage.setItem('airease_token', response.accessToken);
+  };
+
+  const resendVerification = async (email: string): Promise<VerificationResponse> => {
+    return await authApi.resendVerification(email);
   };
 
   const updateUser = async (data: UpdateUserData) => {
@@ -85,6 +98,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         register,
+        verifyEmail,
+        resendVerification,
         updateUser,
         logout,
       }}

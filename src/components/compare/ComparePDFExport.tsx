@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Download, Loader2, CheckCircle } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import type { FlightWithScore } from '../../api/types';
 import { formatPrice, formatDuration, formatTime } from '../../utils/formatters';
@@ -282,15 +282,21 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       // Capture radar chart if available
       if (radarChartRef.current) {
         try {
-          const canvas = await html2canvas(radarChartRef.current, {
+          const imgData = await toPng(radarChartRef.current, {
             backgroundColor: '#ffffff',
-            scale: 2,
-            logging: false,
+            pixelRatio: 2,
+          });
+
+          // Create a temporary image to get dimensions
+          const img = new Image();
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = reject;
+            img.src = imgData;
           });
           
-          const imgData = canvas.toDataURL('image/png');
           const imgWidth = pageWidth - margin * 2;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          const imgHeight = (img.height * imgWidth) / img.width;
           
           // Check if we need a new page
           if (yPosition + imgHeight + 20 > pageHeight - margin) {

@@ -25,6 +25,11 @@ export interface ParsedSearchParams {
   passengers: number;
   cabin_class: 'economy' | 'premium_economy' | 'business' | 'first';
   sort_by: 'score' | 'price' | 'duration' | 'comfort';
+  stops: 'any' | '0' | '1' | '2+';
+  aircraft_type: 'widebody' | 'narrowbody' | 'any';
+  alliance: 'star' | 'oneworld' | 'skyteam' | 'any';
+  max_price: number | null;
+  preferred_airlines: string[];
 }
 
 export interface AISearchResult {
@@ -38,9 +43,11 @@ interface GeminiResponse {
   candidates: Array<{
     content: {
       parts: Array<{
-        text: string;
+        text?: string;
+        thoughtSignature?: string;
       }>;
     };
+    finishReason?: string;
   }>;
 }
 
@@ -148,6 +155,11 @@ Extract the following from the user's query:
 5. **passengers** (optional) - Number of passengers (defaults to 1)
 6. **cabin_class** (optional) - economy, premium_economy, business, first (defaults to economy)
 7. **sort_preference** (optional) - What to prioritize: comfort, price, duration, or balanced
+8. **stops** (optional) - Number of stops: "0" for direct/nonstop, "1" for 1 stop, "2+" for 2+ stops, "any" if not mentioned
+9. **aircraft_type** (optional) - "widebody" (777, A350, 787) or "narrowbody" (A320, 737, A321) or "any"
+10. **alliance** (optional) - "star" (Star Alliance), "oneworld" (Oneworld), "skyteam" (SkyTeam) or "any"
+11. **max_price** (optional) - Maximum price budget in USD if mentioned (e.g. "under $500"), null if not mentioned
+12. **preferred_airlines** (optional) - Specific airline IATA codes if mentioned (e.g. ["CX", "SQ"])
 
 ## Airport Code Reference:
 - Hong Kong: HKG
@@ -185,6 +197,46 @@ Extract the following from the user's query:
 - "fastest" / "quickest" / "快" → duration
 - No preference mentioned → score (balanced)
 
+## Stops Interpretation:
+- "direct" / "nonstop" / "non-stop" / "直飞" → 0
+- "1 stop" / "one stop" / "转一次" → 1
+- "2 stops" / "multiple stops" → 2+
+- Not mentioned → any
+
+## Aircraft Type Interpretation:
+- "widebody" / "large plane" / "777" / "A350" / "787" / "大飞机" → widebody
+- "narrowbody" / "small plane" / "A320" / "737" / "小飞机" → narrowbody
+- Not mentioned → any
+
+## Alliance Interpretation:
+- "Star Alliance" / "星空联盟" → star
+- "Oneworld" / "寰宇一家" → oneworld
+- "SkyTeam" / "天合联盟" → skyteam
+- Not mentioned → any
+
+## Airline Interpretation:
+- "Cathay Pacific" / "CX" / "国泰" → CX
+- "Singapore Airlines" / "SQ" / "新航" → SQ
+- "Emirates" / "EK" / "阿联酋" → EK
+- "ANA" / "NH" / "全日空" → NH
+- "JAL" / "JL" / "日航" → JL
+- "Korean Air" / "KE" / "大韩" → KE
+- "China Airlines" / "CI" / "华航" → CI
+- "EVA Air" / "BR" / "长荣" → BR
+- "Delta" / "DL" → DL
+- "United" / "UA" → UA
+- "American" / "AA" → AA
+- "British Airways" / "BA" → BA
+- "Lufthansa" / "LH" → LH
+- "Qantas" / "QF" → QF
+- "Thai Airways" / "TG" / "泰航" → TG
+- Use IATA 2-letter codes in the array
+
+## Price Budget Interpretation:
+- "under $500" / "less than 500" / "budget 500" → max_price: 500
+- "500以下" / "五百以内" → max_price: 500
+- Not mentioned → max_price: null
+
 ## Response Format (JSON only, no markdown):
 {
   "has_destination": true/false,
@@ -196,7 +248,12 @@ Extract the following from the user's query:
   "time_preference": "morning|afternoon|evening|night|any",
   "passengers": 1,
   "cabin_class": "economy|premium_economy|business|first",
-  "sort_by": "score|price|duration|comfort"
+  "sort_by": "score|price|duration|comfort",
+  "stops": "any|0|1|2+",
+  "aircraft_type": "any|widebody|narrowbody",
+  "alliance": "any|star|oneworld|skyteam",
+  "max_price": null,
+  "preferred_airlines": []
 }
 
 ## Examples:
@@ -212,7 +269,12 @@ Query: "fly to Shanghai next Friday morning, most comfortable"
   "time_preference": "morning",
   "passengers": 1,
   "cabin_class": "economy",
-  "sort_by": "comfort"
+  "sort_by": "comfort",
+  "stops": "any",
+  "aircraft_type": "any",
+  "alliance": "any",
+  "max_price": null,
+  "preferred_airlines": []
 }
 
 Query: "I want to fly to Tokyo"
@@ -226,21 +288,50 @@ Query: "I want to fly to Tokyo"
   "time_preference": "any",
   "passengers": 1,
   "cabin_class": "economy",
-  "sort_by": "score"
+  "sort_by": "score",
+  "stops": "any",
+  "aircraft_type": "any",
+  "alliance": "any",
+  "max_price": null,
+  "preferred_airlines": []
 }
 
-Query: "cheapest flight to Bangkok tomorrow"
+Query: "cheapest direct flight to Bangkok tomorrow under $300 on a widebody"
 {
   "has_destination": true,
   "destination_city": "Bangkok",
   "destination_code": "BKK",
   "departure_city": "",
   "departure_code": "",
-  "date": "2026-02-05",
+  "date": "2026-02-08",
   "time_preference": "any",
   "passengers": 1,
   "cabin_class": "economy",
-  "sort_by": "price"
+  "sort_by": "price",
+  "stops": "0",
+  "aircraft_type": "widebody",
+  "alliance": "any",
+  "max_price": 300,
+  "preferred_airlines": []
+}
+
+Query: "find me a Cathay Pacific flight to London, Star Alliance is fine too"
+{
+  "has_destination": true,
+  "destination_city": "London",
+  "destination_code": "LHR",
+  "departure_city": "",
+  "departure_code": "",
+  "date": "",
+  "time_preference": "any",
+  "passengers": 1,
+  "cabin_class": "economy",
+  "sort_by": "score",
+  "stops": "any",
+  "aircraft_type": "any",
+  "alliance": "any",
+  "max_price": null,
+  "preferred_airlines": ["CX"]
 }
 
 Query: "find me a cheap flight"
@@ -254,8 +345,46 @@ Query: "find me a cheap flight"
   "time_preference": "any",
   "passengers": 1,
   "cabin_class": "economy",
-  "sort_by": "price"
+  "sort_by": "price",
+  "stops": "any",
+  "aircraft_type": "any",
+  "alliance": "any",
+  "max_price": null,
+  "preferred_airlines": []
 }`;
+
+/**
+ * Fetch with retry logic for transient errors (429, 503, etc.)
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries: number = 3
+): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, options);
+
+    if (response.ok) {
+      return response;
+    }
+
+    // Only retry on transient errors (429 rate limit, 503 overloaded)
+    if ((response.status === 429 || response.status === 503) && attempt < maxRetries) {
+      const delay = Math.min(1000 * Math.pow(2, attempt), 8000); // 1s, 2s, 4s, max 8s
+      console.warn(`Gemini API returned ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      continue;
+    }
+
+    // Non-retryable error or max retries exceeded
+    const errorText = await response.text();
+    console.error('Gemini API error:', response.status, errorText);
+    throw new Error(`Failed to call Gemini API: ${response.status}`);
+  }
+
+  // Should not reach here, but just in case
+  throw new Error('Failed to call Gemini API after retries');
+}
 
 /**
  * Parse natural language query using Gemini AI
@@ -271,8 +400,13 @@ async function parseQueryWithAI(query: string): Promise<{
   passengers: number;
   cabin_class: 'economy' | 'premium_economy' | 'business' | 'first';
   sort_by: 'score' | 'price' | 'duration' | 'comfort';
+  stops: 'any' | '0' | '1' | '2+';
+  aircraft_type: 'widebody' | 'narrowbody' | 'any';
+  alliance: 'star' | 'oneworld' | 'skyteam' | 'any';
+  max_price: number | null;
+  preferred_airlines: string[];
 }> {
-  const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+  const response = await fetchWithRetry(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -285,16 +419,13 @@ async function parseQueryWithAI(query: string): Promise<{
       }],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 1000,
+        maxOutputTokens: 2048,
+        thinkingConfig: {
+          thinkingBudget: 0,
+        },
       }
     })
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Gemini API error:', response.status, errorText);
-    throw new Error(`Failed to call Gemini API: ${response.status}`);
-  }
 
   const data: GeminiResponse = await response.json();
   console.log('Gemini raw response:', data);
@@ -307,6 +438,13 @@ async function parseQueryWithAI(query: string): Promise<{
     console.error('No candidates in response:', data);
     throw new Error('Empty response from AI');
   }
+
+  // Check if response was truncated due to token limit
+  const finishReason = candidates[0]?.finishReason;
+  if (finishReason === 'MAX_TOKENS') {
+    console.warn('Gemini response truncated (MAX_TOKENS), retrying...');
+    throw new Error('AI response truncated, retrying');
+  }
   
   const content = candidates[0]?.content;
   console.log('Content:', content);
@@ -314,7 +452,11 @@ async function parseQueryWithAI(query: string): Promise<{
   const parts = content?.parts;
   console.log('Parts:', parts);
   
-  const text = parts?.[0]?.text || '';
+  // Extract text from all parts that have a text field (parts may also contain thoughtSignature alongside text)
+  const text = (parts || [])
+    .filter((p: { text?: string }) => typeof p.text === 'string' && p.text.length > 0)
+    .map((p: { text?: string }) => p.text)
+    .join('');
   console.log('Extracted text:', text);
   
   if (!text) {
@@ -322,13 +464,22 @@ async function parseQueryWithAI(query: string): Promise<{
     throw new Error('Empty response from AI');
   }
   
-  // Extract JSON from response - handle markdown code blocks
-  let jsonText = text;
+  // Extract JSON from response
+  let jsonText = text.trim();
+  
+  // Try direct parse first (response may already be clean JSON)
+  try {
+    const parsed = JSON.parse(jsonText);
+    console.log('Successfully parsed (direct):', parsed);
+    return parsed;
+  } catch {
+    // Not direct JSON, try extracting it
+  }
   
   // Remove markdown code blocks if present
   const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (codeBlockMatch) {
-    jsonText = codeBlockMatch[1];
+    jsonText = codeBlockMatch[1].trim();
     console.log('Extracted from code block:', jsonText);
   }
   
@@ -369,8 +520,25 @@ export async function parseNaturalLanguageSearch(
   userLocation?: { lat: number; lng: number }
 ): Promise<AISearchResult> {
   try {
-    // Step 1: Parse the query with AI
-    const parsed = await parseQueryWithAI(query);
+    // Step 1: Parse the query with AI (retry up to 2 times on truncation)
+    let parsed;
+    let lastError;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        parsed = await parseQueryWithAI(query);
+        break;
+      } catch (e) {
+        lastError = e;
+        if (e instanceof Error && e.message.includes('truncated')) {
+          console.warn(`parseQueryWithAI attempt ${attempt + 1} truncated, retrying...`);
+          continue;
+        }
+        throw e; // non-truncation error, don't retry
+      }
+    }
+    if (!parsed) {
+      throw lastError || new Error('Failed to parse query after retries');
+    }
     
     // Step 2: Validate destination (required)
     if (!parsed.has_destination || !parsed.destination_code) {
@@ -429,10 +597,10 @@ export async function parseNaturalLanguageSearch(
       date = getToday();
     }
 
-    // Step 5: Get time preference (default based on current time if no date/time specified)
+    // Step 5: Get time preference
+    // If the user didn't specify a time preference, auto-detect from current time of day
     let timePreference = parsed.time_preference;
-    if (timePreference === 'any' && !parsed.date) {
-      // If searching for today and no time specified, use current time context
+    if (timePreference === 'any') {
       timePreference = getTimePreferenceFromCurrentTime();
     }
 
@@ -446,13 +614,30 @@ export async function parseNaturalLanguageSearch(
       time_preference: timePreference,
       passengers: parsed.passengers || 1,
       cabin_class: parsed.cabin_class || 'economy',
-      sort_by: parsed.sort_by || 'score'
+      sort_by: parsed.sort_by || 'score',
+      stops: parsed.stops || 'any',
+      aircraft_type: parsed.aircraft_type || 'any',
+      alliance: parsed.alliance || 'any',
+      max_price: parsed.max_price ?? null,
+      preferred_airlines: parsed.preferred_airlines || [],
     };
+
+    // Build descriptive message
+    const msgParts: string[] = [];
+    msgParts.push(timePreference);
+    if (params.stops === '0') msgParts.push('direct');
+    else if (params.stops === '1') msgParts.push('1-stop');
+    if (params.aircraft_type !== 'any') msgParts.push(params.aircraft_type);
+    msgParts.push('flights');
+    msgParts.push(`from ${departureCity} to ${parsed.destination_city}`);
+    msgParts.push(`on ${date}`);
+    if (params.max_price !== null) msgParts.push(`under $${params.max_price}`);
+    if (params.preferred_airlines.length > 0) msgParts.push(`(${params.preferred_airlines.join(', ')})`);
 
     return {
       success: true,
       params,
-      message: `Searching for ${timePreference !== 'any' ? timePreference + ' ' : ''}flights from ${departureCity} to ${parsed.destination_city} on ${date}`
+      message: `Searching for ${msgParts.join(' ')}`
     };
 
   } catch (error) {
@@ -478,6 +663,31 @@ export function paramsToSearchURL(params: ParsedSearchParams): string {
     tripType: 'oneway',
     sortBy: params.sort_by,
   });
+
+  // Stops filter
+  if (params.stops !== 'any') {
+    urlParams.set('stops', params.stops);
+  }
+
+  // Aircraft type filter
+  if (params.aircraft_type !== 'any') {
+    urlParams.set('aircraftType', params.aircraft_type);
+  }
+
+  // Alliance filter
+  if (params.alliance !== 'any') {
+    urlParams.set('alliance', params.alliance);
+  }
+
+  // Max price filter
+  if (params.max_price !== null) {
+    urlParams.set('maxPrice', params.max_price.toString());
+  }
+
+  // Preferred airlines filter
+  if (params.preferred_airlines.length > 0) {
+    urlParams.set('airlines', params.preferred_airlines.join(','));
+  }
 
   // Add time filter based on preference
   // morning: 6-12, afternoon: 12-18, evening: 18-22, night: 22-6

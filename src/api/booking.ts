@@ -5,7 +5,8 @@
  * Uses the booking_token from SerpAPI to redirect users to the airline's booking page.
  */
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Use relative URL so Vite proxy handles routing (works on localhost & ngrok)
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export interface BookingRedirectParams {
   bookingToken: string;
@@ -24,7 +25,9 @@ export interface BookingRedirectParams {
  * This URL can be used in an iframe or opened in a new window
  */
 export function getBookingRedirectUrl(params: BookingRedirectParams): string {
-  const url = new URL(`${API_URL}/v1/booking/redirect`);
+  // When API_URL is empty (using proxy), use current origin as base for URL construction
+  const baseUrl = API_URL || window.location.origin;
+  const url = new URL(`${baseUrl}/v1/booking/redirect`);
   
   url.searchParams.set('booking_token', params.bookingToken);
   

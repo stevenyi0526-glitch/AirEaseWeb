@@ -85,6 +85,12 @@ const SearchForm: React.FC<SearchFormProps> = ({
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Require login before searching
+    if (!isAuthenticated) {
+      window.dispatchEvent(new CustomEvent('open-login-modal'));
+      return;
+    }
     
     // For multi-city, validate all legs
     if (tripType === 'multicity') {

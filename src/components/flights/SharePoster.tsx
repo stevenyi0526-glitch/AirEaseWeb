@@ -1,5 +1,6 @@
 import React, { useRef, useCallback } from 'react';
 import { Share2, Download, X, Plane, CheckCircle } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import type { FlightWithScore } from '../../api/types';
 import ScoreRadarChart from './ScoreRadarChart';
 import { formatTime, formatDuration, formatPrice, formatDate } from '../../utils/formatters';
@@ -17,24 +18,20 @@ const SharePoster: React.FC<SharePosterProps> = ({
   onClose,
 }) => {
   const posterRef = useRef<HTMLDivElement>(null);
-  const { flight, score } = flightWithScore;
+  const { flight, score, facilities } = flightWithScore;
 
   const downloadPoster = useCallback(async () => {
     if (!posterRef.current) return;
 
     try {
-      // Dynamic import html2canvas
-      const { default: html2canvas } = await import('html2canvas' as string);
-      
-      const canvas = await html2canvas(posterRef.current, {
+      const dataUrl = await toPng(posterRef.current, {
         backgroundColor: '#ffffff',
-        scale: 2,
-        useCORS: true,
+        pixelRatio: 2,
       });
 
       const link = document.createElement('a');
       link.download = `AirEase-${flight.flightNumber}-${formatDate(flight.departureTime)}.png`;
-      link.href = canvas.toDataURL('image/png');
+      link.href = dataUrl;
       link.click();
     } catch (error) {
       console.error('Failed to generate poster:', error);
@@ -46,32 +43,29 @@ const SharePoster: React.FC<SharePosterProps> = ({
     if (!posterRef.current) return;
 
     try {
-      const { default: html2canvas } = await import('html2canvas' as string);
-      
-      const canvas = await html2canvas(posterRef.current, {
+      const dataUrl = await toPng(posterRef.current, {
         backgroundColor: '#ffffff',
-        scale: 2,
-        useCORS: true,
+        pixelRatio: 2,
       });
 
-      canvas.toBlob(async (blob: Blob | null) => {
-        if (!blob) return;
+      // Convert data URL to blob
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
 
-        const file = new File([blob], `AirEase-${flight.flightNumber}.png`, {
-          type: 'image/png',
+      const file = new File([blob], `AirEase-${flight.flightNumber}.png`, {
+        type: 'image/png',
+      });
+
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `AirEase Flight ${flight.flightNumber}`,
+          text: `Check out this flight: ${flight.departureCity} → ${flight.arrivalCity}`,
+          files: [file],
         });
-
-        if (navigator.share && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: `AirEase Flight ${flight.flightNumber}`,
-            text: `Check out this flight: ${flight.departureCity} → ${flight.arrivalCity}`,
-            files: [file],
-          });
-        } else {
-          // Fallback: copy to clipboard or download
-          downloadPoster();
-        }
-      }, 'image/png');
+      } else {
+        // Fallback: download
+        downloadPoster();
+      }
     } catch (error) {
       console.error('Failed to share:', error);
       downloadPoster();
@@ -84,6 +78,42 @@ const SharePoster: React.FC<SharePosterProps> = ({
     if (value >= 8) return 'text-success';
     if (value >= 6) return 'text-warning';
     return 'text-danger';
+  };
+
+  // Mirror ScoreRadarChart's amenities calculation
+  const calculateAmenitiesScore = (): number => {
+    const hasAmenityData = facilities?.hasWifi !== undefined ||
+      facilities?.hasPower !== undefined ||
+      facilities?.hasIFE !== undefined ||
+      facilities?.mealIncluded !== undefined;
+    if (!hasAmenityData) return score.dimensions.comfort;
+    let s = 0;
+    if (facilities?.hasWifi) s += 2.5;
+    if (facilities?.hasPower) s += 2.5;
+    if (facilities?.hasIFE) s += 2.5;
+    if (facilities?.mealIncluded) s += 2.5;
+    return s;
+  };
+
+  // Mirror ScoreRadarChart's efficiency calculation
+  const calculateEfficiencyScore = (): number => {
+    const stops = flight.stops ?? 0;
+    const durationMinutes = flight.durationMinutes;
+    if (!durationMinutes) return score.dimensions.value;
+    const hours = durationMinutes / 60.0;
+    let durationScore: number;
+    if (hours <= 2) durationScore = 10.0;
+    else if (hours <= 4) durationScore = 9.0;
+    else if (hours <= 6) durationScore = 8.0;
+    else if (hours <= 10) durationScore = 6.0;
+    else if (hours <= 15) durationScore = 4.0;
+    else if (hours <= 24) durationScore = 2.5;
+    else durationScore = 1.5;
+    let stopMultiplier: number;
+    if (stops === 0) stopMultiplier = 1.0;
+    else if (stops === 1) stopMultiplier = 0.8;
+    else stopMultiplier = 0.6;
+    return Math.max(1.0, Math.min(10.0, durationScore * stopMultiplier));
   };
 
   return (
@@ -172,14 +202,28 @@ const SharePoster: React.FC<SharePosterProps> = ({
                 Score Breakdown
               </h4>
               <div className="flex justify-center">
-                <ScoreRadarChart dimensions={score.dimensions} size="md" />
+                <ScoreRadarChart
+                  dimensions={score.dimensions}
+                  size="md"
+                  flightData={{
+                    price: flight.price,
+                    durationMinutes: flight.durationMinutes,
+                    stops: flight.stops,
+                    hasWifi: facilities?.hasWifi,
+                    hasPower: facilities?.hasPower,
+                    hasIFE: facilities?.hasIFE,
+                    mealIncluded: facilities?.mealIncluded,
+                  }}
+                />
               </div>
-              <div className="grid grid-cols-4 gap-2 mt-3">
+              <div className="grid grid-cols-3 gap-2 mt-3">
                 {[
                   { label: 'Reliability', value: score.dimensions.reliability },
                   { label: 'Comfort', value: score.dimensions.comfort },
                   { label: 'Service', value: score.dimensions.service },
                   { label: 'Value', value: score.dimensions.value },
+                  { label: 'Amenities', value: calculateAmenitiesScore() },
+                  { label: 'Efficiency', value: calculateEfficiencyScore() },
                 ].map((dim) => (
                   <div key={dim.label} className="text-center">
                     <p className={cn('text-lg font-bold', getScoreColor(dim.value))}>

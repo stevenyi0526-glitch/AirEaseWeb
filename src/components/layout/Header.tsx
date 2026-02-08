@@ -40,6 +40,13 @@ const Header: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Listen for global 'open-login-modal' event from other components
+  useEffect(() => {
+    const handleOpenLoginModal = () => setShowLoginModal(true);
+    window.addEventListener('open-login-modal', handleOpenLoginModal);
+    return () => window.removeEventListener('open-login-modal', handleOpenLoginModal);
+  }, []);
+
   // Load search history when dropdown opens
   const handleFlightsClick = async () => {
     if (!isAuthenticated) {

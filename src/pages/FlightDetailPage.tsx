@@ -746,36 +746,87 @@ const FlightDetailPage: React.FC = () => {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Book on Airline Button */}
-          {bookingApi.hasBookingToken(flight.bookingToken) ? (
-            <button
-              onClick={() => {
-                // Extract departure date in YYYY-MM-DD format
-                const outboundDate = new Date(flight.departureTime)
-                  .toISOString()
-                  .split('T')[0];
-                
-                bookingApi.openBookingPage({
-                  bookingToken: flight.bookingToken!,
-                  airlineName: flight.airline,
-                  departureId: flight.departureAirportCode || flight.departureCityCode,
-                  arrivalId: flight.arrivalAirportCode || flight.arrivalCityCode,
-                  outboundDate,
-                });
-              }}
-              className="flex-1 py-4 btn-primary text-lg flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
-            >
-              <span>Book on {flight.airline}</span>
-              <ExternalLink className="w-5 h-5" />
-            </button>
-          ) : (
-            <button
-              disabled
-              className="flex-1 py-4 bg-gray-300 text-gray-500 rounded-lg text-lg cursor-not-allowed"
-              title="Booking not available for this flight"
-            >
-              Booking Not Available
-            </button>
-          )}
+          {/* For round trips: departure flight has departure_token (no booking_token),
+              return flight has the booking_token for the whole trip.
+              So we check both current flight AND return flight for a booking token. */}
+          {(() => {
+            // Find a valid booking token: prefer current flight's, then return flight's, then departure flight's
+            const availableToken = flight.bookingToken
+              || (isRoundTrip && returnFlightData?.flight.bookingToken ? returnFlightData.flight.bookingToken : undefined)
+              || (isRoundTrip && flightData?.flight.bookingToken ? flightData.flight.bookingToken : undefined);
+            
+            if (bookingApi.hasBookingToken(availableToken)) {
+              return (
+                <button
+                  onClick={() => {
+                    const depFlight = flightData?.flight || flight;
+                    const outboundDate = new Date(depFlight.departureTime)
+                      .toISOString()
+                      .split('T')[0];
+                    
+                    const params: Parameters<typeof bookingApi.openBookingPage>[0] = {
+                      bookingToken: availableToken!,
+                      airlineName: flight.airline,
+                      departureId: depFlight.departureAirportCode || depFlight.departureCityCode,
+                      arrivalId: depFlight.arrivalAirportCode || depFlight.arrivalCityCode,
+                      outboundDate,
+                    };
+
+                    // Add return date for round trips
+                    if (isRoundTrip && returnFlightData) {
+                      params.returnDate = new Date(returnFlightData.flight.departureTime)
+                        .toISOString()
+                        .split('T')[0];
+                    }
+
+                    bookingApi.openBookingPage(params);
+                  }}
+                  className="flex-1 py-4 btn-primary text-lg flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
+                >
+                  <span>Book on {flight.airline}</span>
+                  <ExternalLink className="w-5 h-5" />
+                </button>
+              );
+            }
+            
+            // No booking token available — use the backend booking redirect with
+            // departure_token if available (backend will resolve it via SerpAPI)
+            return (
+              <button
+                onClick={() => {
+                  const depFlight = flightData?.flight || flight;
+                  const token = flight.bookingToken || depFlight.bookingToken
+                    || flight.departureToken || depFlight.departureToken || '';
+                  
+                  if (token) {
+                    const outboundDate = new Date(depFlight.departureTime)
+                      .toISOString()
+                      .split('T')[0];
+                    bookingApi.openBookingPage({
+                      bookingToken: token,
+                      airlineName: flight.airline,
+                      departureId: depFlight.departureAirportCode || depFlight.departureCityCode,
+                      arrivalId: depFlight.arrivalAirportCode || depFlight.arrivalCityCode,
+                      outboundDate,
+                    });
+                  } else {
+                    // Absolute last resort: search on Google Flights
+                    const from = depFlight.departureAirportCode || depFlight.departureCityCode;
+                    const to = depFlight.arrivalAirportCode || depFlight.arrivalCityCode;
+                    const date = new Date(depFlight.departureTime).toISOString().split('T')[0];
+                    window.open(
+                      `https://www.google.com/travel/flights?q=flights+from+${from}+to+${to}+on+${date}`,
+                      '_blank', 'noopener,noreferrer'
+                    );
+                  }
+                }}
+                className="flex-1 py-4 btn-primary text-lg flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform"
+              >
+                <span>Book on {flight.airline}</span>
+                <ExternalLink className="w-5 h-5" />
+              </button>
+            );
+          })()}
           <CompareButton
             flightWithScore={flightData}
             variant="outline"

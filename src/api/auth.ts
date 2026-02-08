@@ -1,9 +1,22 @@
 import { apiClient } from './client';
-import type { AuthToken, LoginCredentials, RegisterData, User, UpdateUserData, CitySearchResult, Favorite, CreateFavorite, Traveler, CreateTraveler, UpdateTraveler } from './types';
+import type { AuthToken, LoginCredentials, RegisterData, User, UpdateUserData, CitySearchResult, Favorite, CreateFavorite, Traveler, CreateTraveler, UpdateTraveler, VerificationResponse } from './types';
 
 export const authApi = {
-  register: async (data: RegisterData): Promise<AuthToken> => {
+  /** Step 1: Initiate registration — sends verification code to email */
+  register: async (data: RegisterData): Promise<VerificationResponse> => {
     const response = await apiClient.post('/v1/auth/register', data);
+    return response.data;
+  },
+
+  /** Step 2: Verify email code and complete registration — returns JWT token */
+  verifyEmail: async (email: string, code: string): Promise<AuthToken> => {
+    const response = await apiClient.post('/v1/auth/verify-email', { email, code });
+    return response.data;
+  },
+
+  /** Resend verification code */
+  resendVerification: async (email: string): Promise<VerificationResponse> => {
+    const response = await apiClient.post('/v1/auth/resend-verification', { email });
     return response.data;
   },
 

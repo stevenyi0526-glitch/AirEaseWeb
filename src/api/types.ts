@@ -239,6 +239,12 @@ export interface RegisterData {
   label: UserLabel;
 }
 
+export interface VerificationResponse {
+  message: string;
+  email: string;
+  expiresInMinutes: number;
+}
+
 export interface UpdateUserData {
   username?: string;
   label?: UserLabel;

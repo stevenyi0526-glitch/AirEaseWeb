@@ -1,7 +1,11 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosInstance } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Use relative URL by default so requests go through Vite's proxy.
+// This ensures both localhost and ngrok (external) access work —
+// the browser sends API requests to the same host that served the page,
+// and Vite's dev server proxies /v1/* to localhost:8000.
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 class ApiClient {
   private client: AxiosInstance;

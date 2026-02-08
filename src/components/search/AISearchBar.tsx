@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { Sparkles, Search, MapPin, Loader2, X } from 'lucide-react';
 import { parseNaturalLanguageSearch, paramsToSearchURL, getUserLocation } from '../../api/aiSearch';
 import { findNearestAirport } from '../../api/airports';
+import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../utils/cn';
 
 interface AISearchBarProps {
@@ -32,6 +33,7 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
   onSearchComplete,
 }) => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   
   const [query, setQuery] = useState('');
@@ -109,6 +111,12 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Require login before searching
+    if (!isAuthenticated) {
+      window.dispatchEvent(new CustomEvent('open-login-modal'));
+      return;
+    }
     
     if (!query.trim()) {
       setError('Please enter a search query');
