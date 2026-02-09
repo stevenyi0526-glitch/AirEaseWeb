@@ -1,10 +1,11 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Plane, SlidersHorizontal, Search, Calendar, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Plane, SlidersHorizontal, Search, Calendar, ChevronDown, ExternalLink, Check } from 'lucide-react';
 import { flightsApi } from '../api/flights';
 import { generateRecommendations } from '../api/recommendations';
 import { trackSortAction, trackFlightSelection } from '../api/preferences';
+import { bookingApi } from '../api/booking';
 import { AIRLINES } from '../lib/mockApi';
 import { useFlightSearchParams, filtersToApiParams, type SortBy } from '../hooks/useFlightSearchParams';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,9 +17,10 @@ import PriceTrendChart from '../components/flights/PriceTrendChart';
 import CompareTray from '../components/compare/CompareTray';
 import FilterBottomSheet from '../components/filters/FilterBottomSheet';
 import SearchLoading from '../components/common/SearchLoading';
-import CurrencySelector, { type CurrencyCode } from '../components/common/CurrencySelector';
+import CurrencySelector, { type CurrencyCode, formatPriceWithCurrency, setLiveExchangeRates } from '../components/common/CurrencySelector';
 import AIRecommendations from '../components/flights/AIRecommendations';
 import PassengerSelector from '../components/search/PassengerSelector';
+import { fetchExchangeRates } from '../api/exchangeRates';
 import { cn } from '../utils/cn';
 import type { FlightWithScore } from '../api/types';
 
@@ -48,6 +50,9 @@ const FlightsPage: React.FC = () => {
   const [selectedDepartureFlight, setSelectedDepartureFlight] = useState<FlightWithScore | null>(null);
   const [selectedReturnFlight, setSelectedReturnFlight] = useState<FlightWithScore | null>(null);
   
+  // Selected flights for multi-city (one per leg)
+  const [selectedMultiCityFlights, setSelectedMultiCityFlights] = useState<(FlightWithScore | null)[]>([]);
+  
   // AI Recommendations state
   const [recommendations, setRecommendations] = useState<Array<FlightWithScore & {
     recommendation_score?: number;
@@ -71,7 +76,7 @@ const FlightsPage: React.FC = () => {
   // Fetch flights using real SerpAPI - always sort by price initially (Google Flights default)
   // This query is used for one-way searches (or roundtrip without return date as fallback)
   const { data: rawData, isLoading, error, isFetching } = useQuery({
-    queryKey: ['flights', filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, filters.children, currency, travelerType],
+    queryKey: ['flights', filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, filters.children, travelerType],
     queryFn: async () => {
       const apiParams = filtersToApiParams(filters);
       // NOTE: Stops filter is applied client-side to avoid extra SerpAPI charges
@@ -85,7 +90,7 @@ const FlightsPage: React.FC = () => {
         cabin: apiParams.cabin,
         adults: apiParams.adults,
         children: apiParams.children,
-        currency,
+        currency: 'USD',
         maxPrice: apiParams.maxPrice,
         // Always fetch sorted by price from API (Google Flights default)
         sortBy: 'price',
@@ -117,7 +122,7 @@ const FlightsPage: React.FC = () => {
     isLoading: isLoadingRoundTrip, 
     isFetching: isFetchingRoundTrip 
   } = useQuery({
-    queryKey: ['roundtrip-flights', filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, currency, travelerType],
+    queryKey: ['roundtrip-flights', filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, travelerType],
     queryFn: async () => {
       const apiParams = filtersToApiParams(filters);
       // NOTE: Stops filter is applied client-side to avoid extra SerpAPI charges
@@ -129,7 +134,7 @@ const FlightsPage: React.FC = () => {
         returnDate: filters.returnDate!,
         cabin: apiParams.cabin,
         adults: apiParams.adults,
-        currency,
+        currency: 'USD',
         travelerType: travelerType as 'student' | 'business' | 'family' | 'default',
       });
       
@@ -168,7 +173,7 @@ const FlightsPage: React.FC = () => {
     isLoading: isLoadingMultiCity,
     isFetching: isFetchingMultiCity,
   } = useQuery({
-    queryKey: ['multicity-flights', filters.multiCityLegs, filters.cabin, filters.adults, currency, travelerType],
+    queryKey: ['multicity-flights', filters.multiCityLegs, filters.cabin, filters.adults, travelerType],
     queryFn: async () => {
       // NOTE: Stops filter is applied client-side to avoid extra SerpAPI charges
       
@@ -177,7 +182,7 @@ const FlightsPage: React.FC = () => {
         {
           cabin: filters.cabin,
           adults: filters.adults,
-          currency,
+          currency: 'USD',
           travelerType: travelerType as 'student' | 'business' | 'family' | 'default',
         }
       );
@@ -517,6 +522,20 @@ const FlightsPage: React.FC = () => {
     setEditReturnDate(filters.returnDate);
   }, [filters.date, filters.returnDate]);
 
+  // Initialize multi-city selected flights array when legs change
+  React.useEffect(() => {
+    if (filters.tripType === 'multicity') {
+      setSelectedMultiCityFlights(new Array(filters.multiCityLegs.length).fill(null));
+    }
+  }, [filters.tripType, filters.multiCityLegs.length]);
+
+  // Fetch live exchange rates once on mount (no re-fetch on currency change)
+  React.useEffect(() => {
+    fetchExchangeRates().then((rates) => {
+      setLiveExchangeRates(rates);
+    });
+  }, []);
+
   // Reset display count when filters or sort changes
   React.useEffect(() => {
     setDisplayCount(FLIGHTS_PER_PAGE);
@@ -616,6 +635,88 @@ const FlightsPage: React.FC = () => {
       max: Math.ceil(Math.max(...prices) / 50) * 50,
     };
   }, [rawData?.flights]);
+
+  // ============================================================================
+  // BOOKING REDIRECT FOR ROUND TRIP & MULTI-CITY
+  // ============================================================================
+  /**
+   * Handles booking redirect following Google Flights patterns:
+   * 
+   * Always uses SerpAPI booking_token to fetch real booking options.
+   * 
+   * Case 1: All selected flights are from the SAME airline
+   *   → Backend picks the airline's official booking site from SerpAPI options
+   *   → Falls back to Expedia or first available option
+   *
+   * Case 2: Selected flights are from DIFFERENT airlines
+   *   → Backend prefers Expedia from SerpAPI options (prefer_expedia=true)
+   *   → Falls back to first available option if Expedia not listed
+   *
+   * Fallback: If no booking token available, builds an Expedia search URL directly
+   */
+  const handleMultiFlightBooking = (flights: FlightWithScore[]) => {
+    if (flights.length === 0) return;
+    
+    // Check if all flights are from the same airline
+    const airlines = new Set(flights.map(f => f.flight.airlineCode));
+    const allSameAirline = airlines.size === 1;
+    
+    // Try to use a booking token from any of the selected flights
+    const flightWithToken = flights.find(f => f.flight.bookingToken);
+    
+    if (flightWithToken) {
+      // Use booking token via backend → SerpAPI booking_options
+      const firstFlight = flights[0].flight;
+      const lastFlight = flights[flights.length - 1].flight;
+      const outboundDate = new Date(firstFlight.departureTime).toISOString().split('T')[0];
+      
+      const params: Parameters<typeof bookingApi.openBookingPage>[0] = {
+        bookingToken: flightWithToken.flight.bookingToken!,
+        airlineName: firstFlight.airline,
+        departureId: firstFlight.departureAirportCode || firstFlight.departureCityCode,
+        arrivalId: firstFlight.arrivalAirportCode || firstFlight.arrivalCityCode,
+        outboundDate,
+        // Different airlines → prefer Expedia/third-party aggregator
+        // Same airline → prefer airline's official site (default behavior)
+        preferExpedia: !allSameAirline,
+      };
+      
+      // Add return date if round trip (2 flights)
+      if (flights.length === 2) {
+        params.returnDate = new Date(lastFlight.departureTime).toISOString().split('T')[0];
+      }
+      
+      bookingApi.openBookingPage(params);
+    } else {
+      // No booking token available - fallback to Expedia URL
+      const expediaUrl = buildExpediaUrl(flights);
+      window.open(expediaUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+  
+  /**
+   * Build an Expedia Flights search URL with pre-filled legs.
+   * 
+   * Expedia URL format:
+   *   /Flights-search?trip=roundtrip|multicity&leg1=from:XXX,to:YYY,departure:MM/DD/YYYYTANYT&leg2=...&passengers=adults:N
+   */
+  const buildExpediaUrl = (flights: FlightWithScore[]): string => {
+    const adults = filters.adults || 1;
+    const isRoundTripBooking = flights.length === 2;
+    const trip = isRoundTripBooking ? 'roundtrip' : 'multicity';
+    
+    const legs = flights.map((f, idx) => {
+      const from = f.flight.departureAirportCode || f.flight.departureCityCode;
+      const to = f.flight.arrivalAirportCode || f.flight.arrivalCityCode;
+      const depDate = new Date(f.flight.departureTime);
+      const mm = String(depDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(depDate.getDate()).padStart(2, '0');
+      const yyyy = depDate.getFullYear();
+      return `leg${idx + 1}=from:${from},to:${to},departure:${mm}/${dd}/${yyyy}TANYT`;
+    });
+    
+    return `https://www.expedia.com/Flights-search?mode=search&trip=${trip}&${legs.join('&')}&passengers=adults:${adults}`;
+  };
 
   // Redirect if no valid search params
   if (!isValidSearch) {
@@ -817,6 +918,7 @@ const FlightsPage: React.FC = () => {
                 explanation={recommendationExplanation}
                 isLoading={isLoadingRecommendations}
                 onFlightClick={handleFlightClick}
+                displayCurrency={currency}
               />
             )}
 
@@ -827,6 +929,7 @@ const FlightsPage: React.FC = () => {
                 currency={currency}
                 departureCity={currentLegRoute.from}
                 arrivalCity={currentLegRoute.to}
+                cabinClass={filters.cabin}
                 className="mb-4"
               />
             )}
@@ -992,36 +1095,41 @@ const FlightsPage: React.FC = () => {
                             <span className="font-medium">Selected:</span>
                             {selectedDepartureFlight && (
                               <span className="bg-white px-2 py-1 rounded shadow-sm">
-                                ✈️ {selectedDepartureFlight.flight.flightNumber} - ${selectedDepartureFlight.flight.price}
+                                ✈️ {selectedDepartureFlight.flight.flightNumber} ({selectedDepartureFlight.flight.airline}) - {formatPriceWithCurrency(selectedDepartureFlight.flight.price, currency)}
                               </span>
                             )}
                             {selectedReturnFlight && (
                               <span className="bg-white px-2 py-1 rounded shadow-sm">
-                                ✈️ {selectedReturnFlight.flight.flightNumber} - ${selectedReturnFlight.flight.price}
+                                ✈️ {selectedReturnFlight.flight.flightNumber} ({selectedReturnFlight.flight.airline}) - {formatPriceWithCurrency(selectedReturnFlight.flight.price, currency)}
                               </span>
                             )}
                             {selectedDepartureFlight && selectedReturnFlight && (
                               <span className="font-bold text-primary">
-                                Total: ${selectedDepartureFlight.flight.price + selectedReturnFlight.flight.price}
+                                Total: {formatPriceWithCurrency(selectedDepartureFlight.flight.price + selectedReturnFlight.flight.price, currency)}
                               </span>
                             )}
                           </div>
                           {selectedDepartureFlight && selectedReturnFlight && (
-                            <button
-                              onClick={() => {
-                                navigate(`/flights/${selectedDepartureFlight.flight.id}`, {
-                                  state: {
-                                    flightWithScore: selectedDepartureFlight,
-                                    returnFlight: selectedReturnFlight,
-                                    isRoundTrip: true,
-                                    totalPrice: selectedDepartureFlight.flight.price + selectedReturnFlight.flight.price,
-                                  }
-                                });
-                              }}
-                              className="btn-primary text-sm px-4 py-2"
-                            >
-                              View Details
-                            </button>
+                            <div className="flex items-center gap-2">
+                              {/* Show airline match status */}
+                              {selectedDepartureFlight.flight.airlineCode === selectedReturnFlight.flight.airlineCode ? (
+                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
+                                  <Check className="w-3 h-3" />
+                                  Same airline
+                                </span>
+                              ) : (
+                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
+                                  Mixed airlines
+                                </span>
+                              )}
+                              <button
+                                onClick={() => handleMultiFlightBooking([selectedDepartureFlight, selectedReturnFlight])}
+                                className="btn-primary text-sm px-4 py-2 flex items-center gap-1.5"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                                Book Now
+                              </button>
+                            </div>
                           )}
                         </div>
                       )}
@@ -1055,6 +1163,9 @@ const FlightsPage: React.FC = () => {
                             {activeMultiCityLeg === index && (
                               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
                             )}
+                            {selectedMultiCityFlights[index] && (
+                              <div className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full" />
+                            )}
                           </button>
                         ))}
                       </div>
@@ -1073,6 +1184,59 @@ const FlightsPage: React.FC = () => {
                           </p>
                         </div>
                       </div>
+                      
+                      {/* Multi-city selected flights summary */}
+                      {selectedMultiCityFlights.some(f => f !== null) && (
+                        <div className="bg-gradient-to-r from-amber-50/80 to-orange-50/80 p-3 border-x border-b border-amber-200 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
+                            <span className="font-medium text-amber-900">Selected flights:</span>
+                            {selectedMultiCityFlights.map((flight, idx) => (
+                              <span
+                                key={idx}
+                                className={cn(
+                                  "px-2 py-1 rounded shadow-sm text-xs",
+                                  flight ? "bg-white text-gray-800" : "bg-gray-100 text-gray-400 border border-dashed border-gray-300"
+                                )}
+                              >
+                                {flight ? (
+                                  <>✈️ Leg {idx + 1}: {flight.flight.flightNumber} ({flight.flight.airline}) - {formatPriceWithCurrency(flight.flight.price, currency)}</>
+                                ) : (
+                                  <>Leg {idx + 1}: Not selected</>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                          
+                          {/* All legs selected → Show booking button */}
+                          {selectedMultiCityFlights.every(f => f !== null) && (
+                            <div className="flex items-center justify-between pt-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-primary text-sm">
+                                  Total: {formatPriceWithCurrency(selectedMultiCityFlights.reduce((sum, f) => sum + (f?.flight.price || 0), 0), currency)}
+                                </span>
+                                {/* Show airline match status */}
+                                {new Set(selectedMultiCityFlights.map(f => f?.flight.airlineCode)).size === 1 ? (
+                                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
+                                    <Check className="w-3 h-3" />
+                                    Same airline
+                                  </span>
+                                ) : (
+                                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
+                                    Mixed airlines
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleMultiFlightBooking(selectedMultiCityFlights.filter((f): f is FlightWithScore => f !== null))}
+                                className="btn-primary text-sm px-4 py-2 flex items-center gap-1.5"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                                Book Now
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                   
@@ -1080,8 +1244,9 @@ const FlightsPage: React.FC = () => {
                   {(() => {
                     // All trip types use currentLegFlights - already computed above!
                     const isRoundTrip = filters.tripType === 'roundtrip' && filters.returnDate;
+                    const isMultiCity = filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2;
                     
-                    // For round-trip, clicking selects the flight for that leg
+                    // For round-trip, the "Select" button on each card selects the flight for that leg
                     const handleFlightSelect = isRoundTrip 
                       ? (flight: FlightWithScore) => {
                           if (activeFlightTab === 'departure') {
@@ -1094,24 +1259,45 @@ const FlightsPage: React.FC = () => {
                             setSelectedReturnFlight(flight);
                           }
                         }
-                      : undefined;
+                      : isMultiCity
+                        ? (flight: FlightWithScore) => {
+                            setSelectedMultiCityFlights(prev => {
+                              const next = [...prev];
+                              next[activeMultiCityLeg] = flight;
+                              return next;
+                            });
+                            // Auto-switch to next unselected leg
+                            const nextEmptyLeg = selectedMultiCityFlights.findIndex((f, i) => i > activeMultiCityLeg && f === null);
+                            if (nextEmptyLeg !== -1) {
+                              setActiveMultiCityLeg(nextEmptyLeg);
+                            }
+                          }
+                        : undefined;
+                    
+                    // Determine if a flight is selected
+                    const isFlightSelected = (flight: FlightWithScore): boolean => {
+                      if (isRoundTrip) {
+                        if (activeFlightTab === 'departure') {
+                          return selectedDepartureFlight?.flight.id === flight.flight.id;
+                        }
+                        return selectedReturnFlight?.flight.id === flight.flight.id;
+                      }
+                      if (isMultiCity) {
+                        return selectedMultiCityFlights[activeMultiCityLeg]?.flight.id === flight.flight.id;
+                      }
+                      return false;
+                    };
                     
                     return (
                       <>
                         {currentLegFlights.slice(0, displayCount).map((flight) => (
-                          <div 
+                          <FlightCard
                             key={flight.flight.id}
-                            onClick={() => handleFlightSelect?.(flight)}
-                            className={cn(
-                              isRoundTrip && "cursor-pointer",
-                              isRoundTrip && activeFlightTab === 'departure' && selectedDepartureFlight?.flight.id === flight.flight.id && "ring-2 ring-primary rounded-xl",
-                              isRoundTrip && activeFlightTab === 'return' && selectedReturnFlight?.flight.id === flight.flight.id && "ring-2 ring-primary rounded-xl"
-                            )}
-                          >
-                            <FlightCard
-                              flightWithScore={flight}
-                            />
-                          </div>
+                            flightWithScore={flight}
+                            onSelect={handleFlightSelect ? () => handleFlightSelect(flight) : undefined}
+                            isSelected={isFlightSelected(flight)}
+                            displayCurrency={currency}
+                          />
                         ))}
                         
                         {/* Load More Button */}

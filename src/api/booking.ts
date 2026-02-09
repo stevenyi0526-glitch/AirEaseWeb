@@ -13,6 +13,7 @@ export interface BookingRedirectParams {
   airlineName?: string;
   preferDeparting?: boolean;
   preferReturning?: boolean;
+  preferExpedia?: boolean;
   // Flight route context - required for SerpAPI booking token to work
   departureId?: string;
   arrivalId?: string;
@@ -53,6 +54,9 @@ export function getBookingRedirectUrl(params: BookingRedirectParams): string {
   }
   if (params.preferReturning) {
     url.searchParams.set('prefer_returning', 'true');
+  }
+  if (params.preferExpedia) {
+    url.searchParams.set('prefer_expedia', 'true');
   }
   
   return url.toString();

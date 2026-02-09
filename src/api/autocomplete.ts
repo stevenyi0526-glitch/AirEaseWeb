@@ -1,26 +1,31 @@
 /**
- * Autocomplete API - SerpAPI Google Flights Autocomplete
- * 
- * Provides location/airport suggestions with grouped airports per city.
+ * Autocomplete API - Amadeus Airport & City Search
+ *
+ * Provides airport and city suggestions via Amadeus reference data API.
  */
 
 import { apiClient } from './client';
 
-export interface AirportSuggestion {
-  name: string;
-  code: string;
-  city?: string;
-  cityId?: string;
-  distance?: string;
+export interface GeoCode {
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface LocationSuggestion {
-  position: number;
-  name: string;
-  type?: 'city' | 'region' | null;  // null for direct airport matches
-  description?: string;
-  id?: string;
-  airports?: AirportSuggestion[];
+  id?: string;           // Amadeus location ID (e.g., "AJFK", "CNYC")
+  iataCode: string;      // IATA code (e.g., "JFK", "MUC")
+  name: string;          // Short name (e.g., "JOHN F KENNEDY INTL")
+  detailedName?: string; // e.g., "NEW YORK/US: JOHN F KENNEDY INTL"
+  subType?: string;      // "AIRPORT" or "CITY"
+  cityName?: string;
+  cityCode?: string;
+  countryName?: string;
+  countryCode?: string;
+  regionCode?: string;
+  stateCode?: string;
+  timeZoneOffset?: string;
+  geoCode?: GeoCode;
+  score?: number;        // Traveler popularity score
 }
 
 export interface AutocompleteResponse {
@@ -30,36 +35,37 @@ export interface AutocompleteResponse {
 
 export const autocompleteApi = {
   /**
-   * Get airport/location suggestions for search input
-   * Uses SerpAPI Google Flights Autocomplete API
-   * 
-   * @param query - Search text (e.g., "Seoul", "New York", "HKG")
-   * @param gl - Country code for localization (default: "us")
-   * @param hl - Language code (default: "en")
+   * Search airports only - suitable for flight search inputs.
+   * Uses Amadeus Airport & City Search API with subType=AIRPORT.
+   *
+   * @param query - Search text (e.g., "JFK", "London", "MUC")
+   * @param countryCode - Optional ISO country code filter (e.g., "US", "DE")
+   * @param limit - Max results (default 10)
    */
   getAirports: async (
     query: string,
-    gl: string = 'us',
-    hl: string = 'en'
+    countryCode?: string,
+    limit: number = 10
   ): Promise<AutocompleteResponse> => {
-    const response = await apiClient.get('/v1/autocomplete/airports', {
-      params: { q: query, gl, hl }
-    });
+    const params: Record<string, string | number> = { q: query, limit };
+    if (countryCode) params.countryCode = countryCode;
+    const response = await apiClient.get('/v1/autocomplete/airports', { params });
     return response.data;
   },
 
   /**
-   * Get all location suggestions (including regions)
+   * Search airports and cities.
+   * Uses Amadeus Airport & City Search API with subType=AIRPORT,CITY.
    */
   getLocations: async (
     query: string,
-    gl: string = 'us',
-    hl: string = 'en',
-    excludeRegions: boolean = false
+    subType: string = 'AIRPORT,CITY',
+    countryCode?: string,
+    limit: number = 10
   ): Promise<AutocompleteResponse> => {
-    const response = await apiClient.get('/v1/autocomplete/locations', {
-      params: { q: query, gl, hl, excludeRegions }
-    });
+    const params: Record<string, string | number> = { q: query, subType, limit };
+    if (countryCode) params.countryCode = countryCode;
+    const response = await apiClient.get('/v1/autocomplete/locations', { params });
     return response.data;
   },
 };

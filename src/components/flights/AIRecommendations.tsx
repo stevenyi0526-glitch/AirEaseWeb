@@ -11,6 +11,7 @@ interface AIRecommendationsProps {
   explanation: string;
   isLoading?: boolean;
   onFlightClick?: (flight: FlightWithScore) => void;
+  displayCurrency?: string;
 }
 
 /**
@@ -23,7 +24,8 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
   recommendations,
   explanation,
   isLoading = false,
-  onFlightClick,
+  onFlightClick: _onFlightClick,
+  displayCurrency = 'USD',
 }) => {
   if (isLoading) {
     return (
@@ -110,7 +112,7 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
         <FlightCard
           flightWithScore={topPick}
           showCompare={true}
-          onSelect={() => onFlightClick?.(topPick)}
+          displayCurrency={displayCurrency}
         />
       </div>
     </div>

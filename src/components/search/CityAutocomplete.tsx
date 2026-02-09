@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapPin, Loader2, Plane } from 'lucide-react';
-import { autocompleteApi, type LocationSuggestion, type AirportSuggestion } from '../../api/autocomplete';
+import { MapPin, Loader2, Plane, Building2 } from 'lucide-react';
+import { autocompleteApi, type LocationSuggestion } from '../../api/autocomplete';
 import { searchAirports } from '../../lib/airports';
 import { cn } from '../../utils/cn';
 
@@ -50,36 +50,35 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Search cities using SerpAPI Autocomplete
+  // Search using Amadeus Airport & City Search
   const searchCities = useCallback(async (searchQuery: string) => {
-    if (searchQuery.length < 2) {
+    if (searchQuery.length < 1) {
       setResults([]);
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
-      // Use SerpAPI Google Flights Autocomplete
-      const response = await autocompleteApi.getAirports(searchQuery);
+      const response = await autocompleteApi.getLocations(searchQuery);
       setResults(response.suggestions);
       setUseLocalFallback(false);
     } catch (error) {
       // Fallback to local search
-      console.log('Using local airport search fallback');
+      console.log('Amadeus autocomplete failed, using local airport search fallback');
       const localResults = searchAirports(searchQuery, 10);
-      // Convert local results to LocationSuggestion format
-      setResults(localResults.map((airport, index) => ({
-        position: index + 1,
-        name: `${airport.city}, ${airport.country}`,
-        type: 'city' as const,
-        description: airport.country,
-        airports: [{
-          name: `${airport.city} Airport`,
-          code: airport.code,
-          city: airport.city,
-        }]
-      })));
+      // Convert local results to Amadeus-style LocationSuggestion format
+      setResults(
+        localResults.map((airport) => ({
+          id: `A${airport.code}`,
+          iataCode: airport.code,
+          name: airport.name,
+          detailedName: `${airport.city}/${airport.country}: ${airport.name}`,
+          subType: 'AIRPORT',
+          cityName: airport.city,
+          countryName: airport.country,
+        }))
+      );
       setUseLocalFallback(true);
     } finally {
       setIsLoading(false);
@@ -90,13 +89,11 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setQuery(newValue);
-    
-    // Clear existing timeout
+
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
 
-    // Set new timeout
     debounceRef.current = setTimeout(() => {
       searchCities(newValue);
     }, 300);
@@ -104,42 +101,52 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
 
   const handleFocus = () => {
     setIsOpen(true);
-    if (query.length >= 2 && results.length === 0) {
+    if (query.length >= 1 && results.length === 0) {
       searchCities(query);
     }
   };
 
-  // Check if a string looks like an airport code (3 uppercase letters)
-  const isAirportCode = (str: string): boolean => {
-    return /^[A-Z]{3}$/i.test(str.trim());
+  // Handle selection of a suggestion — set the IATA code as the value
+  const handleSelect = (suggestion: LocationSuggestion) => {
+    const code = suggestion.iataCode;
+    setQuery(code);
+    onChange(code, code);
+    setIsOpen(false);
   };
 
-  // Handle selection of a city (selects first airport)
-  const handleSelectCity = (suggestion: LocationSuggestion) => {
-    const firstAirport = suggestion.airports?.[0];
-    let code = firstAirport?.code || '';
-    
-    // If this is a direct airport match (no airports array, type is null),
-    // and the original query looks like an airport code, use that
-    if (!code && !suggestion.airports && !suggestion.type) {
-      // Check if the query is an airport code
-      if (isAirportCode(query)) {
-        code = query.toUpperCase();
+  // Format a nice display name from Amadeus data
+  const formatDisplayName = (s: LocationSuggestion): string => {
+    // For cities: "Munich, Germany (MUC)"
+    // For airports: "John F Kennedy Intl, New York (JFK)"
+    const parts: string[] = [];
+
+    // Use name (title-cased)
+    const name = toTitleCase(s.name);
+    parts.push(name);
+
+    // Add city for airports (if different from name)
+    if (s.subType === 'AIRPORT' && s.cityName) {
+      const city = toTitleCase(s.cityName);
+      if (!name.toLowerCase().includes(city.toLowerCase())) {
+        parts[0] = `${name}, ${city}`;
       }
     }
-    
-    const displayValue = code || suggestion.name;
-    setQuery(displayValue);
-    onChange(displayValue, code);
-    setIsOpen(false);
+
+    // Add country
+    if (s.countryName) {
+      parts[0] += `, ${toTitleCase(s.countryName)}`;
+    }
+
+    return parts[0];
   };
 
-  // Handle selection of a specific airport
-  const handleSelectAirport = (airport: AirportSuggestion) => {
-    const displayValue = airport.code;
-    setQuery(displayValue);
-    onChange(displayValue, airport.code);
-    setIsOpen(false);
+  // Title-case helper: "MUNICH INTERNATIONAL" → "Munich International"
+  const toTitleCase = (str: string): string => {
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   return (
@@ -149,7 +156,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
           {label}
         </label>
       )}
-      
+
       <div className="relative">
         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
         <input
@@ -167,8 +174,8 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
         )}
       </div>
 
-      {/* Dropdown with grouped airports */}
-      {isOpen && (query.length >= 2 || results.length > 0) && (
+      {/* Dropdown with Amadeus results */}
+      {isOpen && (query.length >= 1 || results.length > 0) && (
         <div
           ref={dropdownRef}
           className="absolute z-50 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 max-h-80 overflow-y-auto"
@@ -180,142 +187,65 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
             </div>
           ) : results.length > 0 ? (
             <ul className="py-1">
-              {results.map((suggestion) => (
-                <li key={suggestion.id || `${suggestion.name}-${suggestion.position}`}>
-                  {/* City/Region Header */}
-                  {suggestion.airports && suggestion.airports.length > 0 ? (
-                    // City with airports - show grouped
-                    <div className="border-b border-gray-100 last:border-b-0">
-                      {/* City header - clickable to select first airport */}
-                      <button
-                        type="button"
-                        onClick={() => handleSelectCity(suggestion)}
-                        className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
+              {results.map((suggestion) => {
+                const isAirport = suggestion.subType === 'AIRPORT';
+                const Icon = isAirport ? Plane : Building2;
+                const iconBg = isAirport ? 'bg-primary/10' : 'bg-amber-50';
+                const iconColor = isAirport ? 'text-primary' : 'text-amber-600';
+                const badge = isAirport ? 'Airport' : 'City';
+                const badgeBg = isAirport ? 'bg-primary/10 text-primary' : 'bg-amber-100 text-amber-700';
+
+                return (
+                  <li key={suggestion.id || suggestion.iataCode}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelect(suggestion)}
+                      className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100 last:border-b-0"
+                    >
+                      <div
+                        className={cn(
+                          'flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center',
+                          iconBg
+                        )}
                       >
-                        <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <MapPin className="w-4 h-4 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 truncate">
-                            {suggestion.name}
-                          </p>
-                          {suggestion.description && (
-                            <p className="text-xs text-gray-500 truncate">
-                              {suggestion.description}
-                            </p>
+                        <Icon className={cn('w-4 h-4', iconColor)} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 truncate">
+                          {formatDisplayName(suggestion)}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span className="font-mono font-semibold text-primary">
+                            {suggestion.iataCode}
+                          </span>
+                          {suggestion.score && (
+                            <>
+                              <span className="text-gray-300">•</span>
+                              <span>Popularity: {suggestion.score}</span>
+                            </>
                           )}
                         </div>
-                        <span className="text-xs text-gray-400">
-                          {suggestion.airports.length} airport{suggestion.airports.length > 1 ? 's' : ''}
-                        </span>
-                      </button>
-                      
-                      {/* Airports under this city */}
-                      <div className="pl-6 bg-gray-50/50">
-                        {suggestion.airports.map((airport) => (
-                          <button
-                            key={airport.code}
-                            type="button"
-                            onClick={() => handleSelectAirport(airport)}
-                            className="w-full px-4 py-2 flex items-center gap-3 hover:bg-primary/5 transition-colors text-left"
-                          >
-                            <div className="flex-shrink-0 w-7 h-7 rounded-md bg-white border border-gray-200 flex items-center justify-center">
-                              <Plane className="w-3.5 h-3.5 text-primary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm text-gray-800 truncate">
-                                {airport.name}
-                              </p>
-                              <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <span className="font-mono font-semibold text-primary">
-                                  {airport.code}
-                                </span>
-                                {airport.distance && (
-                                  <>
-                                    <span className="text-gray-300">•</span>
-                                    <span>{airport.distance}</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </button>
-                        ))}
                       </div>
-                    </div>
-                  ) : !suggestion.type ? (
-                    // Direct airport match (no type = airport code search like "HKG")
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // If the search query is already an airport code, use it directly
-                        // Otherwise try to extract from name or use query as fallback
-                        let code: string;
-                        if (/^[A-Za-z]{3}$/.test(query.trim())) {
-                          // User searched with an airport code like "NRT", "hkg", etc.
-                          code = query.trim().toUpperCase();
-                        } else {
-                          // Try to extract from name (look for uppercase pattern)
-                          const codeMatch = suggestion.name.match(/\(([A-Z]{3})\)/);
-                          code = codeMatch ? codeMatch[1] : query.trim().toUpperCase().substring(0, 3);
-                        }
-                        setQuery(code);
-                        onChange(code, code);
-                        setIsOpen(false);
-                      }}
-                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-primary/5 transition-colors text-left border-b border-gray-100 last:border-b-0"
-                    >
-                      <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Plane className="w-4 h-4 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
-                          {suggestion.name}
-                        </p>
-                        {suggestion.description && (
-                          <p className="text-xs text-gray-500 truncate">
-                            {suggestion.description}
-                          </p>
+                      <span
+                        className={cn(
+                          'text-xs px-2 py-0.5 font-semibold rounded',
+                          badgeBg
                         )}
-                      </div>
-                      <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary font-semibold rounded">
-                        Airport
+                      >
+                        {badge}
                       </span>
                     </button>
-                  ) : (
-                    // Region without airports
-                    <button
-                      type="button"
-                      onClick={() => handleSelectCity(suggestion)}
-                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left"
-                    >
-                      <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
-                        <MapPin className="w-4 h-4 text-gray-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
-                          {suggestion.name}
-                        </p>
-                        {suggestion.description && (
-                          <p className="text-sm text-gray-500 truncate">
-                            {suggestion.description}
-                          </p>
-                        )}
-                      </div>
-                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded">
-                        {suggestion.type}
-                      </span>
-                    </button>
-                  )}
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
-          ) : query.length >= 2 ? (
+          ) : query.length >= 1 ? (
             <div className="px-4 py-3 text-center text-gray-500">
-              <p className="text-sm">No cities found</p>
+              <p className="text-sm">No airports or cities found</p>
               <p className="text-xs mt-1">Try a different search term</p>
             </div>
           ) : null}
-          
+
           {useLocalFallback && results.length > 0 && (
             <div className="px-3 py-2 bg-gray-50 border-t border-gray-100">
               <p className="text-xs text-gray-400 text-center">

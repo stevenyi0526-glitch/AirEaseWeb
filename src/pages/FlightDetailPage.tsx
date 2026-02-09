@@ -31,8 +31,12 @@ import SharePoster from '../components/flights/SharePoster';
 import UserReviewsCarousel from '../components/flights/UserReviewsCarousel';
 import CompareButton from '../components/compare/CompareButton';
 import { FeedbackModal } from '../components/common/FeedbackModal';
+// PAUSED: SeatMap disabled until Amadeus production access
+// import SeatMapView from '../components/flights/SeatMapView';
 import { cn } from '../utils/cn';
 import type { FlightWithScore, PricePoint } from '../api/types';
+// PAUSED: SeatMap types disabled until Amadeus production access
+// import type { UpdatedFacilities, UpdatedScore } from '../api/seatmap';
 
 // Lazy load the map component to avoid SSR issues with Leaflet
 const FlightRouteMap = lazy(() => import('../components/flights/FlightRouteMap'));
@@ -87,6 +91,22 @@ const FlightDetailPage: React.FC = () => {
   // Round trip sub-tab state
   const [activeTab, setActiveTab] = useState<'departure' | 'return'>('departure');
 
+  // PAUSED: Amadeus enrichment state - disabled until production access
+  // SeatMap API returns cached/mock data in test env, not real-time
+  // Re-enable when upgraded to api.amadeus.com
+  /*
+  const [amadeusEnrichment, setAmadeusEnrichment] = useState<{
+    updatedFacilities?: UpdatedFacilities;
+    updatedScore?: UpdatedScore;
+  } | null>(null);
+
+  const handleSeatmapEnrichment = useCallback((data: {
+    updatedFacilities?: UpdatedFacilities;
+    updatedScore?: UpdatedScore;
+  }) => {
+    setAmadeusEnrichment(data);
+  }, []);
+  */
   // Check if we have flight data passed via router state (from SerpAPI)
   const stateFlightData = location.state?.flightWithScore as FlightWithScore | undefined;
   const returnFlightData = location.state?.returnFlight as FlightWithScore | undefined;
@@ -158,7 +178,12 @@ const FlightDetailPage: React.FC = () => {
     ? returnFlightData 
     : flightData;
 
-  const { flight, score, facilities } = displayFlightData;
+  const { flight, score: baseScore, facilities: baseFacilities } = displayFlightData;
+  
+  // PAUSED: Amadeus enrichment merge disabled until production access
+  // When re-enabled, this replaces DB/SerpAPI guesses with accurate Amadeus API data
+  const facilities = baseFacilities;
+  const score = baseScore;
   
   // Price history - currently mock data, will be replaced with real data
   // when we have historical price tracking
@@ -709,6 +734,14 @@ const FlightDetailPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Seat Map - PAUSED: Amadeus test env returns cached/mock data, not real-time.
+           Re-enable when upgraded to Amadeus production (api.amadeus.com).
+           See: https://amadeus4dev.github.io/developer-guides/test-data/#test-vs-production
+        {flight.id?.startsWith('serp-') && (
+          <SeatMapView flightId={flight.id} onEnrichment={handleSeatmapEnrichment} />
+        )}
+        */}
 
         {/* User Reviews Carousel - fetched on-demand for performance */}
         {isLoadingReviews ? (

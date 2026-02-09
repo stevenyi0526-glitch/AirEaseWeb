@@ -17,6 +17,7 @@ interface PriceTrendChartProps {
   className?: string;
   departureCity?: string;
   arrivalCity?: string;
+  cabinClass?: string;
 }
 
 const PriceTrendChart: React.FC<PriceTrendChartProps> = ({
@@ -25,6 +26,7 @@ const PriceTrendChart: React.FC<PriceTrendChartProps> = ({
   className,
   departureCity,
   arrivalCity,
+  cabinClass,
 }) => {
   const { lowestPrice, priceLevel, typicalPriceRange, priceHistory } = priceInsights;
   const [showHistory, setShowHistory] = useState(true);
@@ -117,7 +119,7 @@ const PriceTrendChart: React.FC<PriceTrendChartProps> = ({
         <h3 className="text-lg font-semibold text-gray-900 mb-1">
           {lowestPrice && (
             <>
-              {formatPrice(lowestPrice)} Economy is{' '}
+              {formatPrice(lowestPrice)} {cabinClass ? cabinClass.charAt(0).toUpperCase() + cabinClass.slice(1).toLowerCase() : 'Economy'} is{' '}
               <span className={levelInfo.color}>{levelInfo.text}</span>
               {priceDifference !== null && priceDifference !== 0 && (
                 <span className="text-gray-600">

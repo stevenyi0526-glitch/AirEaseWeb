@@ -74,17 +74,61 @@ export function getCurrencySymbol(code: string): string {
 }
 
 /**
- * Format price with currency symbol
+ * Live exchange rates from USD, loaded from backend on app init.
+ * Falls back to hardcoded defaults until the first fetch completes.
+ */
+let _liveRates: Record<string, number> = {
+  USD: 1,
+  CNY: 7.25,
+  EUR: 0.92,
+  GBP: 0.79,
+  JPY: 150.0,
+  HKD: 7.82,
+  SGD: 1.34,
+  AUD: 1.55,
+  CAD: 1.36,
+  KRW: 1320,
+  INR: 83.5,
+  THB: 35.5,
+};
+
+/**
+ * Update the live exchange rates cache.
+ * Called from FlightsPage (or App) after fetching from backend.
+ */
+export function setLiveExchangeRates(rates: Record<string, number>): void {
+  _liveRates = { ..._liveRates, ...rates };
+}
+
+/**
+ * Get the current exchange rates (live or fallback).
+ */
+export function getExchangeRates(): Record<string, number> {
+  return _liveRates;
+}
+
+/**
+ * Convert a price from USD to a target display currency
+ * using the live exchange rates.
+ */
+export function convertPrice(priceInUsd: number, targetCurrency: string): number {
+  const rate = _liveRates[targetCurrency] ?? 1;
+  return Math.round(priceInUsd * rate);
+}
+
+/**
+ * Format price with currency symbol and proper formatting
  */
 export function formatPriceWithCurrency(price: number, currencyCode: string): string {
+  const converted = convertPrice(price, currencyCode);
   const currency = CURRENCIES.find(c => c.code === currencyCode);
   const symbol = currency?.symbol || '$';
   
   // Format based on currency
   if (currencyCode === 'JPY' || currencyCode === 'KRW') {
     // No decimal places for these currencies
-    return `${symbol}${Math.round(price).toLocaleString()}`;
+    return `${symbol}${converted.toLocaleString()}`;
   }
   
-  return `${symbol}${price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }

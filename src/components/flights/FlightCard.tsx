@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { Plane, ChevronDown, ChevronUp, Calendar, AlertTriangle, Leaf, Clock } from 'lucide-react';
+import { Plane, Calendar, AlertTriangle, Leaf, Check } from 'lucide-react';
 import type { FlightWithScore } from '../../api/types';
-import { formatTime, formatDuration, formatPrice, formatDate } from '../../utils/formatters';
+import { formatTime, formatDuration, formatDate } from '../../utils/formatters';
+import { formatPriceWithCurrency } from '../common/CurrencySelector';
 import ScoreBadge from './ScoreBadge';
 import FlightHighlightTags from './FlightHighlightTags';
 import FavoriteButton from './FavoriteButton';
@@ -12,9 +13,12 @@ import { cn } from '../../utils/cn';
 interface FlightCardProps {
   flightWithScore: FlightWithScore;
   onSelect?: () => void;
+  isSelected?: boolean;
   showCompare?: boolean;
   isRoundTrip?: boolean;
   returnDate?: string;
+  /** Display currency code — prices are converted client-side from USD */
+  displayCurrency?: string;
 }
 
 /**
@@ -24,18 +28,20 @@ interface FlightCardProps {
  * - Times with +1 next-day indicator
  * - Duration and stops in center
  * - Price in blue/accent
- * - View Details expandable
+ * - View Details link to detail page
+ * - Select button for round trip / multi-city selection
  * - Compare button
  */
 const FlightCard: React.FC<FlightCardProps> = ({
   flightWithScore,
   onSelect,
+  isSelected = false,
   showCompare = true,
   isRoundTrip = false,
   returnDate: _returnDate,
+  displayCurrency = 'USD',
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const { flight, score, facilities } = flightWithScore;
+  const { flight, score } = flightWithScore;
 
   // Check if arrival is next day
   const departureDate = new Date(flight.departureTime);
@@ -141,16 +147,16 @@ const FlightCard: React.FC<FlightCardProps> = ({
             {isRoundTrip ? (
               <>
                 {/* Round trip total with breakdown */}
-                <p className="text-2xl font-bold text-primary">{formatPrice(flight.price, flight.currency)}</p>
+                <p className="text-2xl font-bold text-primary">{formatPriceWithCurrency(flight.price, displayCurrency)}</p>
                 <p className="text-xs text-text-muted">round trip total</p>
                 <div className="text-xs text-text-secondary mt-1 space-y-0.5">
-                  <p>Outbound: ~{formatPrice(outboundPrice, flight.currency)}</p>
-                  <p>Return: ~{formatPrice(returnPrice, flight.currency)}</p>
+                  <p>Outbound: ~{formatPriceWithCurrency(outboundPrice, displayCurrency)}</p>
+                  <p>Return: ~{formatPriceWithCurrency(returnPrice, displayCurrency)}</p>
                 </div>
               </>
             ) : (
               <>
-                <p className="text-2xl font-bold text-primary">{formatPrice(flight.price, flight.currency)}</p>
+                <p className="text-2xl font-bold text-primary">{formatPriceWithCurrency(flight.price, displayCurrency)}</p>
                 <p className="text-xs text-text-muted">per person</p>
               </>
             )}
@@ -195,16 +201,34 @@ const FlightCard: React.FC<FlightCardProps> = ({
 
         {/* Actions Row */}
         <div className="flex items-center justify-between">
-          {/* View Details */}
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1 text-primary font-medium hover:text-primary-hover transition-colors"
-          >
-            View Details
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
+          {/* Left side: Select button for round trip / multi-city */}
+          <div className="flex items-center gap-2">
+            {onSelect && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect();
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 py-2 px-4 text-sm font-medium rounded-lg transition-all",
+                  isSelected
+                    ? "bg-green-500 text-white shadow-md"
+                    : "bg-primary/10 text-primary hover:bg-primary/20"
+                )}
+              >
+                {isSelected ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Selected
+                  </>
+                ) : (
+                  'Select'
+                )}
+              </button>
+            )}
+          </div>
 
-          {/* Compare + Favorite + Select */}
+          {/* Right side: Compare + Favorite + View Details */}
           <div className="flex items-center gap-2">
             <FavoriteButton flightWithScore={flightWithScore} size="sm" />
             {showCompare && (
@@ -214,136 +238,13 @@ const FlightCard: React.FC<FlightCardProps> = ({
               to={`/flights/${flight.id}`}
               state={{ flightWithScore }}
               className="btn-primary py-2 px-4 text-sm"
+              onClick={(e) => e.stopPropagation()}
             >
-              Select
+              View Details
             </Link>
           </div>
         </div>
       </div>
-
-      {/* Expanded Details */}
-      {isExpanded && (
-        <div className="border-t border-divider p-4 md:p-5 bg-surface-alt">
-          {/* Highlights */}
-          {score.highlights && score.highlights.length > 0 && (
-            <div className="mb-4">
-              <h4 className="text-sm font-semibold text-text-primary mb-2">Highlights</h4>
-              <div className="flex flex-wrap gap-2">
-                {score.highlights.map((highlight, index) => (
-                  <span key={index} className="highlight-tag">
-                    {highlight}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Score Breakdown */}
-          <div className="mb-4">
-            <h4 className="text-sm font-semibold text-text-primary mb-2">Score Breakdown</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {[
-                { label: 'Reliability', value: score.dimensions.reliability },
-                { label: 'Comfort', value: score.dimensions.comfort },
-                { label: 'Service', value: score.dimensions.service },
-                { label: 'Value', value: score.dimensions.value },
-              ].map((dim) => (
-                <div key={dim.label} className="flex items-center justify-between bg-surface rounded-lg p-2.5">
-                  <span className="text-sm text-text-secondary">{dim.label}</span>
-                  <span className="font-semibold text-text-primary">{dim.value.toFixed(1)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Flight Details */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-            <div className="bg-surface rounded-lg p-2.5">
-              <span className="text-text-muted block text-xs">Aircraft</span>
-              <span className="text-text-primary font-medium">{flight.aircraftModel || 'Not specified'}</span>
-            </div>
-            <div className="bg-surface rounded-lg p-2.5">
-              <span className="text-text-muted block text-xs">Cabin</span>
-              <span className="text-text-primary font-medium capitalize">{flight.cabin}</span>
-            </div>
-            {facilities?.legroom && (
-              <div className="bg-surface rounded-lg p-2.5">
-                <span className="text-text-muted block text-xs">Legroom</span>
-                <span className="text-text-primary font-medium">{facilities.legroom}</span>
-              </div>
-            )}
-            {flight.seatsRemaining && (
-              <div className="bg-surface rounded-lg p-2.5">
-                <span className="text-text-muted block text-xs">Seats Left</span>
-                <span className={cn(
-                  'font-medium',
-                  flight.seatsRemaining < 5 ? 'text-danger' : 'text-text-primary'
-                )}>
-                  {flight.seatsRemaining}
-                </span>
-              </div>
-            )}
-            {facilities?.hasWifi && (
-              <div className="bg-surface rounded-lg p-2.5">
-                <span className="text-text-muted block text-xs">WiFi</span>
-                <span className="text-success font-medium">
-                  {facilities.wifiFree ? 'Free' : 'Available'}
-                </span>
-              </div>
-            )}
-            {facilities?.hasUSB && (
-              <div className="bg-surface rounded-lg p-2.5">
-                <span className="text-text-muted block text-xs">USB Power</span>
-                <span className="text-success font-medium">Available</span>
-              </div>
-            )}
-          </div>
-
-          {/* Extensions/Amenities from SerpAPI */}
-          {facilities?.rawExtensions && facilities.rawExtensions.length > 0 && (
-            <div className="mt-4">
-              <h4 className="text-sm font-semibold text-text-primary mb-2">Amenities</h4>
-              <div className="flex flex-wrap gap-2">
-                {facilities.rawExtensions.map((ext, index) => (
-                  <span key={index} className="px-2 py-1 bg-surface rounded-md text-xs text-text-secondary">
-                    {ext}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Layover Details */}
-          {flight.layoverDetails && flight.layoverDetails.length > 0 && (
-            <div className="mt-4">
-              <h4 className="text-sm font-semibold text-text-primary mb-2">Layovers</h4>
-              <div className="space-y-2">
-                {flight.layoverDetails.map((layover, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-surface rounded-lg p-2.5">
-                    <Clock className="w-4 h-4 text-text-secondary" />
-                    <span className="text-text-primary font-medium">
-                      {formatDuration(layover.durationMinutes)} in {layover.airportName} ({layover.airportCode})
-                    </span>
-                    {layover.isOvernight && (
-                      <span className="px-2 py-0.5 bg-warning/15 text-warning text-xs rounded-full">Overnight</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Select Button (mobile) */}
-          {onSelect && (
-            <button
-              onClick={onSelect}
-              className="w-full btn-primary mt-4 md:hidden"
-            >
-              Select Flight
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 };
