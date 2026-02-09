@@ -79,7 +79,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
           pdf.setFillColor(249, 250, 251);
           pdf.setDrawColor(229, 231, 235);
         }
-        pdf.roundedRect(xPos, yPosition, cardWidth, 90, 3, 3, 'FD');
+        pdf.roundedRect(xPos, yPosition, cardWidth, 95, 3, 3, 'FD');
 
         // Best badge
         if (isBestOverall) {
@@ -93,15 +93,18 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
 
         let cardY = yPosition + 12;
 
-        // Airline name — use flight number as primary identifier
+        // Airline name — truncate based on actual text width measurement
         pdf.setTextColor(31, 41, 55);
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        // Truncate long airline names to fit card width
-        const maxChars = Math.floor(cardWidth / 5);
-        const airlineName = flight.flight.airline.length > maxChars
-          ? flight.flight.airline.substring(0, maxChars - 2) + '..'
-          : flight.flight.airline;
+        let airlineName = flight.flight.airline;
+        const maxTextWidth = cardWidth - 8; // leave 4mm padding on each side
+        while (pdf.getTextWidth(airlineName) > maxTextWidth && airlineName.length > 3) {
+          airlineName = airlineName.substring(0, airlineName.length - 1);
+        }
+        if (airlineName !== flight.flight.airline) {
+          airlineName = airlineName.trimEnd() + '..';
+        }
         pdf.text(airlineName, xPos + cardWidth/2, cardY, { align: 'center' });
         cardY += 5;
 
@@ -112,11 +115,11 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
         pdf.text(flight.flight.flightNumber, xPos + cardWidth/2, cardY, { align: 'center' });
         cardY += 8;
 
-        // Route
+        // Route (use ASCII arrow since Helvetica doesn't support Unicode →)
         pdf.setTextColor(31, 41, 55);
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(`${flight.flight.departureCityCode} → ${flight.flight.arrivalCityCode}`, xPos + cardWidth/2, cardY, { align: 'center' });
+        pdf.text(`${flight.flight.departureCityCode} - ${flight.flight.arrivalCityCode}`, xPos + cardWidth/2, cardY, { align: 'center' });
         cardY += 8;
 
         // Score badge (scores are on 0-10 scale)
@@ -131,11 +134,18 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
         pdf.text(`${score}`, xPos + cardWidth/2, cardY + 4, { align: 'center' });
         cardY += 14;
 
-        // Price
+        // Price — scale font to fit card
         pdf.setTextColor(37, 99, 235);
-        pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(formatPrice(flight.flight.price, flight.flight.currency), xPos + cardWidth/2, cardY, { align: 'center' });
+        const priceText = formatPrice(flight.flight.price, flight.flight.currency);
+        // Start at 14, reduce if too wide
+        let priceFontSize = 14;
+        pdf.setFontSize(priceFontSize);
+        while (pdf.getTextWidth(priceText) > cardWidth - 8 && priceFontSize > 8) {
+          priceFontSize -= 1;
+          pdf.setFontSize(priceFontSize);
+        }
+        pdf.text(priceText, xPos + cardWidth/2, cardY, { align: 'center' });
         if (isBestPrice) {
           pdf.setFontSize(7);
           pdf.setTextColor(16, 185, 129);
@@ -143,21 +153,34 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
         }
         cardY += 10;
 
-        // Duration & Stops & Time — left-aligned within card
+        // Duration & Stops & Time — center-aligned within card
         pdf.setTextColor(55, 65, 81);
-        pdf.setFontSize(9);
+        pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
-        pdf.text(`Duration: ${formatDuration(flight.flight.durationMinutes)}${isBestDuration ? ' ⚡' : ''}`, xPos + cardWidth/2, cardY, { align: 'center' });
+        const durationLabel = `Duration: ${formatDuration(flight.flight.durationMinutes)}`;
+        pdf.text(durationLabel, xPos + cardWidth/2, cardY, { align: 'center' });
+        if (isBestDuration) {
+          // Show "FASTEST" label below duration instead of emoji (Helvetica doesn't support ⚡)
+          pdf.setFontSize(6);
+          pdf.setTextColor(16, 185, 129);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('FASTEST', xPos + cardWidth/2, cardY + 3.5, { align: 'center' });
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(55, 65, 81);
+          pdf.setFontSize(8);
+        }
         cardY += 5;
 
         const stopsText = flight.flight.stops === 0 ? 'Direct' : `${flight.flight.stops} stop${flight.flight.stops > 1 ? 's' : ''}`;
+        pdf.setFontSize(8);
         pdf.text(`Stops: ${stopsText}`, xPos + cardWidth/2, cardY, { align: 'center' });
         cardY += 5;
 
+        pdf.setFontSize(8);
         pdf.text(`${formatTime(flight.flight.departureTime)} - ${formatTime(flight.flight.arrivalTime)}`, xPos + cardWidth/2, cardY, { align: 'center' });
       });
 
-      yPosition += 100;
+      yPosition += 105;
 
       // Score Dimensions Section
       pdf.setTextColor(31, 41, 55);
