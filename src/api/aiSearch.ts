@@ -304,7 +304,7 @@ export async function parseNaturalLanguageSearch(
 /**
  * Convert parsed params to URL search params for navigation
  */
-export function paramsToSearchURL(params: ParsedSearchParams): string {
+export function paramsToSearchURL(params: ParsedSearchParams, originalQuery?: string): string {
   const urlParams = new URLSearchParams({
     from: params.departure_city_code,
     to: params.arrival_city_code,
@@ -315,6 +315,14 @@ export function paramsToSearchURL(params: ParsedSearchParams): string {
     tripType: 'oneway',
     sortBy: params.sort_by,
   });
+
+  // Mark this as an AI search so FlightsPage can use query-based recommendations
+  urlParams.set('aiSearch', '1');
+  urlParams.set('aiSortBy', params.sort_by);
+  urlParams.set('aiTimePreference', params.time_preference);
+  if (originalQuery) {
+    urlParams.set('aiQuery', originalQuery);
+  }
 
   // Stops filter
   if (params.stops !== 'any') {

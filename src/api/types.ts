@@ -67,6 +67,8 @@ export interface ScoreDimensions {
   comfort: number;
   service: number;
   value: number;
+  amenities?: number;   // WiFi, power, IFE, meals
+  efficiency?: number;  // Direct flight bonus, duration
 }
 
 export interface ScoreExplanation {
@@ -216,6 +218,7 @@ export interface User {
   username: string;
   createdAt: string;
   isActive: boolean;
+  isAdmin: boolean;
   label: UserLabel;
   familyId: string;
 }

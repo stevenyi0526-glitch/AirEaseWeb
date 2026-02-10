@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Plane, SlidersHorizontal, Search, Calendar, ChevronDown, ExternalLink, Check } from 'lucide-react';
 import { flightsApi } from '../api/flights';
@@ -24,6 +24,177 @@ import { fetchExchangeRates } from '../api/exchangeRates';
 import { cn } from '../utils/cn';
 import type { FlightWithScore } from '../api/types';
 
+// ============================================================================
+// AI Query-Based Recommendation: Find the best flight matching user's intent
+// ============================================================================
+// For AI searches like "cheapest morning flight to JP", instead of using
+// user preference history, we score flights based on the query's intent:
+//   - aiSortBy: 'price' | 'duration' | 'comfort' | 'score' → primary ranking
+//   - aiTimePreference: 'morning' | 'afternoon' | 'evening' | 'night' | 'any' → time filter
+//
+// Each user requirement is tracked as a checklist item (met ✓ / not met ✗)
+// so the AI recommendation card can show ticks for all matched criteria.
+// ============================================================================
+
+/** A single requirement check for the AI recommendation checklist */
+export interface AIRequirementCheck {
+  label: string;    // e.g. "Morning flight", "Cheapest", "Direct"
+  met: boolean;     // whether this flight meets the requirement
+}
+
+function findBestFlightForQuery(
+  flights: FlightWithScore[],
+  sortBy: string,
+  timePreference: string,
+): {
+  recommendations: Array<FlightWithScore & {
+    recommendation_score?: number;
+    recommendation_reasons?: string[];
+    ai_requirement_checks?: AIRequirementCheck[];
+  }>;
+  explanation: string;
+} {
+  if (!flights || flights.length === 0) {
+    return { recommendations: [], explanation: '' };
+  }
+
+  // Time preference ranges
+  const timeRanges: Record<string, [number, number]> = {
+    morning: [6, 12],
+    afternoon: [12, 18],
+    evening: [18, 22],
+    night: [22, 6],
+  };
+
+  // Pre-compute pool-wide stats for normalization
+  const allPrices = flights.map(f => f.flight.price);
+  const minPrice = Math.min(...allPrices);
+  const maxPrice = Math.max(...allPrices);
+  const priceRange = maxPrice - minPrice || 1;
+
+  const allDurations = flights.map(f => f.flight.durationMinutes);
+  const minDur = Math.min(...allDurations);
+  const maxDur = Math.max(...allDurations);
+  const durRange = maxDur - minDur || 1;
+
+  // Score each flight based on how well it matches the AI query intent
+  const scored = flights.map(flight => {
+    let pts = 0;
+    const reasons: string[] = [];
+    const checks: AIRequirementCheck[] = [];
+    const depHour = new Date(flight.flight.departureTime).getHours();
+
+    // --- Requirement: Time preference ---
+    if (timePreference !== 'any' && timeRanges[timePreference]) {
+      const [start, end] = timeRanges[timePreference];
+      let inRange: boolean;
+      if (start > end) {
+        inRange = depHour >= start || depHour < end;
+      } else {
+        inRange = depHour >= start && depHour < end;
+      }
+
+      const timeLabels: Record<string, string> = {
+        morning: 'Morning flight',
+        afternoon: 'Afternoon flight',
+        evening: 'Evening flight',
+        night: 'Night flight',
+      };
+      checks.push({ label: timeLabels[timePreference] || 'Preferred time', met: inRange });
+
+      if (inRange) {
+        pts += 30;
+        reasons.push(`🌅 ${timeLabels[timePreference]}`);
+      }
+    }
+
+    // --- Requirement: Sort priority ---
+    switch (sortBy) {
+      case 'price': {
+        const normalized = 1 - (flight.flight.price - minPrice) / priceRange;
+        pts += normalized * 40;
+        const isCheapest = normalized >= 0.8;
+        checks.push({ label: 'Cheapest', met: isCheapest });
+        if (isCheapest) reasons.push('💰 Best price');
+        else if (normalized >= 0.5) reasons.push('💰 Good value');
+        break;
+      }
+      case 'duration': {
+        const normalized = 1 - (flight.flight.durationMinutes - minDur) / durRange;
+        pts += normalized * 40;
+        const isFastest = normalized >= 0.8;
+        checks.push({ label: 'Fastest', met: isFastest });
+        if (isFastest) reasons.push('⚡ Fastest option');
+        else if (normalized >= 0.5) reasons.push('⚡ Quick flight');
+        break;
+      }
+      case 'comfort': {
+        const comfortScore = flight.score.dimensions?.comfort || 5;
+        pts += (comfortScore / 10) * 40;
+        const isComfy = comfortScore >= 7;
+        checks.push({ label: 'Most comfortable', met: isComfy });
+        if (comfortScore >= 8) reasons.push('🛋️ Most comfortable');
+        else if (comfortScore >= 6) reasons.push('🛋️ Good comfort');
+        break;
+      }
+      default: {
+        pts += (flight.score.overallScore / 100) * 40;
+        const isTop = flight.score.overallScore >= 80;
+        checks.push({ label: 'Best rated', met: isTop });
+        if (flight.score.overallScore >= 85) reasons.push(`⭐ Excellent score: ${flight.score.overallScore}`);
+        else if (flight.score.overallScore >= 75) reasons.push(`⭐ Great score: ${flight.score.overallScore}`);
+        break;
+      }
+    }
+
+    // --- Requirement: Direct flight (always checked) ---
+    const isDirect = flight.flight.stops === 0;
+    checks.push({ label: 'Direct flight', met: isDirect });
+    if (isDirect) {
+      pts += 15;
+      reasons.push('✈️ Direct flight');
+    }
+
+    // --- Overall score baseline (+15 pts max) ---
+    pts += (flight.score.overallScore / 100) * 15;
+
+    return {
+      ...flight,
+      recommendation_score: Math.round(pts * 10) / 10,
+      recommendation_reasons: reasons.slice(0, 4),
+      ai_requirement_checks: checks,
+    };
+  });
+
+  // Sort by recommendation score
+  scored.sort((a, b) => (b.recommendation_score ?? 0) - (a.recommendation_score ?? 0));
+
+  // Build explanation based on what the user asked for
+  const explParts: string[] = [];
+  const sortLabels: Record<string, string> = {
+    price: 'cheapest',
+    duration: 'fastest',
+    comfort: 'most comfortable',
+    score: 'best rated',
+  };
+  const timeLabelsExpl: Record<string, string> = {
+    morning: 'morning',
+    afternoon: 'afternoon',
+    evening: 'evening',
+    night: 'night',
+  };
+  if (timePreference !== 'any' && timeLabelsExpl[timePreference]) {
+    explParts.push(timeLabelsExpl[timePreference]);
+  }
+  explParts.push(sortLabels[sortBy] || 'best');
+  const explanation = `Best match for your request: ${explParts.join(' ')} flight.`;
+
+  return {
+    recommendations: scored.slice(0, 3),
+    explanation,
+  };
+}
+
 /**
  * Flight Search Results Page
  * - Desktop: 3-column layout (Filters | Results | Compare Tray)
@@ -34,6 +205,7 @@ import type { FlightWithScore } from '../api/types';
  */
 const FlightsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
   const { filters, updateFilters, resetFilters, isValidSearch, hasActiveFilters } = useFlightSearchParams();
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -544,12 +716,17 @@ const FlightsPage: React.FC = () => {
   // ============================================================================
   // AI RECOMMENDATIONS - Always based on currentLegFlights (single-way focus)
   // ============================================================================
-  // Since all searches are ultimately single-way:
-  // - One-way: direct search result
-  // - Round-trip: departure leg OR return leg (based on active tab)
-  // - Multi-city: active leg's search result
-  // We always generate recommendations for the CURRENT ACTIVE LEG.
+  // For CLASSIC search: use old preference-based recommendations (user behavior)
+  // For AI search: pick the flight that best matches the user's QUERY INTENT
+  //   e.g. "cheapest morning flight" → find the cheapest flight in the morning window
   // ============================================================================
+  
+  // Detect if this search came from AI natural language search
+  const isAISearch = searchParams.get('aiSearch') === '1';
+  const aiSortBy = searchParams.get('aiSortBy') || 'score';
+  const aiTimePreference = searchParams.get('aiTimePreference') || 'any';
+  const aiQuery = searchParams.get('aiQuery') || '';
+
   useEffect(() => {
     const fetchRecommendations = async () => {
       // Use currentLegFlights - works for all trip types!
@@ -560,9 +737,31 @@ const FlightsPage: React.FC = () => {
       
       setIsLoadingRecommendations(true);
       try {
-        const result = await generateRecommendations(currentLegFlights);
-        setRecommendations(result.recommendations);
-        setRecommendationExplanation(result.explanation);
+        if (isAISearch) {
+          // ============================================================
+          // AI SEARCH MODE: Match flights to the user's query intent
+          // Instead of user preference history, score based on what
+          // the user explicitly asked for in their natural language query.
+          // ============================================================
+          const queryRecommendation = findBestFlightForQuery(
+            currentLegFlights,
+            aiSortBy,
+            aiTimePreference,
+          );
+          setRecommendations(queryRecommendation.recommendations);
+          // Use the original query as part of explanation if available
+          const explanation = aiQuery
+            ? `Best match for "${aiQuery}"`
+            : queryRecommendation.explanation;
+          setRecommendationExplanation(explanation);
+        } else {
+          // ============================================================
+          // CLASSIC SEARCH MODE: Use old preference-based recommendations
+          // ============================================================
+          const result = await generateRecommendations(currentLegFlights);
+          setRecommendations(result.recommendations);
+          setRecommendationExplanation(result.explanation);
+        }
       } catch (error) {
         console.error('Failed to fetch recommendations:', error);
         // Fallback: use top 3 by score
@@ -577,7 +776,7 @@ const FlightsPage: React.FC = () => {
     };
 
     fetchRecommendations();
-  }, [currentLegFlights]); // Simple dependency - just the current leg's flights!
+  }, [currentLegFlights, isAISearch, aiSortBy, aiTimePreference]);
 
   // Track sort preference changes
   const handleSortChange = (sortBy: SortBy) => {
@@ -919,6 +1118,7 @@ const FlightsPage: React.FC = () => {
                 isLoading={isLoadingRecommendations}
                 onFlightClick={handleFlightClick}
                 displayCurrency={currency}
+                isAISearch={isAISearch}
               />
             )}
 

@@ -134,8 +134,8 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
       );
 
       if (result.success && result.params) {
-        // Navigate to flights page with parsed params
-        const searchParams = paramsToSearchURL(result.params);
+        // Navigate to flights page with parsed params + original query for AI recommendations
+        const searchParams = paramsToSearchURL(result.params, query);
         navigate(`/flights?${searchParams}`);
       } else {
         setError(result.error || 'Failed to parse search query');

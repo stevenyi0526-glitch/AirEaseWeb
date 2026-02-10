@@ -79,9 +79,9 @@
 
 /* Component styles */
 @layer components {
-  /* Gradient header matching iOS design */
+  /* Gradient header - light blue */
   .header-gradient {
-    background: linear-gradient(135deg, var(--color-airease-blue) 0%, var(--color-airease-blue-dark) 100%);
+    background: linear-gradient(135deg, #64B5F6 0%, #42A5F5 100%);
   }
 
   /* Primary button - gradient like iOS */

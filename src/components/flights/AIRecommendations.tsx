@@ -1,17 +1,25 @@
 import React from 'react';
-import { Sparkles, Star } from 'lucide-react';
+import { Sparkles, Star, Check, X } from 'lucide-react';
 import type { FlightWithScore } from '../../api/types';
 import FlightCard from './FlightCard';
+
+/** A single requirement check for the AI recommendation checklist */
+interface AIRequirementCheck {
+  label: string;
+  met: boolean;
+}
 
 interface AIRecommendationsProps {
   recommendations: Array<FlightWithScore & {
     recommendation_score?: number;
     recommendation_reasons?: string[];
+    ai_requirement_checks?: AIRequirementCheck[];
   }>;
   explanation: string;
   isLoading?: boolean;
   onFlightClick?: (flight: FlightWithScore) => void;
   displayCurrency?: string;
+  isAISearch?: boolean;
 }
 
 /**
@@ -26,6 +34,7 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
   isLoading = false,
   onFlightClick: _onFlightClick,
   displayCurrency = 'USD',
+  isAISearch = false,
 }) => {
   if (isLoading) {
     return (
@@ -66,6 +75,7 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
   // Get only the top pick
   const topPick = recommendations[0];
   const reasons = topPick.recommendation_reasons || [];
+  const requirementChecks = (topPick as { ai_requirement_checks?: AIRequirementCheck[] }).ai_requirement_checks || [];
 
   return (
     <div className="bg-gradient-to-r from-purple-50 via-pink-50 to-purple-50 rounded-2xl p-4 mb-6 border-2 border-purple-200 shadow-md relative overflow-hidden">
@@ -84,7 +94,7 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-gray-800 text-lg">AI Top Pick</h3>
               <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-0.5 rounded-full font-medium">
-                #1 For You
+                {isAISearch ? 'Best Match' : '#1 For You'}
               </span>
             </div>
             <p className="text-sm text-gray-600">{explanation}</p>
@@ -92,8 +102,31 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
         </div>
       </div>
 
-      {/* AI Recommendation Reasons */}
-      {reasons.length > 0 && (
+      {/* AI Search: Requirement checklist with ticks */}
+      {isAISearch && requirementChecks.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3 relative z-10">
+          {requirementChecks.map((check, i) => (
+            <span
+              key={i}
+              className={`text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 border ${
+                check.met
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-gray-50 text-gray-400 border-gray-200'
+              }`}
+            >
+              {check.met ? (
+                <Check className="w-3.5 h-3.5 text-green-500" />
+              ) : (
+                <X className="w-3.5 h-3.5 text-gray-400" />
+              )}
+              {check.label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Classic search: Star-based recommendation reasons */}
+      {!isAISearch && reasons.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3 relative z-10">
           {reasons.map((reason, i) => (
             <span

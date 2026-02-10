@@ -131,6 +131,42 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
       params.set('stops', searchParams.stops.toString());
     }
 
+    // Mark this as an AI search for query-based recommendations
+    params.set('aiSearch', '1');
+    params.set('aiTimePreference', searchParams.timePreference || 'any');
+    // Map the priority to a sort_by value for the recommendation engine
+    const priorityToSortBy: Record<string, string> = {
+      cheapest: 'price',
+      fastest: 'duration',
+      most_comfortable: 'comfort',
+      best_value: 'price',
+      balanced: 'score',
+    };
+    params.set('aiSortBy', priorityToSortBy[searchParams.priority] || 'score');
+    // Also set sortBy for the flight list ordering
+    params.set('sortBy', priorityToSortBy[searchParams.priority] || 'score');
+
+    // Build a summary of the conversation as the AI query
+    const userMessages = messages.filter(m => m.role === 'user').map(m => m.content);
+    if (userMessages.length > 0) {
+      params.set('aiQuery', userMessages.join(' → '));
+    }
+
+    // Apply time filter based on preference
+    if (searchParams.timePreference && searchParams.timePreference !== 'any') {
+      const timeRanges: Record<string, [string, string]> = {
+        morning: ['6', '12'],
+        afternoon: ['12', '18'],
+        evening: ['18', '22'],
+        night: ['22', '6'],
+      };
+      const range = timeRanges[searchParams.timePreference];
+      if (range) {
+        params.set('depMin', range[0]);
+        params.set('depMax', range[1]);
+      }
+    }
+
     onClose();
     navigate(`/flights?${params.toString()}`);
   };

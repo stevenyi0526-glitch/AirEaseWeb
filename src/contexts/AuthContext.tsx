@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<VerificationResponse>;
@@ -95,6 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         token,
         isAuthenticated: !!token && !!user,
+        isAdmin: !!user && (user.isAdmin === true || user.email === 'steven.yi@airease.ai'),
         isLoading,
         login,
         register,

@@ -21,8 +21,8 @@ const ScoreBadge: React.FC<ScoreBadgeProps> = ({
   showLabel = true,
   className,
 }) => {
-  // Round score - if score is 0-10 scale, multiply by 10
-  const displayScore = score <= 10 ? Math.round(score * 10) : Math.round(score);
+  // Convert to 5-point scale: if 0-10, divide by 2; if 0-100, divide by 20
+  const fivePointScore = score <= 10 ? (score / 2).toFixed(1) : (score / 20).toFixed(1);
 
   // Size variants
   const sizeClasses = {
@@ -64,14 +64,14 @@ const ScoreBadge: React.FC<ScoreBadgeProps> = ({
           className="fill-white text-white"
         />
         <span className={cn('font-bold', scoreSizes[size])}>
-          {displayScore}
+          {fivePointScore}
         </span>
       </div>
 
       {/* Label */}
       {showLabel && (
         <span className={cn('text-white/90 font-medium mt-0.5', labelSizes[size])}>
-          Airease Score
+          {/* / 5 */}
         </span>
       )}
     </div>
@@ -82,18 +82,18 @@ export default ScoreBadge;
 
 // Helper to get score color class (for other UI elements)
 export function getScoreColorClass(score: number): string {
-  const normalizedScore = score <= 10 ? score * 10 : score;
-  if (normalizedScore >= 85) return 'bg-score-excellent';
-  if (normalizedScore >= 70) return 'bg-score-good';
-  if (normalizedScore >= 50) return 'bg-score-fair';
+  const fivePoint = score <= 10 ? score / 2 : score / 20;
+  if (fivePoint >= 4.25) return 'bg-score-excellent';
+  if (fivePoint >= 3.5) return 'bg-score-good';
+  if (fivePoint >= 2.5) return 'bg-score-fair';
   return 'bg-score-poor';
 }
 
 // Helper to get score text
 export function getScoreText(score: number): string {
-  const normalizedScore = score <= 10 ? score * 10 : score;
-  if (normalizedScore >= 85) return 'Excellent';
-  if (normalizedScore >= 70) return 'Good';
-  if (normalizedScore >= 50) return 'Fair';
+  const fivePoint = score <= 10 ? score / 2 : score / 20;
+  if (fivePoint >= 4.25) return 'Excellent';
+  if (fivePoint >= 3.5) return 'Good';
+  if (fivePoint >= 2.5) return 'Fair';
   return 'Poor';
 }
