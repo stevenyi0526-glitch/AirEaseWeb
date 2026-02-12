@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
-import { Clock, Zap, Sofa, HeartHandshake, Gem, DollarSign, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, Zap, Sofa, HeartHandshake, Gem, DollarSign, Info, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ScoreDimensions, ServiceHighlights } from '../../api/types';
 
@@ -31,6 +31,13 @@ interface ScoreRadarChartProps {
 
 // Score calculation reference for each dimension - shows how points are calculated
 const DIMENSION_CALC_REFERENCE: Record<string, string[]> = {
+  'Safety': [
+    '• Starts at 10.0 (perfect safety)',
+    '• Airline accidents (10yr): -0.3 each (max -3)',
+    '• Model accidents: -0.15 each (max -2)',
+    '• This plane accidents: -1.0 each (max -3)',
+    '• Based on NTSB safety records',
+  ],
   'Reliability': [
     '• On-time rate ≥90%: High score (8-10)',
     '• On-time rate 75-90%: Good score (6-8)',
@@ -78,6 +85,10 @@ const DIMENSION_CALC_REFERENCE: Record<string, string[]> = {
 
 // Score explanations for each dimension
 const DIMENSION_EXPLANATIONS: Record<string, { description: string; getExplanation: (score: number) => string }> = {
+  'Safety': {
+    description: 'NTSB accident & incident records',
+    getExplanation: (score) => score >= 9 ? 'Excellent safety record (clean history)' : score >= 7 ? 'Good safety record (minor events)' : score >= 5 ? 'Moderate safety record' : 'Safety concerns noted'
+  },
   'Reliability': {
     description: 'Airline on-time performance rate',
     getExplanation: (score) => score >= 8 ? 'Excellent on-time rate (90%+)' : score >= 6 ? 'Good punctuality (75-90%)' : 'May experience delays (<75%)'
@@ -106,6 +117,7 @@ const DIMENSION_EXPLANATIONS: Record<string, { description: string; getExplanati
 
 // Icon and color mapping for each dimension
 const DIMENSION_STYLES: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
+  'Safety': { icon: ShieldCheck, color: 'text-teal-600', bg: 'bg-teal-50' },
   'Reliability': { icon: Clock, color: 'text-green-600', bg: 'bg-green-50' },
   'Comfort': { icon: Sofa, color: 'text-blue-600', bg: 'bg-blue-50' },
   'Service': { icon: HeartHandshake, color: 'text-purple-600', bg: 'bg-purple-50' },
@@ -258,6 +270,7 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
 
   // Keep scores in 0-10 scale for display
   const data = [
+    { subject: 'Safety', A: activeDimensions.safety ?? 10, rawValue: activeDimensions.safety ?? 10, fullMark: 10 },
     { subject: 'Reliability', A: activeDimensions.reliability, rawValue: activeDimensions.reliability, fullMark: 10 },
     { subject: 'Comfort', A: activeDimensions.comfort, rawValue: activeDimensions.comfort, fullMark: 10 },
     { subject: 'Service', A: activeDimensions.service, rawValue: activeDimensions.service, fullMark: 10 },
@@ -295,15 +308,16 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
 
   const { containerSize, radius, chartSize } = sizes[size];
 
-  // Angles for positioning cards around the chart
+  // Angles for positioning cards around the chart (7 dimensions)
   // -90 degrees is at the top (12 o'clock position)
   const angles = [
-    -90,  // Reliability (Top)
-    -30,  // Comfort (Top Right)
-    30,   // Service (Bottom Right)
-    90,   // Value (Bottom)
-    150,  // Amenities (Bottom Left)
-    210   // Efficiency (Top Left)
+    -90,    // Safety (Top)
+    -38.6,  // Reliability (Top Right)
+    12.9,   // Comfort (Right)
+    64.3,   // Service (Bottom Right)
+    115.7,  // Value (Bottom)
+    167.1,  // Amenities (Bottom Left)
+    218.6,  // Efficiency (Top Left)
   ];
 
   const CENTER = containerSize / 2;

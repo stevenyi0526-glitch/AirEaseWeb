@@ -207,6 +207,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       // Dimension rows
       const dimensions = [
         { key: 'overallScore', label: 'Overall Score', getValue: (f: FlightWithScore) => f.score.overallScore },
+        { key: 'safety', label: 'Safety', getValue: (f: FlightWithScore) => f.score.dimensions.safety ?? 10 },
         { key: 'reliability', label: 'Reliability', getValue: (f: FlightWithScore) => f.score.dimensions.reliability },
         { key: 'comfort', label: 'Comfort', getValue: (f: FlightWithScore) => f.score.dimensions.comfort },
         { key: 'service', label: 'Service', getValue: (f: FlightWithScore) => f.score.dimensions.service },

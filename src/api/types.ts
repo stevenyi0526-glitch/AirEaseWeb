@@ -63,6 +63,7 @@ export interface LayoverDetail {
 }
 
 export interface ScoreDimensions {
+  safety?: number;      // NTSB safety records (10 = clean)
   reliability: number;  // On-time performance score (from airline OTP data)
   comfort: number;
   service: number;

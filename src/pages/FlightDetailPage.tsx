@@ -12,8 +12,6 @@ import {
   UtensilsCrossed,
   Loader2,
   Share2,
-  PlaneTakeoff,
-  PlaneLanding,
   Map,
   MessageSquareWarning,
   ExternalLink,
@@ -22,7 +20,6 @@ import {
   ChevronUp,
   Info,
   ShieldCheck,
-  AlertTriangle,
 } from 'lucide-react';
 import { flightsApi } from '../api/flights';
 import { bookingApi } from '../api/booking';
@@ -34,6 +31,9 @@ import SharePoster from '../components/flights/SharePoster';
 import UserReviewsCarousel from '../components/flights/UserReviewsCarousel';
 import CompareButton from '../components/compare/CompareButton';
 import { FeedbackModal } from '../components/common/FeedbackModal';
+import { BookingReviewModal } from '../components/common/BookingReviewModal';
+import { IncidentRecordsModal } from '../components/common/IncidentRecordsModal';
+import { trackBookingClick } from '../components/common/BookingTracker';
 import { cn } from '../utils/cn';
 import type { FlightWithScore } from '../api/types';
 
@@ -47,6 +47,16 @@ function toFivePointScale(score: number): string {
   // If already 0-10, convert to 0-5
   const fivePoint = score <= 10 ? score / 2 : score / 20;
   return fivePoint.toFixed(1);
+}
+
+/**
+ * Get gradient color class for a score (0-10 scale)
+ * Green: 8-10, Yellow/Amber: 4-7.9, Red: 0-3.9
+ */
+function getScoreColorClass(score: number): string {
+  if (score >= 8) return 'text-green-600';
+  if (score >= 5) return 'text-amber-600';
+  return 'text-red-600';
 }
 
 /**
@@ -66,6 +76,13 @@ const FlightDetailPage: React.FC = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showScoreDetails, setShowScoreDetails] = useState(false);
   const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [reviewTrigger, setReviewTrigger] = useState(0);
+  const [incidentModal, setIncidentModal] = useState<{
+    open: boolean;
+    queryType: 'tail' | 'airline' | 'model';
+    queryValue: string;
+    label: string;
+  }>({ open: false, queryType: 'tail', queryValue: '', label: '' });
   
   // Round trip sub-tab state
   const [activeTab, setActiveTab] = useState<'departure' | 'return'>('departure');
@@ -105,7 +122,7 @@ const FlightDetailPage: React.FC = () => {
 
   // Fetch NTSB safety profile (engine, age, accident records)
   // Falls back to OpenSky aircraft_database for engine & age when NTSB has no data
-  const { data: safetyProfile } = useQuery<SafetyProfile | null>({
+  const { data: safetyProfile, isFetching: isSafetyLoading } = useQuery<SafetyProfile | null>({
     queryKey: ['safety-profile', currentDisplayFlight?.flight.flightNumber, currentDisplayFlight?.flight.airline, currentDisplayFlight?.flight.aircraftModel],
     queryFn: () => fetchSafetyProfile({
       flightCode: currentDisplayFlight?.flight.flightNumber || undefined,
@@ -314,67 +331,109 @@ const FlightDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Date + Aircraft */}
-          <div className="mt-4 pt-4 border-t border-divider flex flex-wrap gap-4 text-sm text-text-secondary">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              <span>{formatDate(flight.departureTime)}</span>
+          {/* Date + Aircraft - 3x2 Grid */}
+          <div className="mt-4 pt-4 border-t border-divider grid grid-cols-2 gap-3">
+            {/* Row 1: Flight Date + Aircraft Model */}
+            <div className="p-3 bg-surface-alt rounded-lg">
+              <p className="text-xs text-text-muted mb-0.5">Flight Date</p>
+              <p className="text-base font-semibold text-text-primary flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-primary" />
+                {formatDate(flight.departureTime)}
+              </p>
             </div>
             {flight.aircraftModel && (
-              <div className="flex items-center gap-2">
-                <Plane className="w-4 h-4" />
-                <span>{flight.aircraftModel}</span>
+              <div className="p-3 bg-surface-alt rounded-lg">
+                <p className="text-xs text-text-muted mb-0.5">Aircraft Model</p>
+                <p className="text-base font-semibold text-text-primary flex items-center gap-2">
+                  <Plane className="w-4 h-4 text-primary" />
+                  {flight.aircraftModel}
+                </p>
               </div>
             )}
 
-            {/* Engine info from safety profile (NTSB → OpenSky fallback) */}
-            {safetyProfile?.technical_specs?.engine && (
-              <div className="flex items-center gap-2">
-                <span>⚙️</span>
-                <span>{safetyProfile.technical_specs.engine}</span>
-              </div>
-            )}
+            {/* Row 2: Engine + Engine Type */}
+            <div className="p-3 bg-surface-alt rounded-lg">
+              <p className="text-xs text-text-muted mb-0.5">Engine</p>
+              {safetyProfile?.technical_specs?.engine ? (
+                <p className="text-base font-semibold text-text-primary">⚙️ {safetyProfile.technical_specs.engine}</p>
+              ) : isSafetyLoading ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  <span className="text-sm text-text-muted">Loading...</span>
+                </div>
+              ) : (
+                <p className="text-sm text-text-muted italic">—</p>
+              )}
+            </div>
 
-            {/* Aircraft age from safety profile (OpenSky fallback) */}
-            {safetyProfile?.flight_info?.age_years != null && (
-              <div className={cn(
-                'flex items-center gap-2',
-                safetyProfile.flight_info.age_years <= 5 ? 'text-green-600' :
-                safetyProfile.flight_info.age_years <= 15 ? 'text-text-secondary' :
-                'text-amber-600'
-              )}>
-                <span>📅</span>
-                <span>
-                  {safetyProfile.flight_info.age_label ?? `${safetyProfile.flight_info.age_years} years old`}
+            <div className="p-3 bg-surface-alt rounded-lg">
+              <p className="text-xs text-text-muted mb-0.5">Engine Type</p>
+              {safetyProfile?.technical_specs?.eng_type ? (
+                <p className="text-base font-semibold text-text-primary">🔧 {safetyProfile.technical_specs.eng_type}</p>
+              ) : isSafetyLoading ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  <span className="text-sm text-text-muted">Loading...</span>
+                </div>
+              ) : (
+                <p className="text-sm text-text-muted italic">—</p>
+              )}
+            </div>
+
+            {/* Row 3: Aircraft Age + Total Seats */}
+            <div className="p-3 bg-surface-alt rounded-lg">
+              <p className="text-xs text-text-muted mb-0.5">Aircraft Age</p>
+              {safetyProfile?.flight_info?.age_years != null ? (
+                <p className={cn(
+                  'text-base font-semibold',
+                  safetyProfile.flight_info.age_years <= 5 ? 'text-green-600' :
+                  safetyProfile.flight_info.age_years <= 15 ? 'text-text-primary' :
+                  'text-amber-600'
+                )}>
+                  📅 {safetyProfile.flight_info.age_label ?? `${safetyProfile.flight_info.age_years} years old`}
                   {safetyProfile.flight_info.age_years <= 3 ? ' (New)' : ''}
-                </span>
-              </div>
-            )}
+                </p>
+              ) : isSafetyLoading ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  <span className="text-sm text-text-muted">Loading...</span>
+                </div>
+              ) : (
+                <p className="text-sm text-text-muted italic">—</p>
+              )}
+            </div>
 
-            {/* Tail number (resolved via FlightRadar24) */}
+            <div className="p-3 bg-surface-alt rounded-lg">
+              <p className="text-xs text-text-muted mb-0.5">Total Seats</p>
+              {safetyProfile?.flight_info?.num_seats != null && safetyProfile.flight_info.num_seats > 0 ? (
+                <p className="text-base font-semibold text-text-primary">💺 {safetyProfile.flight_info.num_seats} seats</p>
+              ) : isSafetyLoading ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  <span className="text-sm text-text-muted">Loading...</span>
+                </div>
+              ) : (
+                <p className="text-sm text-text-muted italic">—</p>
+              )}
+            </div>
+
+            {/* Tail number */}
             {safetyProfile?.flight_info?.tail_number && (
-              <div className="flex items-center gap-2">
-                <span>🔖</span>
-                <span>{safetyProfile.flight_info.tail_number}</span>
-              </div>
-            )}
-
-            {/* Safety summary badge */}
-            {safetyProfile && (
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-green-600" />
-                <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
-                  NTSB Safety Data
-                </span>
+              <div className="p-3 bg-surface-alt rounded-lg">
+                <p className="text-xs text-text-muted mb-0.5">Tail Number</p>
+                <p className="text-base font-semibold text-text-primary">🔖 {safetyProfile.flight_info.tail_number}</p>
               </div>
             )}
 
             {flight.seatsRemaining && (
-              <div className={cn(
-                'flex items-center gap-2',
-                flight.seatsRemaining < 5 && 'text-danger'
-              )}>
-                <span>{flight.seatsRemaining} seats remaining</span>
+              <div className="p-3 bg-surface-alt rounded-lg">
+                <p className="text-xs text-text-muted mb-0.5">Availability</p>
+                <p className={cn(
+                  'text-base font-semibold',
+                  flight.seatsRemaining < 5 ? 'text-danger' : 'text-text-primary'
+                )}>
+                  {flight.seatsRemaining} seats remaining
+                </p>
               </div>
             )}
           </div>
@@ -411,81 +470,182 @@ const FlightDetailPage: React.FC = () => {
           {showScoreDetails && (
             <div className="px-4 md:px-5 pb-4 md:pb-5 border-t border-divider animate-fade-in">
               <div className="pt-4 space-y-4">
-                {/* Score Breakdown */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {score.dimensions && (
-                    <>
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Reliability</p>
-                        <p className="text-lg font-bold text-text-primary">
-                          {toFivePointScale(score.dimensions.reliability)}<span className="text-sm font-normal text-text-muted">/5</span>
+                {/* Safety Profile Summary (compact) */}
+                {safetyProfile && (
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-3">
+                      <ShieldCheck className="w-5 h-5 text-green-600" />
+                      <h4 className="text-sm font-semibold text-green-800">Safety Profile (NTSB)</h4>
+                      <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full ml-auto">
+                        NTSB Verified
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="text-center group/stat relative">
+                        <p className="text-lg font-bold text-green-700 cursor-help">
+                          {safetyProfile.safety_records.this_plane_accidents !== null
+                            ? safetyProfile.safety_records.this_plane_accidents.length
+                            : '—'}
                         </p>
-                        <p className="text-xs text-text-secondary mt-0.5">On-time performance</p>
-                      </div>
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Comfort</p>
-                        <p className="text-lg font-bold text-text-primary">
-                          {toFivePointScale(score.dimensions.comfort)}<span className="text-sm font-normal text-text-muted">/5</span>
-                        </p>
-                        <p className="text-xs text-text-secondary mt-0.5">Seat & cabin quality</p>
-                      </div>
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Service</p>
-                        <p className="text-lg font-bold text-text-primary">
-                          {toFivePointScale(score.dimensions.service)}<span className="text-sm font-normal text-text-muted">/5</span>
-                        </p>
-                        <p className="text-xs text-text-secondary mt-0.5">Crew & hospitality</p>
-                      </div>
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Value</p>
-                        <p className="text-lg font-bold text-text-primary">
-                          {toFivePointScale(score.dimensions.value)}<span className="text-sm font-normal text-text-muted">/5</span>
-                        </p>
-                        <p className="text-xs text-text-secondary mt-0.5">Price vs quality</p>
-                      </div>
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Amenities</p>
-                        <p className="text-lg font-bold text-text-primary">
-                          {toFivePointScale(score.dimensions.amenities ?? 5)}<span className="text-sm font-normal text-text-muted">/5</span>
-                        </p>
-                        <p className="text-xs text-text-secondary mt-0.5">WiFi, power & entertainment</p>
-                      </div>
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Efficiency</p>
-                        <p className="text-lg font-bold text-text-primary">
-                          {toFivePointScale(score.dimensions.efficiency ?? 5)}<span className="text-sm font-normal text-text-muted">/5</span>
-                        </p>
-                        <p className="text-xs text-text-secondary mt-0.5">Route & duration</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Why This Score - Explanations */}
-                {score.explanations && score.explanations.length > 0 && (
-                  <div className="p-4 bg-primary/5 rounded-lg space-y-2">
-                    <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-                      <Info className="w-4 h-4 text-primary" />
-                      Why this score
-                    </h4>
-                    <div className="space-y-2">
-                      {score.explanations.map((exp, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-sm">
-                          <span className={cn(
-                            'mt-0.5 w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold',
-                            exp.isPositive ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
-                          )}>
-                            {exp.isPositive ? '✓' : '!'}
-                          </span>
-                          <div>
-                            <p className="font-medium text-text-primary">{exp.title}</p>
-                            <p className="text-xs text-text-secondary">{exp.detail}</p>
-                          </div>
+                        <p className="text-xs text-text-muted cursor-help">This Plane</p>
+                        <div className="hidden group-hover/stat:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg z-20">
+                          <p className="font-semibold mb-1">This Aircraft's Record</p>
+                          <p>Number of NTSB-reported events for this specific plane (by tail number). 0 = clean history.</p>
+                          <p className="text-gray-400 mt-1">Source: NTSB Aviation Database</p>
+                          <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
                         </div>
-                      ))}
+                        {safetyProfile.flight_info.tail_number && (
+                          <button
+                            onClick={() => setIncidentModal({
+                              open: true,
+                              queryType: 'tail',
+                              queryValue: safetyProfile.flight_info.tail_number!,
+                              label: safetyProfile.flight_info.tail_number!,
+                            })}
+                            className="mt-1.5 text-[11px] font-medium text-green-700 hover:text-green-900 hover:underline transition-colors"
+                          >
+                            View Records →
+                          </button>
+                        )}
+                      </div>
+                      <div className="text-center group/stat relative">
+                        <p className="text-lg font-bold text-blue-700 cursor-help">
+                          {safetyProfile.safety_records.airline_total_accidents}
+                        </p>
+                        <p className="text-xs text-text-muted cursor-help">Airline (10yr)</p>
+                        <div className="hidden group-hover/stat:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg z-20">
+                          <p className="font-semibold mb-1">Airline Safety (10 Years)</p>
+                          <p>Total NTSB-reported events for this airline over the past 10 years across all aircraft.</p>
+                          <p className="text-gray-400 mt-1">Source: NTSB Aviation Database</p>
+                          <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+                        </div>
+                        {safetyProfile.flight_info.airline && (
+                          <button
+                            onClick={() => setIncidentModal({
+                              open: true,
+                              queryType: 'airline',
+                              queryValue: safetyProfile.flight_info.airline!,
+                              label: safetyProfile.flight_info.airline!,
+                            })}
+                            className="mt-1.5 text-[11px] font-medium text-blue-700 hover:text-blue-900 hover:underline transition-colors"
+                          >
+                            View Records →
+                          </button>
+                        )}
+                      </div>
+                      <div className="text-center group/stat relative">
+                        <p className="text-lg font-bold text-amber-700 cursor-help">
+                          {safetyProfile.safety_records.model_total_accidents}
+                        </p>
+                        <p className="text-xs text-text-muted cursor-help">Model (all)</p>
+                        <div className="hidden group-hover/stat:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 bg-gray-900 text-white text-xs px-3 py-2 rounded-lg shadow-lg z-20">
+                          <p className="font-semibold mb-1">Aircraft Model Safety</p>
+                          <p>Total NTSB-reported events for all aircraft of this model type worldwide, all time.</p>
+                          <p className="text-gray-400 mt-1">Source: NTSB Aviation Database</p>
+                          <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+                        </div>
+                        {(safetyProfile.flight_info.model_query || safetyProfile.flight_info.model) && (
+                          <button
+                            onClick={() => setIncidentModal({
+                              open: true,
+                              queryType: 'model',
+                              queryValue: safetyProfile.flight_info.model_query || safetyProfile.flight_info.model!,
+                              label: safetyProfile.flight_info.model || safetyProfile.flight_info.model_query!,
+                            })}
+                            className="mt-1.5 text-[11px] font-medium text-amber-700 hover:text-amber-900 hover:underline transition-colors"
+                          >
+                            View Records →
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
+
+                {/* Score Breakdown - with embedded "Why this score" explanations */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {score.dimensions && (() => {
+                    // Map explanations to their corresponding dimensions
+                    const dimensionKeywords: Record<string, string[]> = {
+                      safety: ['safety', 'ntsb', 'accident', 'incident'],
+                      reliability: ['reliability', 'on-time', 'on time', 'delay', 'cancel'],
+                      comfort: ['seat pitch', 'legroom', 'seat width', 'wide-body', 'widebody', 'cabin', 'spacious', 'noise'],
+                      service: ['crew', 'service', 'ground service', 'check-in', 'boarding', 'in-flight service', 'cabin crew', 'hospitality'],
+                      value: ['value', 'price', 'cost', 'above typical', 'below typical', 'money', 'affordable'],
+                      amenities: ['wifi', 'entertainment', 'screen', 'power', 'display', 'ife', 'food', 'beverage', 'meal', 'drink'],
+                      efficiency: ['duration', 'direct', 'stops', 'layover', 'route', 'connection', 'fastest'],
+                    };
+
+                    const getExplanationsFor = (dimKey: string) => {
+                      if (!score.explanations) return [];
+                      const keywords = dimensionKeywords[dimKey] || [];
+                      return score.explanations.filter(exp => {
+                        const text = `${exp.title} ${exp.detail}`.toLowerCase();
+                        return keywords.some(kw => text.includes(kw));
+                      });
+                    };
+
+                    // Also add recommendation match
+                    const dataSources: Record<string, string> = {
+                      safety: 'NTSB Aviation Database',
+                      reliability: 'Airline on-time data (SkyTrax & DOT)',
+                      comfort: 'Aircraft seat maps & airline specs',
+                      service: 'SkyTrax traveler reviews',
+                      value: 'SerpAPI price insights',
+                      amenities: 'Aircraft equipment database',
+                      efficiency: 'Flight route & schedule data',
+                    };
+
+                    const dimensions = [
+                      { key: 'safety', label: 'Safety', score: score.dimensions.safety ?? 10 },
+                      { key: 'reliability', label: 'Reliability', score: score.dimensions.reliability },
+                      { key: 'comfort', label: 'Comfort', score: score.dimensions.comfort },
+                      { key: 'service', label: 'Service', score: score.dimensions.service },
+                      { key: 'value', label: 'Value', score: score.dimensions.value },
+                      { key: 'amenities', label: 'Amenities', score: score.dimensions.amenities ?? 5 },
+                      { key: 'efficiency', label: 'Efficiency', score: score.dimensions.efficiency ?? 5 },
+                    ];
+
+                    return dimensions.map(dim => {
+                      const explanations = getExplanationsFor(dim.key);
+                      return (
+                        <div key={dim.key} className="p-3 bg-surface-alt rounded-lg group/dim relative cursor-help">
+                          <p className="text-xs text-text-muted mb-1">{dim.label}</p>
+                          <p className={cn('text-xl font-bold', getScoreColorClass(dim.score))}>
+                            {toFivePointScale(dim.score)}<span className="text-sm font-normal text-text-muted">/5</span>
+                          </p>
+                          {/* Hover tooltip with explanations */}
+                          <div className="hidden group-hover/dim:block absolute left-0 right-0 bottom-full mb-2 bg-gray-900 text-white text-xs px-3 py-2.5 rounded-lg shadow-xl z-20 min-w-[220px]">
+                            {explanations.length > 0 ? (
+                              <div className="space-y-1.5">
+                                {explanations.map((exp, i) => (
+                                  <div key={i} className="flex items-start gap-1.5">
+                                    <span className={cn(
+                                      'mt-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold',
+                                      exp.isPositive ? 'bg-green-500/30 text-green-300' : 'bg-amber-500/30 text-amber-300'
+                                    )}>
+                                      {exp.isPositive ? '✓' : '!'}
+                                    </span>
+                                    <div>
+                                      <p className="font-medium">{exp.title}</p>
+                                      <p className="text-gray-400">{exp.detail}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-gray-300">No specific data available for this dimension</p>
+                            )}
+                            <p className="text-gray-500 mt-1.5 pt-1.5 border-t border-gray-700 text-[10px]">
+                              📊 {dataSources[dim.key]}
+                            </p>
+                            <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
 
                 {/* Aircraft & Airline Details */}
                 <div className="p-4 bg-primary/5 rounded-lg space-y-3">
@@ -522,27 +682,6 @@ const FlightDetailPage: React.FC = () => {
                         {facilities.seatPitchInches}" ({facilities.seatPitchCategory})
                       </span>
                     </div>
-                  )}
-                </div>
-
-                {/* How Score is Calculated */}
-                <div className="p-4 bg-surface-alt rounded-lg">
-                  <h4 className="text-sm font-semibold text-text-primary mb-2">How is the score calculated?</h4>
-                  <p className="text-xs text-text-secondary leading-relaxed">
-                    The Flying Score is a weighted average across 6 key dimensions: 
-                    <strong> Reliability</strong> (on-time performance), 
-                    <strong> Comfort</strong> (seat space, aircraft age, cabin quality), 
-                    <strong> Service</strong> (crew rating, food quality), 
-                    <strong> Value</strong> (price vs quality ratio),
-                    <strong> Amenities</strong> (WiFi, power, entertainment, meals), and
-                    <strong> Efficiency</strong> (route directness, flight duration). 
-                    Each dimension is scored 0–5, and the overall score reflects 
-                    your travel preferences.
-                  </p>
-                  {score.personaWeightsApplied && (
-                    <p className="text-xs text-primary mt-2">
-                      Optimized for: <span className="font-medium">{score.personaWeightsApplied}</span>
-                    </p>
                   )}
                 </div>
               </div>
@@ -592,56 +731,6 @@ const FlightDetailPage: React.FC = () => {
                 </Suspense>
               </div>
 
-              {/* Flight Timeline */}
-              <div className="p-5 md:p-6 border-b border-divider">
-                <h2 className="text-lg font-semibold text-text-primary mb-4">Flight Timeline</h2>
-                <div className="relative">
-                  <div className="absolute left-4 top-8 bottom-20 w-0.5 bg-gradient-to-b from-primary via-primary to-success" />
-                  
-                  <div className="relative flex items-start gap-4 pb-5">
-                    <div className="relative z-10 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                      <PlaneTakeoff className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-text-muted">Departure</p>
-                      <p className="text-xl font-bold text-text-primary">{formatTime(flight.departureTime)}</p>
-                      <p className="font-medium text-text-primary">{flight.departureAirport}</p>
-                      <p className="text-xs text-text-muted mt-1">{formatDate(flight.departureTime)}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="relative flex items-start gap-4 pb-10">
-                    <div className="relative z-10 w-8 h-8 rounded-full bg-surface-alt border-2 border-primary flex items-center justify-center">
-                      <Clock className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-text-muted">Flight Duration</p>
-                      <p className="font-semibold text-text-primary">{formatDuration(flight.durationMinutes)}</p>
-                      {flight.stops > 0 && flight.stopCities && (
-                        <p className="font-medium text-text-primary mt-1">
-                          {flight.stops} stop{flight.stops > 1 ? 's' : ''}: {flight.stopCities.join(', ')}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="relative flex items-start gap-4">
-                    <div className="relative z-10 w-8 h-8 rounded-full bg-success flex items-center justify-center">
-                      <PlaneLanding className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-text-muted">Arrival</p>
-                      <p className="text-xl font-bold text-text-primary">
-                        {formatTime(flight.arrivalTime)}
-                        {isNextDay && <span className="text-sm text-accent ml-1">+1 day</span>}
-                      </p>
-                      <p className="font-medium text-text-primary">{flight.arrivalAirport}</p>
-                      <p className="text-xs text-text-muted mt-1">{formatDate(flight.arrivalTime)}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Amenities */}
               <div className="p-5 md:p-6 border-b border-divider">
                 <h2 className="text-lg font-semibold text-text-primary mb-4">Amenities & Facilities</h2>
@@ -684,136 +773,6 @@ const FlightDetailPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              {/* NTSB Safety Records */}
-              {safetyProfile && (
-                <div className="p-5 md:p-6 border-b border-divider">
-                  <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-green-600" />
-                    Safety Profile (NTSB)
-                  </h2>
-
-                  {/* Tail number & engine summary */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                    {safetyProfile.flight_info.tail_number && (
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Tail Number</p>
-                        <p className="text-sm font-semibold text-text-primary">{safetyProfile.flight_info.tail_number}</p>
-                      </div>
-                    )}
-                    {safetyProfile.flight_info.model && (
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Aircraft Model</p>
-                        <p className="text-sm font-semibold text-text-primary">{safetyProfile.flight_info.model}</p>
-                      </div>
-                    )}
-                    {safetyProfile.technical_specs.engine && (
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Engine</p>
-                        <p className="text-sm font-semibold text-text-primary">{safetyProfile.technical_specs.engine}</p>
-                      </div>
-                    )}
-                    {safetyProfile.flight_info.airline && (
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Operator</p>
-                        <p className="text-sm font-semibold text-text-primary">{safetyProfile.flight_info.airline}</p>
-                      </div>
-                    )}
-                    {safetyProfile.flight_info.built_year && (
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Built Year</p>
-                        <p className="text-sm font-semibold text-text-primary">{safetyProfile.flight_info.built_year}</p>
-                      </div>
-                    )}
-                    {safetyProfile.flight_info.age_years !== null && safetyProfile.flight_info.age_years !== undefined && (
-                      <div className="p-3 bg-surface-alt rounded-lg">
-                        <p className="text-xs text-text-muted mb-1">Aircraft Age</p>
-                        <p className={`text-sm font-semibold ${
-                          safetyProfile.flight_info.age_years <= 5 ? 'text-green-600' :
-                          safetyProfile.flight_info.age_years <= 15 ? 'text-text-primary' :
-                          'text-amber-600'
-                        }`}>
-                          {safetyProfile.flight_info.age_label || `${safetyProfile.flight_info.age_years} years`}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Accident stats */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                    <div className="p-3 bg-green-50 rounded-lg text-center">
-                      <p className="text-xs text-text-muted mb-1">This Plane</p>
-                      <p className="text-xl font-bold text-green-700">
-                        {safetyProfile.safety_records.this_plane_accidents !== null
-                          ? safetyProfile.safety_records.this_plane_accidents.length
-                          : '—'}
-                      </p>
-                      <p className="text-xs text-text-muted">NTSB events</p>
-                    </div>
-                    <div className="p-3 bg-blue-50 rounded-lg text-center">
-                      <p className="text-xs text-text-muted mb-1">Airline (10 yr)</p>
-                      <p className="text-xl font-bold text-blue-700">
-                        {safetyProfile.safety_records.airline_total_accidents}
-                      </p>
-                      <p className="text-xs text-text-muted">total events</p>
-                    </div>
-                    <div className="p-3 bg-amber-50 rounded-lg text-center">
-                      <p className="text-xs text-text-muted mb-1">Model (all time)</p>
-                      <p className="text-xl font-bold text-amber-700">
-                        {safetyProfile.safety_records.model_total_accidents}
-                      </p>
-                      <p className="text-xs text-text-muted">total events</p>
-                    </div>
-                  </div>
-
-                  {/* Per-plane accident history */}
-                  {safetyProfile.safety_records.this_plane_accidents && safetyProfile.safety_records.this_plane_accidents.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-amber-500" />
-                        Incident History for {safetyProfile.flight_info.tail_number}
-                      </h4>
-                      {safetyProfile.safety_records.this_plane_accidents.map((acc, idx) => (
-                        <div key={idx} className="p-3 bg-surface-alt rounded-lg text-sm">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium text-text-primary">{acc.date || 'Unknown date'}</span>
-                            {acc.injury_severity && (
-                              <span className={cn(
-                                'text-xs px-2 py-0.5 rounded-full font-medium',
-                                acc.injury_severity === 'FATL' ? 'bg-red-100 text-red-700' :
-                                acc.injury_severity === 'SERS' ? 'bg-orange-100 text-orange-700' :
-                                acc.injury_severity === 'MINR' ? 'bg-yellow-100 text-yellow-700' :
-                                'bg-gray-100 text-gray-700'
-                              )}>
-                                {acc.injury_severity}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-text-muted">
-                            {[acc.city, acc.state, acc.country].filter(Boolean).join(', ')}
-                          </p>
-                          {acc.cause && (
-                            <p className="text-xs text-text-secondary mt-1">{acc.cause}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {safetyProfile.safety_records.this_plane_accidents !== null && safetyProfile.safety_records.this_plane_accidents.length === 0 && (
-                    <p className="text-sm text-green-600 flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4" />
-                      No NTSB incident records found for this aircraft — clean history.
-                    </p>
-                  )}
-
-                  {safetyProfile.safety_records.this_plane_accidents === null && (
-                    <p className="text-xs text-text-muted italic">
-                      Tail number could not be resolved (flight may not be active). Showing airline & model statistics only.
-                    </p>
-                  )}
-                </div>
-              )}
 
               {/* User Reviews */}
               {isLoadingReviews ? (
@@ -875,11 +834,18 @@ const FlightDetailPage: React.FC = () => {
                       outboundDate,
                     };
 
-                    if (isRoundTrip && returnFlightData) {
-                      params.returnDate = new Date(returnFlightData.flight.departureTime)
-                        .toISOString()
-                        .split('T')[0];
-                    }
+                    // Track booking click for return-visit popup
+                    trackBookingClick({
+                      flightId: flight.id,
+                      airline: flight.airline,
+                      flightNumber: flight.flightNumber,
+                      route: `${depFlight.departureCityCode} → ${depFlight.arrivalCityCode}`,
+                      price: flight.price,
+                      currency: flight.currency || 'USD',
+                    });
+
+                    // Trigger comeback review popup after 1.5s
+                    setReviewTrigger(Date.now());
 
                     bookingApi.openBookingPage(params);
                   }}
@@ -898,6 +864,19 @@ const FlightDetailPage: React.FC = () => {
                   const token = flight.bookingToken || depFlight.bookingToken
                     || flight.departureToken || depFlight.departureToken || '';
                   
+                  // Track booking click for return-visit popup
+                  trackBookingClick({
+                    flightId: flight.id,
+                    airline: flight.airline,
+                    flightNumber: flight.flightNumber,
+                    route: `${depFlight.departureCityCode} → ${depFlight.arrivalCityCode}`,
+                    price: flight.price,
+                    currency: flight.currency || 'USD',
+                  });
+
+                  // Trigger comeback review popup after 1.5s
+                  setReviewTrigger(Date.now());
+
                   if (token) {
                     const outboundDate = new Date(depFlight.departureTime)
                       .toISOString()
@@ -954,6 +933,33 @@ const FlightDetailPage: React.FC = () => {
           date: formatDate(flight.departureTime),
           aircraftModel: flight.aircraftModel || undefined,
         }}
+      />
+
+      {/* Booking Review Modal — pops up 1.5s after clicking Book Now */}
+      <BookingReviewModal
+        triggerTimestamp={reviewTrigger}
+        flightInfo={{
+          id: flight.id,
+          airline: flight.airline,
+          flightNumber: flight.flightNumber,
+          route: `${flight.departureCityCode} → ${flight.arrivalCityCode}`,
+          date: formatDate(flight.departureTime),
+          departureCityCode: flight.departureCityCode,
+          arrivalCityCode: flight.arrivalCityCode,
+          aircraftModel: flight.aircraftModel || undefined,
+          price: flight.price,
+          currency: flight.currency || 'USD',
+          overallScore: flightData?.score?.overallScore,
+        }}
+      />
+
+      {/* Incident Records Modal — paginated NTSB narratives */}
+      <IncidentRecordsModal
+        isOpen={incidentModal.open}
+        onClose={() => setIncidentModal(prev => ({ ...prev, open: false }))}
+        queryType={incidentModal.queryType}
+        queryValue={incidentModal.queryValue}
+        label={incidentModal.label}
       />
     </div>
   );

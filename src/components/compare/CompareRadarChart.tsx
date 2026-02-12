@@ -32,6 +32,12 @@ const DIMENSION_EXPLANATIONS: Record<string, { description: string; goodScore: s
     badScore: 'This flight may have trade-offs in some areas',
     formula: ['Score ≥8.5: Excellent', 'Score 7-8.4: Good', 'Score <7: Fair'],
   },
+  'Safety': {
+    description: 'Based on NTSB accident & incident records for aircraft, airline, and model',
+    goodScore: 'Clean safety record with no notable incidents',
+    badScore: 'Some safety events recorded in NTSB database',
+    formula: ['Starts at 10 (perfect)', 'Airline events: -0.3 each', 'Model events: -0.15 each', 'Plane events: -1.0 each'],
+  },
   'Reliability': {
     description: 'Based on airline on-time performance rate (OTP) from historical data',
     goodScore: 'Airline has excellent on-time performance (90%+)',
@@ -87,6 +93,7 @@ const STAGE_LABELS = {
   duration: { excellent: 'Short', good: 'Medium', fair: 'Long' },
   price: { excellent: 'Budget', good: 'Moderate', fair: 'Premium' },
   overall: { excellent: 'Excellent', good: 'Good', fair: 'Fair' },
+  safety: { excellent: 'Excellent', good: 'Good', fair: 'Concerns' },
   reliability: { excellent: 'Punctual', good: 'Reliable', fair: 'Delays likely' },
   comfort: { excellent: 'Premium', good: 'Comfortable', fair: 'Basic' },
   service: { excellent: 'Exceptional', good: 'Good', fair: 'Basic' },
@@ -174,6 +181,13 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
       fullMark: 10,
       ...Object.fromEntries(
         flights.map((f, idx) => [`flight${idx}`, f.score.overallScore])
+      ),
+    },
+    {
+      dimension: 'Safety',
+      fullMark: 10,
+      ...Object.fromEntries(
+        flights.map((f, idx) => [`flight${idx}`, f.score.dimensions.safety ?? 10])
       ),
     },
     {

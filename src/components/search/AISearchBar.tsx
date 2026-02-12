@@ -156,75 +156,99 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
 
   return (
     <div className={cn('relative w-full', className)}>
-      {/* Main Search Bar */}
+      {/* Boarding Pass Search Bar */}
       <form onSubmit={handleSearch} className="relative">
-        <div className={cn(
-          'relative flex items-center rounded-2xl bg-white shadow-lg border-2 transition-all duration-300',
-          error ? 'border-red-300' : 'border-transparent focus-within:border-purple-400 focus-within:shadow-xl'
-        )}>
-          {/* AI Icon */}
-          <div className="pl-4 pr-2">
-            <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500">
+        <div
+          className={cn(
+            'relative flex items-stretch bg-white rounded-2xl shadow-lg transition-all duration-300 overflow-hidden',
+            error ? 'ring-2 ring-red-300' : 'focus-within:shadow-xl'
+          )}
+        >
+          {/* Left Stub — AI Icon */}
+          <div className="relative flex items-center justify-center px-5 border-r-2 border-dashed border-gray-200">
+            {/* Top semicircle cutout — clip bottom half */}
+            <div className="absolute -top-2.5 -right-2.5 w-5 h-5 overflow-hidden pointer-events-none">
+              <div
+                className="w-5 h-5 rounded-full"
+                style={{ backgroundColor: '#f5f7f8', boxShadow: 'inset 0 -1px 2px rgba(0,0,0,0.05)' }}
+              />
+            </div>
+            {/* Bottom semicircle cutout — clip top half */}
+            <div className="absolute -bottom-2.5 -right-2.5 w-5 h-5 overflow-hidden pointer-events-none">
+              <div
+                className="w-5 h-5 rounded-full"
+                style={{ backgroundColor: '#f5f7f8', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)' }}
+              />
+            </div>
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-amber-500">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
           </div>
 
-          {/* Input */}
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setError(null);
-            }}
-            placeholder={placeholder || 'Try: "fly to Tokyo tomorrow morning"'}
-            className="flex-1 py-4 px-2 text-base sm:text-lg bg-transparent outline-none placeholder-gray-400"
-            disabled={isLoading}
-          />
+          {/* Middle — Input Area */}
+          <div className="relative flex-1 flex items-center px-5 py-3">
+            {/* Top label */}
+            <span className="absolute top-2 left-5 text-[10px] font-semibold tracking-widest text-gray-400 uppercase select-none">
+              Flight Query
+            </span>
 
-          {/* Clear Button */}
-          {query && !isLoading && (
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setError(null);
+              }}
+              placeholder={placeholder || 'Try: "fly to Tokyo tomorrow morning"'}
+              className="w-full pt-4 pb-1 text-base sm:text-lg bg-transparent outline-none text-gray-700 placeholder-gray-400"
+              disabled={isLoading}
+            />
+
+            {/* Clear Button */}
+            {query && !isLoading && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="ml-2 p-1.5 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Right — Search Button */}
+          <div className="flex items-center pr-3">
             <button
-              type="button"
-              onClick={handleClear}
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              type="submit"
+              disabled={isLoading || !query.trim()}
+              className={cn(
+                'px-6 py-3 rounded-xl font-semibold text-white transition-all duration-200',
+                'bg-[#8da2fb] hover:bg-[#7c92f0]',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+                'flex items-center gap-2 whitespace-nowrap'
+              )}
             >
-              <X className="w-5 h-5" />
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Search className="w-5 h-5" />
+              )}
+              <span className="hidden sm:inline">Search</span>
             </button>
-          )}
-
-          {/* Search Button */}
-          <button
-            type="submit"
-            disabled={isLoading || !query.trim()}
-            className={cn(
-              'mr-2 px-5 py-2.5 rounded-xl font-semibold text-white transition-all duration-200',
-              'bg-gradient-to-r from-purple-500 to-pink-500',
-              'hover:from-purple-600 hover:to-pink-600',
-              'disabled:opacity-50 disabled:cursor-not-allowed',
-              'flex items-center gap-2'
-            )}
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Search className="w-5 h-5" />
-            )}
-            <span className="hidden sm:inline">Search</span>
-          </button>
+          </div>
         </div>
 
-        {/* Location Indicator */}
+        {/* Location Indicator — below the pass */}
         {nearestAirport && (
-          <div className="absolute -bottom-6 left-4 flex items-center gap-1 text-xs text-white/80">
-            <MapPin className="w-3 h-3" />
+          <div className="absolute -bottom-7 left-5 flex items-center gap-1.5 text-xs text-slate-400">
+            <MapPin className="w-3.5 h-3.5" />
             <span>Flying from {nearestAirport}</span>
           </div>
         )}
-        {isLocating && (
-          <div className="absolute -bottom-6 left-4 flex items-center gap-1 text-xs text-white/80">
-            <Loader2 className="w-3 h-3 animate-spin" />
+        {isLocating && !nearestAirport && (
+          <div className="absolute -bottom-7 left-5 flex items-center gap-1.5 text-xs text-slate-400">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
             <span>Detecting your location...</span>
           </div>
         )}
@@ -232,7 +256,7 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
 
       {/* Error Message */}
       {error && (
-        <div className="mt-2 px-4 py-2 rounded-lg bg-red-100 text-red-700 text-sm">
+        <div className="mt-8 px-4 py-2 rounded-lg bg-red-100 text-red-700 text-sm">
           {error}
         </div>
       )}

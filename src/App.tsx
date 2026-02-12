@@ -8,6 +8,7 @@ import FlightDetailPage from './pages/FlightDetailPage';
 import ComparePage from './pages/ComparePage';
 import FavoritesPage from './pages/FavoritesPage';
 import TravelersPage from './pages/TravelersPage';
+import { BookingReturnPopup } from './components/common/BookingTracker';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +34,7 @@ function App() {
               <Route path="travelers" element={<TravelersPage />} />
             </Route>
           </Routes>
+          <BookingReturnPopup />
         </Router>
       </AuthProvider>
     </QueryClientProvider>

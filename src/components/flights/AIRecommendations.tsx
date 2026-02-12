@@ -38,9 +38,9 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 mb-6 border-2 border-purple-200 shadow-sm">
+      <div className="bg-gradient-to-r from-blue-50 to-amber-50 rounded-2xl p-4 mb-6 border-2 border-blue-200 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500">
+          <div className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-amber-500">
             <Sparkles className="w-5 h-5 text-white animate-pulse" />
           </div>
           <div>
@@ -78,22 +78,22 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
   const requirementChecks = (topPick as { ai_requirement_checks?: AIRequirementCheck[] }).ai_requirement_checks || [];
 
   return (
-    <div className="bg-gradient-to-r from-purple-50 via-pink-50 to-purple-50 rounded-2xl p-4 mb-6 border-2 border-purple-200 shadow-md relative overflow-hidden">
+    <div className="bg-gradient-to-r from-blue-50 via-sky-50 to-amber-50 rounded-2xl p-4 mb-6 border-2 border-blue-200 shadow-md relative overflow-hidden">
       {/* Decorative background sparkles */}
       <div className="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none">
-        <Sparkles className="w-full h-full text-purple-500" />
+        <Sparkles className="w-full h-full text-blue-500" />
       </div>
 
       {/* Header */}
       <div className="flex items-center justify-between mb-3 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg">
+          <div className="p-2 rounded-xl bg-gradient-to-r from-blue-500 to-amber-500 shadow-lg">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-gray-800 text-lg">AI Top Pick</h3>
-              <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-0.5 rounded-full font-medium">
+              <span className="text-xs bg-gradient-to-r from-blue-500 to-amber-500 text-white px-2 py-0.5 rounded-full font-medium">
                 {isAISearch ? 'Best Match' : '#1 For You'}
               </span>
             </div>
@@ -131,9 +131,9 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
           {reasons.map((reason, i) => (
             <span
               key={i}
-              className="text-xs bg-white/80 backdrop-blur-sm text-purple-700 px-3 py-1.5 rounded-full border border-purple-200 font-medium flex items-center gap-1"
+              className="text-xs bg-white/80 backdrop-blur-sm text-blue-700 px-3 py-1.5 rounded-full border border-blue-200 font-medium flex items-center gap-1"
             >
-              <Star className="w-3 h-3 text-purple-500" />
+              <Star className="w-3 h-3 text-blue-500" />
               {reason}
             </span>
           ))}

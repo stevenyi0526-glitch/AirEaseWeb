@@ -866,7 +866,6 @@ const FlightsPage: React.FC = () => {
     if (flightWithToken) {
       // Use booking token via backend → SerpAPI booking_options
       const firstFlight = flights[0].flight;
-      const lastFlight = flights[flights.length - 1].flight;
       const outboundDate = new Date(firstFlight.departureTime).toISOString().split('T')[0];
       
       const params: Parameters<typeof bookingApi.openBookingPage>[0] = {
@@ -880,10 +879,9 @@ const FlightsPage: React.FC = () => {
         preferExpedia: !allSameAirline,
       };
       
-      // Add return date if round trip (2 flights)
-      if (flights.length === 2) {
-        params.returnDate = new Date(lastFlight.departureTime).toISOString().split('T')[0];
-      }
+      // Note: We do NOT pass returnDate here. The booking_token is self-contained
+      // and already encodes the flight segments. Passing a mismatched returnDate
+      // (e.g., from a one-way token) causes SerpAPI to return 0 booking options.
       
       bookingApi.openBookingPage(params);
     } else {

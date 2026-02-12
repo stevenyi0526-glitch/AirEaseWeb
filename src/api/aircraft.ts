@@ -41,9 +41,11 @@ export interface SafetyProfile {
     tail_number: string | null;
     airline: string | null;
     model: string | null;
+    model_query: string | null;
     built_year: number | null;
     age_years: number | null;
     age_label: string | null;
+    num_seats: number | null;
   };
   technical_specs: {
     engine: string | null;
@@ -56,6 +58,10 @@ export interface SafetyProfile {
     airline_total_accidents: number;
     model_total_accidents: number;
   };
+  aircraft_image?: {
+    url: string;
+    attribution: string | null;
+  } | null;
 }
 
 export interface FleetStats {
@@ -170,5 +176,55 @@ export async function fetchSafetyProfile(params: {
   } catch (error) {
     console.error('Safety profile fetch failed:', error);
     return null;
+  }
+}
+
+// ── Incident Records (paginated NTSB narratives) ──
+
+export interface IncidentRecord {
+  ev_id: string;
+  date: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  injury_severity: string | null;
+  model: string | null;
+  operator: string | null;
+  registration: string | null;
+  cause: string | null;
+  description: string | null;
+}
+
+export interface IncidentResponse {
+  records: IncidentRecord[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+/**
+ * Fetch paginated NTSB incident records with narratives.
+ */
+export async function fetchIncidents(params: {
+  queryType: 'tail' | 'airline' | 'model';
+  queryValue: string;
+  page?: number;
+  perPage?: number;
+}): Promise<IncidentResponse> {
+  try {
+    const searchParams = new URLSearchParams({
+      query_type: params.queryType,
+      query_value: params.queryValue,
+      page: String(params.page ?? 1),
+      per_page: String(params.perPage ?? 10),
+    });
+    const response = await apiClient.get<IncidentResponse>(
+      `/v1/aircraft/incidents?${searchParams.toString()}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Incidents fetch failed:', error);
+    return { records: [], total: 0, page: 1, per_page: 10, total_pages: 0 };
   }
 }

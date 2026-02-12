@@ -368,6 +368,18 @@
   .animate-fly-plane {
     animation: fly-plane 2s ease-in-out infinite;
   }
+
+  /* Booking review modal entrance */
+  @keyframes fadeInScale {
+    0% {
+      opacity: 0;
+      transform: scale(0.9) translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
 }
 
 /* Leaflet map z-index fix - ensure map stays below header */

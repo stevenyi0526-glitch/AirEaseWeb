@@ -5,6 +5,7 @@ import SearchForm from '../components/search/SearchForm';
 import AISearchBar from '../components/search/AISearchBar';
 import { getGreeting } from '../utils/formatters';
 import { apiClient } from '../api/client';
+import { cn } from '../utils/cn';
 
 interface SearchHistoryItem {
   id: number;
@@ -84,7 +85,7 @@ const HomePage: React.FC = () => {
                 onClick={() => setSearchMode('ai')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                   searchMode === 'ai'
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                    ? 'bg-gradient-to-r from-blue-500 to-amber-500 text-white shadow-lg'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -108,11 +109,16 @@ const HomePage: React.FC = () => {
       </div>
 
       {/* Search Section */}
-      <div className="relative z-10 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-4">
+      <div className={cn(
+        "relative z-10 mx-auto px-4",
+        searchMode === 'ai'
+          ? "w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl"
+          : "w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl"
+      )}>
         {searchMode === 'ai' ? (
-          <div className="mb-10">
+          <div className="mb-12">
             <AISearchBar />
-            <p className="text-center text-slate-400 text-sm mt-6">
+            <p className="text-center text-slate-400 text-sm mt-10">
               Just describe what you're looking for in natural language
             </p>
           </div>
@@ -121,41 +127,131 @@ const HomePage: React.FC = () => {
         )}
       </div>
 
-      {/* Features Section - Why Choose Airease */}
+      {/* Features Section - Why Choose Airease (Airplane Window Design) */}
       <div className="relative z-10 mt-6 pb-4">
         <div className="w-full max-w-sm sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 py-8">
-          <h2 className="text-lg sm:text-xl font-semibold text-center text-slate-800 mb-6">
+          <h2 className="text-lg sm:text-xl font-semibold text-center text-slate-800 mb-8">
             Why Choose Airease?
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-100 text-center hover:shadow-md transition-shadow">
-              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-green-50 flex items-center justify-center">
-                <span className="text-lg sm:text-xl">🎯</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6">
+            {/* Card 1 - Smart Scoring */}
+            <div
+              className="bg-white text-center group cursor-default"
+              style={{
+                borderRadius: '55px',
+                border: '12px solid #eef2f6',
+                boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06)',
+                overflow: 'hidden',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = 'inset 0 4px 12px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'inset 0 4px 12px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06)';
+              }}
+            >
+              <div className="h-36 sm:h-40 overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&h=400&q=80"
+                  alt="Smart flight scoring"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null;
+                    target.src = 'https://images.unsplash.com/photo-1556388158-158ea5ccacbd?auto=format&fit=crop&w=600&h=400&q=80';
+                  }}
+                />
               </div>
-              <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">Smart Scoring</h3>
-              <p className="text-slate-500 text-xs">
-                Our Airease Score helps you find flights with the best balance of price, comfort, and service.
-              </p>
+              <div className="px-5 pt-4" style={{ paddingBottom: '40px' }}>
+                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">Smart Scoring</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  Our Airease Score helps you find flights with the best balance of price, comfort, and service.
+                </p>
+              </div>
             </div>
 
-            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-100 text-center hover:shadow-md transition-shadow">
-              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-blue-50 flex items-center justify-center">
-                <span className="text-lg sm:text-xl">✈️</span>
+            {/* Card 2 - Compare Easily */}
+            <div
+              className="bg-white text-center group cursor-default"
+              style={{
+                borderRadius: '55px',
+                border: '12px solid #eef2f6',
+                boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06)',
+                overflow: 'hidden',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = 'inset 0 4px 12px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'inset 0 4px 12px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06)';
+              }}
+            >
+              <div className="h-36 sm:h-40 overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1556388169-db19adc96088?auto=format&fit=crop&w=600&h=400&q=80"
+                  alt="Compare flights easily"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null;
+                    target.src = 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=600&h=400&q=80';
+                  }}
+                />
               </div>
-              <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">Compare Easily</h3>
-              <p className="text-slate-500 text-xs">
-                See all the details that matter - WiFi, seat pitch, meals, and more - at a glance.
-              </p>
+              <div className="px-5 pt-4" style={{ paddingBottom: '40px' }}>
+                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">Compare Easily</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  See all the details that matter - WiFi, seat pitch, meals, and more - at a glance.
+                </p>
+              </div>
             </div>
 
-            <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-100 text-center hover:shadow-md transition-shadow">
-              <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-yellow-50 flex items-center justify-center">
-                <span className="text-lg sm:text-xl">💰</span>
+            {/* Card 3 - Best Value */}
+            <div
+              className="bg-white text-center group cursor-default"
+              style={{
+                borderRadius: '55px',
+                border: '12px solid #eef2f6',
+                boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06)',
+                overflow: 'hidden',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = 'inset 0 4px 12px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'inset 0 4px 12px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06)';
+              }}
+            >
+              <div className="h-36 sm:h-40 overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1483450389192-3d2a08510e8e?auto=format&fit=crop&w=600&h=400&q=80"
+                  alt="Best value flights"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null;
+                    target.src = 'https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?auto=format&fit=crop&w=600&h=400&q=80';
+                  }}
+                />
               </div>
-              <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">Best Value</h3>
-              <p className="text-slate-500 text-xs">
-                AI-powered analysis to ensure you're getting a great deal on every flight.
-              </p>
+              <div className="px-5 pt-4" style={{ paddingBottom: '40px' }}>
+                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">Best Value</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  AI-powered analysis to ensure you're getting a great deal on every flight.
+                </p>
+              </div>
             </div>
           </div>
         </div>

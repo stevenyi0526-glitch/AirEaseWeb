@@ -216,8 +216,9 @@ const SharePoster: React.FC<SharePosterProps> = ({
                   }}
                 />
               </div>
-              <div className="grid grid-cols-3 gap-2 mt-3">
+              <div className="grid grid-cols-4 gap-2 mt-3">
                 {[
+                  { label: 'Safety', value: score.dimensions.safety ?? 10 },
                   { label: 'Reliability', value: score.dimensions.reliability },
                   { label: 'Comfort', value: score.dimensions.comfort },
                   { label: 'Service', value: score.dimensions.service },

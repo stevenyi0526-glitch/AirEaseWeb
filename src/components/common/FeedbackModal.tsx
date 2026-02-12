@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { X, Send, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { X, Send, AlertCircle, CheckCircle, Loader2, Star, MessageSquareWarning } from 'lucide-react';
 import type { ReportCategory, ReportCreate } from '../../api/reports';
 import { REPORT_CATEGORIES, submitReport } from '../../api/reports';
 
@@ -36,6 +36,12 @@ export function FeedbackModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<'report' | 'rating'>('report');
+  
+  // Trip rating state
+  const [tripRating, setTripRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [tripComment, setTripComment] = useState('');
   
   // Manual flight info input (when not provided via props)
   const [manualFlightNumber, setManualFlightNumber] = useState('');
@@ -131,7 +137,7 @@ export function FeedbackModal({
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">Feedback & Report</h2>
+            <h2 className="text-xl font-bold text-white">Feedback & Rating</h2>
             <button
               onClick={handleClose}
               disabled={isSubmitting}
@@ -140,11 +146,187 @@ export function FeedbackModal({
               <X className="w-5 h-5 text-white" />
             </button>
           </div>
-          <p className="text-sm text-white/80 mt-1">
-            Report data issues or suggest improvements
-          </p>
+          {/* Tab Switcher */}
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => setActiveTab('rating')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                activeTab === 'rating'
+                  ? 'bg-white text-purple-700'
+                  : 'bg-white/20 text-white/80 hover:bg-white/30'
+              }`}
+            >
+              <Star className="w-3.5 h-3.5" />
+              Rate Trip
+            </button>
+            <button
+              onClick={() => setActiveTab('report')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                activeTab === 'report'
+                  ? 'bg-white text-blue-700'
+                  : 'bg-white/20 text-white/80 hover:bg-white/30'
+              }`}
+            >
+              <MessageSquareWarning className="w-3.5 h-3.5" />
+              Report Issue
+            </button>
+          </div>
         </div>
 
+        {/* Trip Rating Tab */}
+        {activeTab === 'rating' && (
+          <div className="p-6 space-y-4">
+            {/* Flight Info Banner */}
+            {hasPrefilledFlightInfo && (
+              <div className="bg-purple-50 dark:bg-purple-900/30 px-4 py-3 rounded-lg border border-purple-100 dark:border-purple-800">
+                <div className="text-sm">
+                  <span className="text-gray-500 dark:text-gray-400">Rating for: </span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {flightInfo.flightNumber && `${flightInfo.flightNumber} `}
+                    {flightInfo.airline && `(${flightInfo.airline}) `}
+                    {flightInfo.route && `• ${flightInfo.route}`}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Star Rating */}
+            <div className="text-center py-4">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                How was your trip?
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    onClick={() => setTripRating(star)}
+                    className="transition-transform hover:scale-110"
+                  >
+                    <Star
+                      className={`w-10 h-10 transition-colors ${
+                        star <= (hoverRating || tripRating)
+                          ? 'text-amber-400 fill-amber-400'
+                          : 'text-gray-300'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                {tripRating === 0
+                  ? 'Tap a star to rate'
+                  : tripRating <= 2
+                  ? 'We\'re sorry to hear that'
+                  : tripRating <= 3
+                  ? 'Thanks for your feedback'
+                  : tripRating <= 4
+                  ? 'Glad you enjoyed it!'
+                  : 'Excellent! ✨'}
+              </p>
+            </div>
+
+            {/* Comment */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Share your experience <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <textarea
+                value={tripComment}
+                onChange={(e) => setTripComment(e.target.value)}
+                placeholder="Tell us more about your flight experience..."
+                rows={3}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                         focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                         placeholder:text-gray-400 resize-none"
+                maxLength={1000}
+                disabled={isSubmitting}
+              />
+            </div>
+
+            {/* Status Messages */}
+            {submitStatus === 'error' && (
+              <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg text-red-600 dark:text-red-400">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm">{errorMessage}</span>
+              </div>
+            )}
+
+            {submitStatus === 'success' && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400">
+                <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm">Thank you for rating this trip!</span>
+              </div>
+            )}
+
+            {/* Submit Rating */}
+            <button
+              type="button"
+              disabled={isSubmitting || submitStatus === 'success' || tripRating === 0}
+              onClick={async () => {
+                if (tripRating === 0) return;
+                setIsSubmitting(true);
+                setSubmitStatus('idle');
+                try {
+                  await submitReport({
+                    userEmail: email || 'anonymous@airease.ai',
+                    category: 'other',
+                    content: `[TRIP RATING: ${tripRating}/5] ${tripComment || 'No additional comment'}`,
+                    flightId: flightInfo?.id,
+                    flightInfo: hasPrefilledFlightInfo ? {
+                      airline: flightInfo.airline,
+                      flightNumber: flightInfo.flightNumber,
+                      route: flightInfo.route,
+                      date: flightInfo.date,
+                    } : undefined,
+                  });
+                  setSubmitStatus('success');
+                  setTimeout(() => {
+                    setTripRating(0);
+                    setTripComment('');
+                    setSubmitStatus('idle');
+                    onClose();
+                  }, 2000);
+                } catch {
+                  setErrorMessage('Failed to submit rating. Please try again.');
+                  setSubmitStatus('error');
+                } finally {
+                  setIsSubmitting(false);
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 
+                       bg-gradient-to-r from-amber-500 to-orange-500 
+                       hover:from-amber-600 hover:to-orange-600
+                       text-white font-medium rounded-lg
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       transition-all duration-200"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Submitting...
+                </>
+              ) : submitStatus === 'success' ? (
+                <>
+                  <CheckCircle className="w-5 h-5" />
+                  Submitted!
+                </>
+              ) : (
+                <>
+                  <Star className="w-5 h-5" />
+                  Submit Rating
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Report Issue Tab */}
+        {activeTab === 'report' && (
+        <>
         {/* Flight Info Banner (if provided via props) */}
         {hasPrefilledFlightInfo && (
           <div className="bg-blue-50 dark:bg-blue-900/30 px-6 py-3 border-b border-blue-100 dark:border-blue-800">
@@ -339,6 +521,8 @@ export function FeedbackModal({
             Your feedback helps us improve. We'll respond via email.
           </p>
         </form>
+        </>
+        )}
       </div>
     </div>
   );
