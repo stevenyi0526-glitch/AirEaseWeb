@@ -129,11 +129,11 @@ const HomePage: React.FC = () => {
 
       {/* Features Section - Why Choose Airease (Airplane Window Design) */}
       <div className="relative z-10 mt-6 pb-4">
-        <div className="w-full max-w-sm sm:max-w-lg md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 py-8">
+        <div className="w-full max-w-sm sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 py-8">
           <h2 className="text-lg sm:text-xl font-semibold text-center text-slate-800 mb-8">
             Why Choose Airease?
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
             {/* Card 1 - Smart Scoring */}
             <div
               className="bg-white text-center group cursor-default"
@@ -253,6 +253,46 @@ const HomePage: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            {/* Card 4 - Safety Records */}
+            <div
+              className="bg-white text-center group cursor-default"
+              style={{
+                borderRadius: '55px',
+                border: '12px solid #eef2f6',
+                boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06)',
+                overflow: 'hidden',
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = 'inset 0 4px 12px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'inset 0 4px 12px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06)';
+              }}
+            >
+              <div className="h-36 sm:h-40 overflow-hidden">
+                <img
+                  src="https://images.unsplash.com/photo-1540962351504-03099e0a754b?auto=format&fit=crop&w=600&h=400&q=80"
+                  alt="Safety incident records"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null;
+                    target.src = 'https://images.unsplash.com/photo-1474302770737-173ee21bab63?auto=format&fit=crop&w=600&h=400&q=80';
+                  }}
+                />
+              </div>
+              <div className="px-5 pt-4" style={{ paddingBottom: '40px' }}>
+                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">Safety Records</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">
+                  Browse NTSB incident records for any airline and aircraft model — full transparency, all verified.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -315,12 +355,6 @@ const HomePage: React.FC = () => {
 
       {/* Footer */}
       <footer className="relative z-10 w-full py-6 text-center">
-        <div className="flex justify-center space-x-8 text-sm text-slate-400 font-light">
-          <a className="hover:text-primary transition-colors" href="#">About</a>
-          <a className="hover:text-primary transition-colors" href="#">Destinations</a>
-          <a className="hover:text-primary transition-colors" href="#">Privacy</a>
-          <a className="hover:text-primary transition-colors" href="#">Settings</a>
-        </div>
         <div className="mt-3 text-xs text-slate-300">
           © 2025 Airease Inc.
         </div>
