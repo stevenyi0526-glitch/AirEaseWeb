@@ -117,7 +117,7 @@ export function BookingReviewModal({
       {/* Modal */}
       <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden animate-[fadeInScale_0.3s_ease-out]">
         {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-5 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-[#034891] to-[#0560B8] px-6 py-5 relative overflow-hidden">
           {/* Decorative circles */}
           <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full" />
           <div className="absolute -right-2 top-8 w-16 h-16 bg-white/5 rounded-full" />
@@ -148,7 +148,7 @@ export function BookingReviewModal({
               <span className="text-sm font-semibold text-gray-900 dark:text-white">
                 {flightInfo.airline || 'Airline'}
               </span>
-              <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-medium text-[#034891] dark:text-[#0560B8] bg-[#E6F0FA] dark:bg-[#023670]/30 px-2 py-0.5 rounded-full">
                 {flightInfo.flightNumber || ''}
               </span>
             </div>
@@ -220,7 +220,7 @@ export function BookingReviewModal({
               rows={3}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600
                        bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-white text-sm
-                       focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                       focus:ring-2 focus:ring-[#034891] focus:border-transparent
                        placeholder:text-gray-400 resize-none transition-all"
               maxLength={1000}
               disabled={isSubmitting || submitStatus === 'success'}
@@ -251,8 +251,8 @@ export function BookingReviewModal({
             onClick={handleSubmit}
             disabled={rating === 0 || isSubmitting || submitStatus === 'success'}
             className="w-full flex items-center justify-center gap-2 px-6 py-3
-                     bg-gradient-to-r from-sky-500 to-blue-600
-                     hover:from-sky-600 hover:to-blue-700
+                     bg-gradient-to-r from-[#034891] to-[#0560B8]
+                     hover:from-[#023670] hover:to-[#034891]
                      text-white font-semibold rounded-xl
                      disabled:opacity-50 disabled:cursor-not-allowed
                      transition-all duration-200 shadow-md hover:shadow-lg"

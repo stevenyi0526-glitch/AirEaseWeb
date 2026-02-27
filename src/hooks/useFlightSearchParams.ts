@@ -26,7 +26,7 @@ export interface FlightSearchFilters {
   multiCityLegs: MultiCityLeg[];
 
   // Filter params
-  stops: string; // 'any', '0', '1', '2+'
+  stops: string; // 'any', '0', '1', '2'
   minPrice: number | undefined;
   maxPrice: number | undefined;
   airlines: string[];

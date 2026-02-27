@@ -314,7 +314,7 @@ export function FlightRouteMap({
             key={idx}
             positions={segment}
             pathOptions={{
-              color: '#3b82f6',
+              color: '#034891',
               weight: 3,
               opacity: 0.8,
               dashArray: '10, 5',
@@ -392,7 +392,7 @@ export function FlightRouteMap({
     {flightInfo && (
       <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg text-white">
         <div className="flex items-center gap-2 text-sm">
-          <Plane className="w-4 h-4 text-blue-400" /> {/* 调整图标颜色以在深色背景上更清晰 */}
+          <Plane className="w-4 h-4 text-[#0560B8]" /> {/* 调整图标颜色以在深色背景上更清晰 */}
           <span className="font-medium">{flightInfo.distance.toLocaleString()} km</span>
         </div>
       </div>

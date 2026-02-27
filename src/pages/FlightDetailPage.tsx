@@ -181,7 +181,7 @@ const FlightDetailPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-[#64B5F6] text-white">
+      <header className="bg-[#034891] text-white">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <button
             onClick={() => navigate(-1)}
@@ -509,7 +509,7 @@ const FlightDetailPage: React.FC = () => {
                         )}
                       </div>
                       <div className="text-center group/stat relative">
-                        <p className="text-lg font-bold text-blue-700 cursor-help">
+                        <p className="text-lg font-bold text-[#034891] cursor-help">
                           {safetyProfile.safety_records.airline_total_accidents}
                         </p>
                         <p className="text-xs text-text-muted cursor-help">Airline (10yr)</p>
@@ -527,7 +527,7 @@ const FlightDetailPage: React.FC = () => {
                               queryValue: safetyProfile.flight_info.airline!,
                               label: safetyProfile.flight_info.airline!,
                             })}
-                            className="mt-1.5 text-[11px] font-medium text-blue-700 hover:text-blue-900 hover:underline transition-colors"
+                            className="mt-1.5 text-[11px] font-medium text-[#034891] hover:text-[#023670] hover:underline transition-colors"
                           >
                             View Records →
                           </button>

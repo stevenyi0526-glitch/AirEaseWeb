@@ -180,7 +180,7 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
                 style={{ backgroundColor: '#f5f7f8', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)' }}
               />
             </div>
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-amber-500">
+            <div className="p-2.5 rounded-xl bg-blue-500">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
           </div>
@@ -224,7 +224,7 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
               disabled={isLoading || !query.trim()}
               className={cn(
                 'px-6 py-3 rounded-xl font-semibold text-white transition-all duration-200',
-                'bg-[#8da2fb] hover:bg-[#7c92f0]',
+                'bg-[#034891] hover:bg-[#023670]',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 'flex items-center gap-2 whitespace-nowrap'
               )}

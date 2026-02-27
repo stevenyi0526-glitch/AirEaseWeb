@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Plane, SlidersHorizontal, Search, Calendar, ChevronDown, ExternalLink, Check } from 'lucide-react';
+import { ArrowLeft, Plane, SlidersHorizontal, Search, Calendar, ChevronDown } from 'lucide-react';
 import { flightsApi } from '../api/flights';
 import { generateRecommendations } from '../api/recommendations';
 import { trackSortAction, trackFlightSelection } from '../api/preferences';
@@ -13,6 +13,7 @@ import FilterPanel from '../components/filters/FilterPanel';
 import SortDropdown from '../components/filters/SortDropdown';
 import FlightCard from '../components/flights/FlightCard';
 import FlightCardSkeleton from '../components/flights/FlightCardSkeleton';
+import FloatingSelectedBar from '../components/flights/FloatingSelectedBar';
 import PriceTrendChart from '../components/flights/PriceTrendChart';
 import CompareTray from '../components/compare/CompareTray';
 import FilterBottomSheet from '../components/filters/FilterBottomSheet';
@@ -339,6 +340,48 @@ const FlightsPage: React.FC = () => {
     gcTime: 15 * 60 * 1000,
   });
 
+  // ============================================================================
+  // COMBINED RETURN FLIGHTS QUERY
+  // ============================================================================
+  // When a departure flight is selected, re-fetch return flights using its
+  // departure_token via SerpAPI's proper round-trip flow. This gives return
+  // flights with COMBINED booking tokens that encode BOTH legs, so booking
+  // platforms like Jettzy/Expedia will book the full round trip.
+  // ============================================================================
+  const selectedDepartureToken = selectedDepartureFlight?.flight.departureToken;
+  const {
+    data: combinedReturnFlights,
+    isLoading: isLoadingCombinedReturn,
+    isFetching: isFetchingCombinedReturn,
+  } = useQuery({
+    queryKey: ['combined-return-flights', selectedDepartureToken, filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, travelerType],
+    queryFn: async () => {
+      if (!selectedDepartureToken || !filters.returnDate) return null;
+      console.log('[CombinedReturn] Fetching return flights with departure_token for combined booking tokens');
+      const response = await flightsApi.getReturnFlights({
+        departureToken: selectedDepartureToken,
+        from: filters.from,
+        to: filters.to,
+        date: filters.date,
+        returnDate: filters.returnDate,
+        cabin: filters.cabin,
+        adults: filters.adults,
+        currency: 'USD',
+        travelerType: travelerType as 'student' | 'business' | 'family' | 'default',
+      });
+      // Filter out flights with price = 0
+      const valid = response.flights.filter(f => f.flight.price > 0);
+      console.log('[CombinedReturn] Got', valid.length, 'return flights with combined booking tokens');
+      return valid;
+    },
+    enabled: !!selectedDepartureToken && filters.tripType === 'roundtrip' && !!filters.returnDate,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
+
   // Multi-city query - searches each leg independently
   const {
     data: multiCityData,
@@ -371,15 +414,154 @@ const FlightsPage: React.FC = () => {
     gcTime: 15 * 60 * 1000,
   });
 
+  // ============================================================================
+  // Seat Availability: ONE batch API call per route using Amadeus API
+  // Supports all trip types: one-way, round trip, and multi-city.
+  // Each route+date gets its own cached query (no per-flight calls).
+  // ============================================================================
+
+  // --- One-way availability (also used for round-trip-without-return fallback) ---
+  const firstFlight = rawData?.flights?.[0]?.flight;
+  const { data: availabilityData, isFetching: isAvailabilityLoading } = useQuery({
+    queryKey: ['flight-availability', firstFlight?.departureCityCode, firstFlight?.arrivalCityCode, filters.date, filters.cabin],
+    queryFn: () => flightsApi.getAvailability({
+      origin: firstFlight!.departureCityCode,
+      destination: firstFlight!.arrivalCityCode,
+      date: filters.date,
+      cabin: filters.cabin,
+    }),
+    enabled: !!firstFlight?.departureCityCode && !!firstFlight?.arrivalCityCode && !!filters.date,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 1,
+  });
+
+  // --- Round trip: departure leg availability ---
+  const firstDepartureFlight = roundTripData?.departureFlights?.[0]?.flight;
+  const { data: rtDepartureAvailability, isFetching: isRtDepAvailLoading } = useQuery({
+    queryKey: ['flight-availability', firstDepartureFlight?.departureCityCode, firstDepartureFlight?.arrivalCityCode, filters.date, filters.cabin],
+    queryFn: () => flightsApi.getAvailability({
+      origin: firstDepartureFlight!.departureCityCode,
+      destination: firstDepartureFlight!.arrivalCityCode,
+      date: filters.date,
+      cabin: filters.cabin,
+    }),
+    enabled: !!firstDepartureFlight?.departureCityCode && !!firstDepartureFlight?.arrivalCityCode && !!filters.date,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 1,
+  });
+
+  // --- Round trip: return leg availability ---
+  const firstReturnFlight = roundTripData?.returnFlights?.[0]?.flight;
+  const { data: rtReturnAvailability, isFetching: isRtRetAvailLoading } = useQuery({
+    queryKey: ['flight-availability', firstReturnFlight?.departureCityCode, firstReturnFlight?.arrivalCityCode, filters.returnDate, filters.cabin],
+    queryFn: () => flightsApi.getAvailability({
+      origin: firstReturnFlight!.departureCityCode,
+      destination: firstReturnFlight!.arrivalCityCode,
+      date: filters.returnDate!,
+      cabin: filters.cabin,
+    }),
+    enabled: !!firstReturnFlight?.departureCityCode && !!firstReturnFlight?.arrivalCityCode && !!filters.returnDate,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 1,
+  });
+
+  // --- Multi-city: one availability query per leg ---
+  const multiCityAvailabilityQueries = (filters.tripType === 'multicity' ? filters.multiCityLegs : []).map((leg, idx) => {
+    const legFirstFlight = multiCityData?.[idx]?.flights?.[0]?.flight;
+    return {
+      origin: legFirstFlight?.departureCityCode || '',
+      destination: legFirstFlight?.arrivalCityCode || '',
+      date: leg.date,
+      enabled: !!legFirstFlight?.departureCityCode && !!legFirstFlight?.arrivalCityCode && !!leg.date,
+    };
+  });
+  // Fetch availability for multi-city leg 0
+  const { data: mcAvailability0, isFetching: isMcAvail0Loading } = useQuery({
+    queryKey: ['flight-availability', multiCityAvailabilityQueries[0]?.origin, multiCityAvailabilityQueries[0]?.destination, multiCityAvailabilityQueries[0]?.date, filters.cabin],
+    queryFn: () => flightsApi.getAvailability({
+      origin: multiCityAvailabilityQueries[0].origin,
+      destination: multiCityAvailabilityQueries[0].destination,
+      date: multiCityAvailabilityQueries[0].date,
+      cabin: filters.cabin,
+    }),
+    enabled: !!multiCityAvailabilityQueries[0]?.enabled,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 1,
+  });
+  // Fetch availability for multi-city leg 1
+  const { data: mcAvailability1, isFetching: isMcAvail1Loading } = useQuery({
+    queryKey: ['flight-availability', multiCityAvailabilityQueries[1]?.origin, multiCityAvailabilityQueries[1]?.destination, multiCityAvailabilityQueries[1]?.date, filters.cabin],
+    queryFn: () => flightsApi.getAvailability({
+      origin: multiCityAvailabilityQueries[1].origin,
+      destination: multiCityAvailabilityQueries[1].destination,
+      date: multiCityAvailabilityQueries[1].date,
+      cabin: filters.cabin,
+    }),
+    enabled: !!multiCityAvailabilityQueries[1]?.enabled,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 1,
+  });
+  // Fetch availability for multi-city leg 2 (optional third leg)
+  const { data: mcAvailability2, isFetching: isMcAvail2Loading } = useQuery({
+    queryKey: ['flight-availability', multiCityAvailabilityQueries[2]?.origin, multiCityAvailabilityQueries[2]?.destination, multiCityAvailabilityQueries[2]?.date, filters.cabin],
+    queryFn: () => flightsApi.getAvailability({
+      origin: multiCityAvailabilityQueries[2]?.origin || '__none__',
+      destination: multiCityAvailabilityQueries[2]?.destination || '__none__',
+      date: multiCityAvailabilityQueries[2]?.date || '__none__',
+      cabin: filters.cabin,
+    }),
+    enabled: !!multiCityAvailabilityQueries[2]?.enabled,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 1,
+  });
+  // Collect multi-city availability into an array
+  const multiCityAvailability = [mcAvailability0, mcAvailability1, mcAvailability2];
+
   // Active leg tab for multi-city (0-indexed)
   const [activeMultiCityLeg, setActiveMultiCityLeg] = useState(0);
 
+  // Unified loading state for seat availability across all trip types
+  const isTicketAvailabilityLoading = useMemo(() => {
+    if (filters.tripType === 'multicity') {
+      const loadingArr = [isMcAvail0Loading, isMcAvail1Loading, isMcAvail2Loading];
+      return loadingArr[activeMultiCityLeg] ?? false;
+    }
+    if (filters.tripType === 'roundtrip' && filters.returnDate) {
+      return activeFlightTab === 'departure' ? isRtDepAvailLoading : isRtRetAvailLoading;
+    }
+    return isAvailabilityLoading;
+  }, [filters.tripType, filters.returnDate, activeFlightTab, activeMultiCityLeg,
+      isAvailabilityLoading, isRtDepAvailLoading, isRtRetAvailLoading,
+      isMcAvail0Loading, isMcAvail1Loading, isMcAvail2Loading]);
+
   // Filter and sort flights locally based on user's filter/sort selection (no API call needed)
+  // Also merges seat availability data from Amadeus when available
   const sortedFlights = useMemo(() => {
     if (!rawData?.flights) return [];
     
     // First apply all filters
     let flights = [...rawData.flights];
+
+    // Merge seat availability data from Amadeus (if available)
+    if (availabilityData && Object.keys(availabilityData).length > 0) {
+      flights = flights.map(f => {
+        const flightNum = f.flight.flightNumber; // e.g. "CX 888"
+        const seats = availabilityData[flightNum];
+        if (seats !== undefined) {
+          return {
+            ...f,
+            flight: { ...f.flight, seatsRemaining: seats },
+          };
+        }
+        return f;
+      });
+    }
     
     // Filter by stops
     if (filters.stops !== 'any') {
@@ -387,8 +569,8 @@ const FlightsPage: React.FC = () => {
       flights = flights.filter(f => {
         const stops = f.flight.stops;
         if (stopsFilter === '0') return stops === 0; // Direct only
-        if (stopsFilter === '1') return stops <= 1;   // 1 stop or less
-        if (stopsFilter === '2+') return stops >= 2;  // 2+ stops
+        if (stopsFilter === '1') return stops === 1;   // Exactly 1 stop
+        if (stopsFilter === '2') return stops === 2;   // Exactly 2 stops
         return true;
       });
     }
@@ -453,11 +635,24 @@ const FlightsPage: React.FC = () => {
       default:
         return flights;
     }
-  }, [rawData?.flights, filters.sortBy, filters.stops, filters.departureTimeMin, filters.departureTimeMax, filters.minPrice, filters.maxPrice, filters.airlines, filters.aircraftType]);
+  }, [rawData?.flights, availabilityData, filters.sortBy, filters.stops, filters.departureTimeMin, filters.departureTimeMax, filters.minPrice, filters.maxPrice, filters.airlines, filters.aircraftType]);
 
-  // Helper function to filter and sort flights (reusable for both one-way and round trip)
-  const filterAndSortFlights = (flights: FlightWithScore[]): FlightWithScore[] => {
+  // Helper function to filter, sort, and merge availability for flights
+  // Used by round trip and multi-city legs
+  const filterAndSortFlights = (flights: FlightWithScore[], seatAvailability?: Record<string, number>): FlightWithScore[] => {
     let result = [...flights];
+
+    // Merge seat availability data from Amadeus (if available)
+    if (seatAvailability && Object.keys(seatAvailability).length > 0) {
+      result = result.map(f => {
+        const flightNum = f.flight.flightNumber;
+        const seats = seatAvailability[flightNum];
+        if (seats !== undefined) {
+          return { ...f, flight: { ...f.flight, seatsRemaining: seats } };
+        }
+        return f;
+      });
+    }
     
     // Filter by stops
     if (filters.stops !== 'any') {
@@ -465,8 +660,8 @@ const FlightsPage: React.FC = () => {
       result = result.filter(f => {
         const stops = f.flight.stops;
         if (stopsFilter === '0') return stops === 0;
-        if (stopsFilter === '1') return stops <= 1;
-        if (stopsFilter === '2+') return stops >= 2;
+        if (stopsFilter === '1') return stops === 1;
+        if (stopsFilter === '2') return stops === 2;
         return true;
       });
     }
@@ -535,13 +730,25 @@ const FlightsPage: React.FC = () => {
   // Filtered and sorted round trip flights
   const filteredDepartureFlights = useMemo(() => {
     if (!roundTripData?.departureFlights) return [];
-    return filterAndSortFlights(roundTripData.departureFlights);
-  }, [roundTripData?.departureFlights, filters.sortBy, filters.stops, filters.departureTimeMin, filters.departureTimeMax, filters.minPrice, filters.maxPrice, filters.airlines, filters.aircraftType]);
+    return filterAndSortFlights(roundTripData.departureFlights, rtDepartureAvailability);
+  }, [roundTripData?.departureFlights, rtDepartureAvailability, filters.sortBy, filters.stops, filters.departureTimeMin, filters.departureTimeMax, filters.minPrice, filters.maxPrice, filters.airlines, filters.aircraftType]);
 
   const filteredReturnFlights = useMemo(() => {
+    // When a departure flight is selected and we have combined return flights
+    // (fetched via departure_token), prefer those because their bookingToken
+    // encodes BOTH legs for proper round-trip booking.
+    if (combinedReturnFlights && combinedReturnFlights.length > 0) {
+      return filterAndSortFlights(combinedReturnFlights, rtReturnAvailability);
+    }
+    // Fallback to the original separate one-way return flights
     if (!roundTripData?.returnFlights) return [];
-    return filterAndSortFlights(roundTripData.returnFlights);
-  }, [roundTripData?.returnFlights, filters.sortBy, filters.stops, filters.departureTimeMin, filters.departureTimeMax, filters.minPrice, filters.maxPrice, filters.airlines, filters.aircraftType]);
+    return filterAndSortFlights(roundTripData.returnFlights, rtReturnAvailability);
+  }, [combinedReturnFlights, roundTripData?.returnFlights, rtReturnAvailability, filters.sortBy, filters.stops, filters.departureTimeMin, filters.departureTimeMax, filters.minPrice, filters.maxPrice, filters.airlines, filters.aircraftType]);
+
+  // When using combined return flights, prices are ROUND-TRIP TOTALS (both legs),
+  // NOT individual leg prices. The departure price from the initial round-trip
+  // search is also the round-trip total. So we must NOT sum them.
+  const usingCombinedPricing = !!(combinedReturnFlights && combinedReturnFlights.length > 0);
 
   // ============================================================================
   // UNIFIED ACTIVE LEG FLIGHTS
@@ -561,7 +768,7 @@ const FlightsPage: React.FC = () => {
     if (isMultiCity) {
       // Multi-city: return the active leg's flights, filtered client-side
       const rawFlights = multiCityData?.[activeMultiCityLeg]?.flights || [];
-      return filterAndSortFlights(rawFlights);
+      return filterAndSortFlights(rawFlights, multiCityAvailability[activeMultiCityLeg]);
     }
     
     if (isRoundTrip) {
@@ -582,7 +789,8 @@ const FlightsPage: React.FC = () => {
     sortedFlights, 
     filteredDepartureFlights, 
     filteredReturnFlights,
-    multiCityData
+    multiCityData,
+    multiCityAvailability
   ]);
 
   // Current leg's price insights (for Price Analysis chart)
@@ -664,6 +872,10 @@ const FlightsPage: React.FC = () => {
     }
     
     if (isRoundTrip) {
+      // When on return tab and fetching combined return flights, show loading
+      if (activeFlightTab === 'return' && (isLoadingCombinedReturn || isFetchingCombinedReturn)) {
+        return true;
+      }
       return isLoadingRoundTrip || isFetchingRoundTrip;
     }
     
@@ -672,10 +884,13 @@ const FlightsPage: React.FC = () => {
     filters.tripType, 
     filters.returnDate, 
     filters.multiCityLegs.length,
+    activeFlightTab,
     isLoading, 
     isFetching,
     isLoadingRoundTrip, 
     isFetchingRoundTrip,
+    isLoadingCombinedReturn,
+    isFetchingCombinedReturn,
     isLoadingMultiCity, 
     isFetchingMultiCity
   ]);
@@ -693,6 +908,23 @@ const FlightsPage: React.FC = () => {
     setEditDepartDate(filters.date);
     setEditReturnDate(filters.returnDate);
   }, [filters.date, filters.returnDate]);
+
+  // When combined return flights load, update selectedReturnFlight to use the
+  // combined token version (which encodes both departure + return legs).
+  // This ensures the booking button uses the proper round-trip token.
+  React.useEffect(() => {
+    if (!combinedReturnFlights || combinedReturnFlights.length === 0) return;
+    if (!selectedReturnFlight) return;
+
+    // Find the same flight in the combined list (match by flight number)
+    const match = combinedReturnFlights.find(
+      f => f.flight.flightNumber === selectedReturnFlight.flight.flightNumber
+    );
+    if (match && match.flight.bookingToken !== selectedReturnFlight.flight.bookingToken) {
+      console.log('[CombinedReturn] Updating selectedReturnFlight with combined token for', match.flight.flightNumber);
+      setSelectedReturnFlight(match);
+    }
+  }, [combinedReturnFlights, selectedReturnFlight]);
 
   // Initialize multi-city selected flights array when legs change
   React.useEffect(() => {
@@ -860,16 +1092,32 @@ const FlightsPage: React.FC = () => {
     const airlines = new Set(flights.map(f => f.flight.airlineCode));
     const allSameAirline = airlines.size === 1;
     
-    // Try to use a booking token from any of the selected flights
-    const flightWithToken = flights.find(f => f.flight.bookingToken);
+    // For round-trip: check if there's a combined token in combinedReturnFlights
+    // that encodes both legs (departure + return) for proper round-trip booking
+    let combinedToken: string | null = null;
+    if (flights.length === 2 && combinedReturnFlights) {
+      const returnFlight = flights[1]; // Second flight is the return
+      const combinedMatch = combinedReturnFlights.find(
+        f => f.flight.flightNumber === returnFlight.flight.flightNumber
+      );
+      if (combinedMatch?.flight.bookingToken) {
+        combinedToken = combinedMatch.flight.bookingToken;
+      }
+    }
     
-    if (flightWithToken) {
+    // Try to use a booking token from any of the selected flights
+    // Note: Round-trip departure flights may only have departureToken (not bookingToken)
+    const bookingToken = combinedToken
+      || flights.find(f => f.flight.bookingToken)?.flight.bookingToken
+      || flights.find(f => f.flight.departureToken)?.flight.departureToken;
+    
+    if (bookingToken) {
       // Use booking token via backend → SerpAPI booking_options
       const firstFlight = flights[0].flight;
       const outboundDate = new Date(firstFlight.departureTime).toISOString().split('T')[0];
       
       const params: Parameters<typeof bookingApi.openBookingPage>[0] = {
-        bookingToken: flightWithToken.flight.bookingToken!,
+        bookingToken,
         airlineName: firstFlight.airline,
         departureId: firstFlight.departureAirportCode || firstFlight.departureCityCode,
         arrivalId: firstFlight.arrivalAirportCode || firstFlight.arrivalCityCode,
@@ -879,9 +1127,12 @@ const FlightsPage: React.FC = () => {
         preferExpedia: !allSameAirline,
       };
       
-      // Note: We do NOT pass returnDate here. The booking_token is self-contained
-      // and already encodes the flight segments. Passing a mismatched returnDate
-      // (e.g., from a one-way token) causes SerpAPI to return 0 booking options.
+      // For round-trip bookings with combined tokens (encoding both legs),
+      // pass returnDate so the backend uses type=1 (round-trip) for SerpAPI.
+      // This ensures booking platforms receive both departure and return legs.
+      if (filters.tripType === 'roundtrip' && filters.returnDate) {
+        params.returnDate = filters.returnDate;
+      }
       
       bookingApi.openBookingPage(params);
     } else {
@@ -1022,7 +1273,7 @@ const FlightsPage: React.FC = () => {
                 className="bg-transparent text-sm text-text-primary border-none outline-none cursor-pointer"
                 min={new Date().toISOString().split('T')[0]}
               />
-              {filters.tripType === 'roundtrip' && (
+              {filters.tripType === 'roundtrip' && filters.returnDate && (
                 <>
                   <span className="text-text-muted">-</span>
                   <input
@@ -1188,7 +1439,9 @@ const FlightsPage: React.FC = () => {
             )}
 
             {/* Flight List - Uses currentLegFlights (single-way focus) */}
-            <div className="space-y-4">
+            <div className={cn("space-y-4", 
+              (selectedDepartureFlight || selectedReturnFlight || selectedMultiCityFlights.some(f => f !== null)) && "pb-28"
+            )}>
               {/* Loading state */}
               {isLoadingCurrentLeg ? (
                 // Loading state with animated plane and skeletons
@@ -1286,51 +1539,6 @@ const FlightsPage: React.FC = () => {
                         </button>
                       </div>
                       
-                      {/* Selected flights summary */}
-                      {(selectedDepartureFlight || selectedReturnFlight) && (
-                        <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-3 flex items-center justify-between flex-wrap gap-2">
-                          <div className="flex items-center gap-4 text-sm">
-                            <span className="font-medium">Selected:</span>
-                            {selectedDepartureFlight && (
-                              <span className="bg-white px-2 py-1 rounded shadow-sm">
-                                ✈️ {selectedDepartureFlight.flight.flightNumber} ({selectedDepartureFlight.flight.airline}) - {formatPriceWithCurrency(selectedDepartureFlight.flight.price, currency)}
-                              </span>
-                            )}
-                            {selectedReturnFlight && (
-                              <span className="bg-white px-2 py-1 rounded shadow-sm">
-                                ✈️ {selectedReturnFlight.flight.flightNumber} ({selectedReturnFlight.flight.airline}) - {formatPriceWithCurrency(selectedReturnFlight.flight.price, currency)}
-                              </span>
-                            )}
-                            {selectedDepartureFlight && selectedReturnFlight && (
-                              <span className="font-bold text-primary">
-                                Total: {formatPriceWithCurrency(selectedDepartureFlight.flight.price + selectedReturnFlight.flight.price, currency)}
-                              </span>
-                            )}
-                          </div>
-                          {selectedDepartureFlight && selectedReturnFlight && (
-                            <div className="flex items-center gap-2">
-                              {/* Show airline match status */}
-                              {selectedDepartureFlight.flight.airlineCode === selectedReturnFlight.flight.airlineCode ? (
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
-                                  <Check className="w-3 h-3" />
-                                  Same airline
-                                </span>
-                              ) : (
-                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
-                                  Mixed airlines
-                                </span>
-                              )}
-                              <button
-                                onClick={() => handleMultiFlightBooking([selectedDepartureFlight, selectedReturnFlight])}
-                                className="btn-primary text-sm px-4 py-2 flex items-center gap-1.5"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                                Book Now
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -1383,58 +1591,6 @@ const FlightsPage: React.FC = () => {
                         </div>
                       </div>
                       
-                      {/* Multi-city selected flights summary */}
-                      {selectedMultiCityFlights.some(f => f !== null) && (
-                        <div className="bg-gradient-to-r from-amber-50/80 to-orange-50/80 p-3 border-x border-b border-amber-200 space-y-2">
-                          <div className="flex flex-wrap items-center gap-2 text-sm">
-                            <span className="font-medium text-amber-900">Selected flights:</span>
-                            {selectedMultiCityFlights.map((flight, idx) => (
-                              <span
-                                key={idx}
-                                className={cn(
-                                  "px-2 py-1 rounded shadow-sm text-xs",
-                                  flight ? "bg-white text-gray-800" : "bg-gray-100 text-gray-400 border border-dashed border-gray-300"
-                                )}
-                              >
-                                {flight ? (
-                                  <>✈️ Leg {idx + 1}: {flight.flight.flightNumber} ({flight.flight.airline}) - {formatPriceWithCurrency(flight.flight.price, currency)}</>
-                                ) : (
-                                  <>Leg {idx + 1}: Not selected</>
-                                )}
-                              </span>
-                            ))}
-                          </div>
-                          
-                          {/* All legs selected → Show booking button */}
-                          {selectedMultiCityFlights.every(f => f !== null) && (
-                            <div className="flex items-center justify-between pt-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-primary text-sm">
-                                  Total: {formatPriceWithCurrency(selectedMultiCityFlights.reduce((sum, f) => sum + (f?.flight.price || 0), 0), currency)}
-                                </span>
-                                {/* Show airline match status */}
-                                {new Set(selectedMultiCityFlights.map(f => f?.flight.airlineCode)).size === 1 ? (
-                                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
-                                    <Check className="w-3 h-3" />
-                                    Same airline
-                                  </span>
-                                ) : (
-                                  <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
-                                    Mixed airlines
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => handleMultiFlightBooking(selectedMultiCityFlights.filter((f): f is FlightWithScore => f !== null))}
-                                className="btn-primary text-sm px-4 py-2 flex items-center gap-1.5"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                                Book Now
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   )}
                   
@@ -1449,10 +1605,11 @@ const FlightsPage: React.FC = () => {
                       ? (flight: FlightWithScore) => {
                           if (activeFlightTab === 'departure') {
                             setSelectedDepartureFlight(flight);
+                            // Clear return selection since combined return flights
+                            // will be re-fetched for this new departure
+                            setSelectedReturnFlight(null);
                             // Auto-switch to return tab after selecting departure
-                            if (!selectedReturnFlight) {
-                              setActiveFlightTab('return');
-                            }
+                            setActiveFlightTab('return');
                           } else {
                             setSelectedReturnFlight(flight);
                           }
@@ -1486,6 +1643,20 @@ const FlightsPage: React.FC = () => {
                       return false;
                     };
                     
+                    // Determine the price label for flight cards in this leg
+                    // - Round-trip departure: SerpAPI prices are round-trip totals
+                    // - Round-trip return with combined pricing: prices are also round-trip totals
+                    // - Round-trip return without combined pricing: one-way fallback, per-leg prices
+                    // - One-way / multi-city: per-person prices
+                    const cardPriceLabel: 'round trip' | 'per person' = (() => {
+                      if (isRoundTrip) {
+                        if (activeFlightTab === 'departure') return 'round trip';
+                        // Return tab: combined = round trip total, fallback = per-leg
+                        return usingCombinedPricing ? 'round trip' : 'per person';
+                      }
+                      return 'per person';
+                    })();
+                    
                     return (
                       <>
                         {currentLegFlights.slice(0, displayCount).map((flight) => (
@@ -1495,6 +1666,8 @@ const FlightsPage: React.FC = () => {
                             onSelect={handleFlightSelect ? () => handleFlightSelect(flight) : undefined}
                             isSelected={isFlightSelected(flight)}
                             displayCurrency={currency}
+                            isTicketLoading={isTicketAvailabilityLoading}
+                            priceLabel={cardPriceLabel}
                           />
                         ))}
                         
@@ -1523,8 +1696,8 @@ const FlightsPage: React.FC = () => {
 
                         {/* Login prompt for non-authenticated users */}
                         {!isAuthenticated && rawData?.meta?.restrictedCount && rawData.meta.restrictedCount > 0 && (
-                          <div className="flex flex-col items-center justify-center py-6 mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                            <div className="flex items-center gap-2 text-blue-600 mb-2">
+                          <div className="flex flex-col items-center justify-center py-6 mt-4 bg-gradient-to-r from-[#E6F0FA] to-[#F0F5FA] rounded-xl border border-[#B0CCE6]">
+                            <div className="flex items-center gap-2 text-[#034891] mb-2">
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                               </svg>
@@ -1540,7 +1713,7 @@ const FlightsPage: React.FC = () => {
                                 // Trigger login modal - dispatch custom event
                                 window.dispatchEvent(new CustomEvent('open-login-modal'));
                               }}
-                              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm hover:shadow-md"
+                              className="px-5 py-2 bg-[#034891] hover:bg-[#023670] text-white font-medium rounded-lg transition-colors shadow-sm hover:shadow-md"
                             >
                               Login to see more results
                             </button>
@@ -1568,6 +1741,27 @@ const FlightsPage: React.FC = () => {
         onResetFilters={resetFilters}
         availableAirlines={availableAirlines}
         priceRange={priceRange}
+      />
+
+      {/* Floating Selected Flight Bar */}
+      <FloatingSelectedBar
+        selectedDepartureFlight={selectedDepartureFlight}
+        selectedReturnFlight={selectedReturnFlight}
+        selectedMultiCityFlights={selectedMultiCityFlights}
+        tripType={filters.tripType}
+        usingCombinedPricing={usingCombinedPricing}
+        combinedReturnFlights={combinedReturnFlights}
+        currency={currency}
+        formatPrice={formatPriceWithCurrency}
+        filters={{
+          tripType: filters.tripType,
+          returnDate: filters.returnDate,
+          from: filters.from,
+          to: filters.to,
+        }}
+        onBookNow={handleMultiFlightBooking}
+        onClearDeparture={() => setSelectedDepartureFlight(null)}
+        onClearReturn={() => setSelectedReturnFlight(null)}
       />
     </div>
   );

@@ -107,7 +107,7 @@ export function BookingReturnPopup() {
     <div className="fixed bottom-4 right-4 z-50 max-w-sm animate-fade-in">
       <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#034891] to-[#0560B8] px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <Plane className="w-4 h-4" />
             <span className="text-sm font-semibold">Continue Booking?</span>
@@ -130,7 +130,7 @@ export function BookingReturnPopup() {
               <p className="font-semibold text-gray-900">{booking.airline}</p>
               <p className="text-xs text-gray-500">{booking.flightNumber} • {booking.route}</p>
             </div>
-            <p className="text-lg font-bold text-blue-600">
+            <p className="text-lg font-bold text-[#034891]">
               {booking.currency === 'USD' ? '$' : booking.currency}{booking.price}
             </p>
           </div>
@@ -141,7 +141,7 @@ export function BookingReturnPopup() {
                 navigate(`/flights/${booking.flightId}`);
               }
             }}
-            className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 hover:from-blue-600 hover:to-blue-700 transition-all"
+            className="w-full py-2.5 bg-gradient-to-r from-[#034891] to-[#0560B8] text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 hover:from-[#023670] hover:to-[#034891] transition-all"
           >
             <span>View Flight Details</span>
             <ArrowRight className="w-4 h-4" />

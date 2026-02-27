@@ -134,7 +134,7 @@ const SharePoster: React.FC<SharePosterProps> = ({
         <div className="p-4">
           <div
             ref={posterRef}
-            className="bg-gradient-to-br from-blue-50 to-white rounded-xl p-6 shadow-inner"
+            className="bg-gradient-to-br from-[#E6F0FA] to-white rounded-xl p-6 shadow-inner"
           >
             {/* Brand Header */}
             <div className="flex items-center justify-between mb-6">

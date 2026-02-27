@@ -51,7 +51,7 @@ const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f7f8] relative overflow-hidden">
+    <div className="min-h-screen bg-[#f5f7f8] relative overflow-hidden font-causten">
       {/* Subtle decorative background blurs */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-0 pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl -z-0 pointer-events-none" />
@@ -68,9 +68,10 @@ const HomePage: React.FC = () => {
           </div>
 
           {/* Heading */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl tracking-tight text-slate-900 mb-2 text-center" style={{ fontFamily: "'Pacifico', cursive" }}>
-            Airease
-          </h1>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl tracking-tight text-[#034891] mb-2 text-center font-causten font-bold">
+  AirEase
+</h1>
+
           <p className="text-sm sm:text-base text-slate-400 mb-1 text-center tracking-wide">
             Your professional flight butler
           </p>
@@ -85,7 +86,7 @@ const HomePage: React.FC = () => {
                 onClick={() => setSearchMode('ai')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                   searchMode === 'ai'
-                    ? 'bg-gradient-to-r from-blue-500 to-amber-500 text-white shadow-lg'
+                    ? 'bg-blue-500 text-white shadow-lg'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >

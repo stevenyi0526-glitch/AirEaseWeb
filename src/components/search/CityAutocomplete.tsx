@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MapPin, Loader2, Plane, Building2 } from 'lucide-react';
 import { autocompleteApi, type LocationSuggestion } from '../../api/autocomplete';
-import { searchAirports } from '../../lib/airports';
+import { searchAirports, AIRPORTS } from '../../lib/airports';
 import { cn } from '../../utils/cn';
+
+// Set of major international airport IATA codes for prioritization
+const MAJOR_AIRPORT_CODES = new Set(AIRPORTS.map(a => a.code));
 
 interface CityAutocompleteProps {
   value: string;
@@ -61,7 +64,19 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
 
     try {
       const response = await autocompleteApi.getLocations(searchQuery);
-      setResults(response.suggestions);
+      // Sort results: prioritize large international airports over small/regional ones
+      const sorted = [...response.suggestions].sort((a, b) => {
+        const aIsMajor = MAJOR_AIRPORT_CODES.has(a.iataCode);
+        const bIsMajor = MAJOR_AIRPORT_CODES.has(b.iataCode);
+        if (aIsMajor && !bIsMajor) return -1;
+        if (!aIsMajor && bIsMajor) return 1;
+        // Among same priority, prefer airports over cities
+        if (a.subType === 'AIRPORT' && b.subType !== 'AIRPORT') return -1;
+        if (a.subType !== 'AIRPORT' && b.subType === 'AIRPORT') return 1;
+        // Respect original popularity score
+        return (b.score ?? 0) - (a.score ?? 0);
+      });
+      setResults(sorted);
       setUseLocalFallback(false);
     } catch (error) {
       // Fallback to local search
@@ -152,7 +167,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   return (
     <div className={cn('relative', className)}>
       {label && (
-        <label className="block text-sm font-semibold text-text-secondary mb-1.5">
+        <label className="block text-base font-semibold text-text-secondary mb-1.5">
           {label}
         </label>
       )}
@@ -166,7 +181,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
           onChange={handleInputChange}
           onFocus={handleFocus}
           placeholder={placeholder}
-          className="input-field pl-10 pr-10"
+          className="input-field pl-10 pr-10 text-base h-12"
           autoComplete="off"
         />
         {isLoading && (

@@ -374,7 +374,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
             ? 'bg-surface-alt text-text-muted cursor-not-allowed'
             : exportSuccess
             ? 'bg-success text-white'
-            : 'bg-gradient-to-r from-primary to-blue-600 text-white shadow-lg hover:shadow-xl hover:scale-[1.02]'
+            : 'bg-gradient-to-r from-primary to-[#0560B8] text-white shadow-lg hover:shadow-xl hover:scale-[1.02]'
         )}
       >
         {isExporting ? (

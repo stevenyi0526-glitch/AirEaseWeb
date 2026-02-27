@@ -38,7 +38,7 @@ const alliances = [
 
 /**
  * Enhanced Filter Panel for desktop sidebar
- * - Stops filter (Direct, 1 stop, 2+ stops)
+ * - Stops filter (Direct, 1 stop, 2 stops, All flights)
  * - Departure time periods
  * - Aircraft type (widebody/narrowbody)
  * - Airline alliances
@@ -108,10 +108,10 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         <h4 className="text-sm font-semibold text-text-primary mb-3">Stops</h4>
         <div className="space-y-2">
           {[
-            { value: 'any', label: 'Any' },
-            { value: '0', label: 'Direct only' },
-            { value: '1', label: '1 stop' },
-            { value: '2+', label: '2+ stops' },
+            { value: 'any', label: 'All Flights' },
+            { value: '0', label: 'Direct' },
+            { value: '1', label: '1 Stop' },
+            { value: '2', label: '2 Stops' },
           ].map((option) => (
             <label
               key={option.value}

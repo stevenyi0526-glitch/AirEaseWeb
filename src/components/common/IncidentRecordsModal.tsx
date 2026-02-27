@@ -33,7 +33,7 @@ function getSeverityStyle(severity: string | null): { bg: string; text: string; 
   if (s.includes('SERS') || s.includes('SERIOUS')) return { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Serious' };
   if (s.includes('MINR') || s.includes('MINOR')) return { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Minor' };
   if (s.includes('NONE') || s.includes('NFAT') || s.includes('NON')) return { bg: 'bg-green-100', text: 'text-green-700', label: 'Non-Fatal' };
-  if (s.includes('INCD') || s.includes('INCIDENT')) return { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Incident' };
+  if (s.includes('INCD') || s.includes('INCIDENT')) return { bg: 'bg-[#E6F0FA]', text: 'text-[#034891]', label: 'Incident' };
   // Country codes (ev_country) can appear in injury_severity for some records
   return { bg: 'bg-gray-100', text: 'text-gray-600', label: severity };
 }
@@ -51,7 +51,7 @@ function getCategoryInfo(queryType: 'tail' | 'airline' | 'model'): { icon: React
       };
     case 'airline':
       return {
-        icon: <Shield className="w-5 h-5 text-blue-600" />,
+        icon: <Shield className="w-5 h-5 text-[#034891]" />,
         title: 'Airline Incident Records (10yr)',
         subtitle: 'NTSB-reported events for this airline in the past 10 years',
       };
@@ -134,7 +134,7 @@ export const IncidentRecordsModal: React.FC<IncidentRecordsModalProps> = ({
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-3" />
+              <Loader2 className="w-8 h-8 text-[#034891] animate-spin mb-3" />
               <p className="text-sm text-gray-500">Loading incident records...</p>
             </div>
           ) : !data || data.records.length === 0 ? (
@@ -196,7 +196,7 @@ export const IncidentRecordsModal: React.FC<IncidentRecordsModalProps> = ({
 
                       {/* Expand indicator */}
                       {hasNarrative && (
-                        <FileText className={`w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0 transition-transform ${isExpanded ? 'text-blue-500' : ''}`} />
+                        <FileText className={`w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0 transition-transform ${isExpanded ? 'text-[#034891]' : ''}`} />
                       )}
                     </button>
 
@@ -257,7 +257,7 @@ export const IncidentRecordsModal: React.FC<IncidentRecordsModalProps> = ({
                     disabled={loading}
                     className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                       pageNum === page
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-[#034891] text-white'
                         : 'hover:bg-gray-200 text-gray-600'
                     }`}
                   >

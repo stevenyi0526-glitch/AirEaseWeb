@@ -2,6 +2,9 @@
 
 /* Custom theme configuration */
 @theme {
+  /* Causten Round font family for homepage */
+  --font-causten: "Causten Round", "Nunito", "Quicksand", system-ui, sans-serif;
+
   /* Background system */
   --color-background: #F6F8FB;
   --color-surface: #FFFFFF;
@@ -16,10 +19,10 @@
   --color-border: #E2E8F0;
   --color-divider: #EDF2F7;
 
-  /* Primary brand */
-  --color-primary: #1A73E8;
-  --color-primary-hover: #155CC4;
-  --color-primary-light: #E8F0FE;
+  /* Primary brand — dark navy */
+  --color-primary: #034891;
+  --color-primary-hover: #023670;
+  --color-primary-light: #E6F0FA;
 
   /* Accent (price) */
   --color-accent: #FF7A00;
@@ -27,7 +30,7 @@
   /* Score badge (GREEN) */
   --color-score: #22C55E;
   --color-score-excellent: #22C55E;
-  --color-score-good: #3B82F6;
+  --color-score-good: #034891;
   --color-score-fair: #F59E0B;
   --color-score-poor: #6B7280;
 
@@ -37,11 +40,11 @@
   --color-warning: #F59E0B;
   --color-danger: #DC2626;
 
-  /* AirEase brand (for gradient) */
-  --color-airease-blue: #2196F3;
-  --color-airease-blue-dark: #1976D2;
-  --color-airease-blue-light: #64B5F6;
-  --color-airease-blue-50: #E3F2FD;
+  /* AirEase brand (for gradient) — dark navy */
+  --color-airease-blue: #034891;
+  --color-airease-blue-dark: #023670;
+  --color-airease-blue-light: #0560B8;
+  --color-airease-blue-50: #E6F0FA;
 
   /* Custom border radius */
   --radius-card: 14px;
@@ -79,9 +82,9 @@
 
 /* Component styles */
 @layer components {
-  /* Gradient header - light blue */
+  /* Gradient header - dark navy */
   .header-gradient {
-    background: linear-gradient(135deg, #64B5F6 0%, #42A5F5 100%);
+    background: linear-gradient(135deg, #0560B8 0%, #034891 100%);
   }
 
   /* Primary button - gradient like iOS */
@@ -89,12 +92,12 @@
     @apply px-6 py-3 text-white font-semibold transition-all duration-200;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
     background: linear-gradient(135deg, var(--color-airease-blue) 0%, var(--color-airease-blue-dark) 100%);
-    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.25);
+    box-shadow: 0 2px 8px rgba(27, 43, 90, 0.25);
     border-radius: var(--radius-button);
   }
   .btn-primary:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.35);
+    box-shadow: 0 4px 12px rgba(27, 43, 90, 0.35);
   }
   .btn-primary:active:not(:disabled) {
     transform: translateY(0);

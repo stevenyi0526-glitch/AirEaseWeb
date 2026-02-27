@@ -4,6 +4,7 @@ import { Calendar, ArrowRightLeft, ChevronDown, Search, Plus, X, Plane } from 'l
 import { formatDateForApi } from '../../utils/formatters';
 import { cn } from '../../utils/cn';
 import CityAutocomplete from './CityAutocomplete';
+import DateRangePicker from './DateRangePicker';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiClient } from '../../api/client';
 
@@ -189,22 +190,22 @@ const SearchForm: React.FC<SearchFormProps> = ({
         </div>
 
         {/* Right Content Area */}
-        <div className="flex-1 py-4 px-5 min-w-0">
+        <div className="flex-1 py-5 px-6 min-w-0">
           {/* Header row: label + trip type */}
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase select-none">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase select-none">
               Flight Search 
             </span>
-            <div className="flex gap-1">
+            <div className="flex gap-1.5">
               {tripTypes.map((type) => (
                 <button
                   key={type.value}
                   type="button"
                   onClick={() => setTripType(type.value)}
                   className={cn(
-                    'px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200',
+                    'px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
                     tripType === type.value
-                      ? 'bg-[#8da2fb] text-white shadow-sm'
+                      ? 'bg-[#034891] text-white shadow-sm'
                       : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                   )}
                 >
@@ -245,12 +246,12 @@ const SearchForm: React.FC<SearchFormProps> = ({
                       label=""
                     />
                     <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8da2fb] z-10" />
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#034891] z-10" />
                       <input
                         type="date"
                         value={leg.date}
                         onChange={(e) => updateMultiCityLeg(leg.id, 'date', e.target.value)}
-                        className="w-full h-10 pl-9 pr-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8da2fb]/40 focus:border-[#8da2fb]"
+                        className="w-full h-10 pl-9 pr-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#034891]/40 focus:border-[#034891]"
                         required
                       />
                     </div>
@@ -262,7 +263,7 @@ const SearchForm: React.FC<SearchFormProps> = ({
                 <button
                   type="button"
                   onClick={addMultiCityLeg}
-                  className="w-full py-2 border-2 border-dashed border-[#8da2fb]/30 rounded-xl text-[#8da2fb] hover:border-[#8da2fb] hover:bg-[#8da2fb]/5 transition-colors flex items-center justify-center gap-2 text-sm"
+                  className="w-full py-2 border-2 border-dashed border-[#034891]/30 rounded-xl text-[#034891] hover:border-[#034891] hover:bg-[#034891]/5 transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   <Plus className="w-4 h-4" />
                   Add another flight
@@ -272,7 +273,7 @@ const SearchForm: React.FC<SearchFormProps> = ({
           ) : (
             <>
               {/* Row 1: From ↔ To — horizontal in one line */}
-              <div className="flex items-end gap-2 mb-3">
+              <div className="flex items-end gap-2 mb-4">
                 <div className="flex-1 min-w-0">
                   <CityAutocomplete
                     value={from}
@@ -284,9 +285,9 @@ const SearchForm: React.FC<SearchFormProps> = ({
                 <button
                   type="button"
                   onClick={handleSwapCities}
-                  className="mb-0.5 p-2 rounded-full bg-[#8da2fb] text-white hover:bg-[#7c92f0] transition-colors flex-shrink-0"
+                  className="mb-1 p-2.5 rounded-full bg-[#034891] text-white hover:bg-[#023670] transition-colors flex-shrink-0"
                 >
-                  <ArrowRightLeft className="w-3.5 h-3.5" />
+                  <ArrowRightLeft className="w-4 h-4" />
                 </button>
                 <div className="flex-1 min-w-0">
                   <CityAutocomplete
@@ -300,120 +301,101 @@ const SearchForm: React.FC<SearchFormProps> = ({
 
               {/* Row 2: Dates + Passengers — all inline */}
               <div className={cn(
-                'grid gap-2 mb-3',
-                tripType === 'roundtrip' ? 'grid-cols-[1fr_1fr_auto_auto]' : 'grid-cols-[1fr_auto_auto]'
+                'grid gap-3 mb-4',
+                tripType === 'roundtrip' ? 'grid-cols-[1fr_auto_auto]' : 'grid-cols-[1fr_auto_auto]'
               )}>
-                <div className="min-w-[140px]">
-                  <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">Departure</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#8da2fb]" />
-                    <input
-                      type="date"
-                      value={departureDate}
-                      onChange={(e) => setDepartureDate(e.target.value)}
-                      className="w-full h-9 pl-8 pr-2 rounded-lg border border-gray-200 bg-white text-[13px] text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8da2fb]/40 focus:border-[#8da2fb]"
-                      required
-                    />
-                  </div>
+                <div className={cn(tripType === 'roundtrip' ? 'min-w-[320px]' : 'min-w-[200px]')}>
+                  <DateRangePicker
+                    departureDate={departureDate}
+                    returnDate={returnDate}
+                    onDepartureChange={setDepartureDate}
+                    onReturnChange={setReturnDate}
+                    isRoundTrip={tripType === 'roundtrip'}
+                  />
                 </div>
 
-                {tripType === 'roundtrip' && (
-                  <div className="min-w-[140px]">
-                    <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">Return</label>
-                    <div className="relative">
-                      <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#8da2fb]" />
-                      <input
-                        type="date"
-                        value={returnDate}
-                        onChange={(e) => setReturnDate(e.target.value)}
-                        className="w-full h-9 pl-8 pr-2 rounded-lg border border-gray-200 bg-white text-[13px] text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#8da2fb]/40 focus:border-[#8da2fb]"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 <div>
-                  <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">Adults</label>
-                  <div className="flex items-center h-9 gap-1 justify-center">
+                  <label className="block text-xs font-semibold text-gray-400 mb-1">Adults</label>
+                  <div className="flex items-center h-12 gap-1.5 justify-center">
                     <button
                       type="button"
                       onClick={() => setAdults(Math.max(1, adults - 1))}
                       disabled={adults <= 1}
-                      className="w-6 h-6 rounded bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-xs font-semibold transition-colors"
+                      className="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-sm font-semibold transition-colors"
                     >-</button>
-                    <span className="w-5 text-center text-sm font-semibold text-gray-700">{adults}</span>
+                    <span className="w-6 text-center text-lg font-semibold text-gray-700">{adults}</span>
                     <button
                       type="button"
                       onClick={() => setAdults(Math.min(9, adults + 1))}
                       disabled={adults >= 9}
-                      className="w-6 h-6 rounded bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-xs font-semibold transition-colors"
+                      className="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-sm font-semibold transition-colors"
                     >+</button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">Children</label>
-                  <div className="flex items-center h-9 gap-1 justify-center">
+                  <label className="block text-xs font-semibold text-gray-400 mb-1">Children</label>
+                  <div className="flex items-center h-12 gap-1.5 justify-center">
                     <button
                       type="button"
                       onClick={() => setChildren(Math.max(0, children - 1))}
                       disabled={children <= 0}
-                      className="w-6 h-6 rounded bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-xs font-semibold transition-colors"
+                      className="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-sm font-semibold transition-colors"
                     >-</button>
-                    <span className="w-5 text-center text-sm font-semibold text-gray-700">{children}</span>
+                    <span className="w-6 text-center text-lg font-semibold text-gray-700">{children}</span>
                     <button
                       type="button"
                       onClick={() => setChildren(Math.min(6, children + 1))}
                       disabled={children >= 6}
-                      className="w-6 h-6 rounded bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-xs font-semibold transition-colors"
+                      className="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-sm font-semibold transition-colors"
                     >+</button>
                   </div>
                 </div>
               </div>
 
               {/* Row 3: Cabin + Stops + Search button — inline */}
-              <div className="flex items-end gap-2">
+              <div className="flex items-end gap-3">
                 <div className="flex-1 min-w-0">
-                  <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">Cabin</label>
+                  <label className="block text-xs font-semibold text-gray-400 mb-1">Cabin</label>
                   <div className="relative">
                     <select
                       value={cabin}
                       onChange={(e) => setCabin(e.target.value)}
-                      className="w-full h-9 pl-2.5 pr-7 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-[#8da2fb]/40 focus:border-[#8da2fb]"
+                      className="w-full h-12 pl-3 pr-8 rounded-lg border border-gray-200 bg-white text-base text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-[#034891]/40 focus:border-[#034891] truncate"
                     >
                       <option value="economy">Economy</option>
                       <option value="premium_economy">Premium Eco</option>
                       <option value="business">Business</option>
                       <option value="first">First</option>
                     </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   </div>
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">Stops</label>
+                  <label className="block text-xs font-semibold text-gray-400 mb-1">Stops</label>
                   <div className="relative">
                     <select
                       value={directOnly ? 'direct' : 'all'}
                       onChange={(e) => setDirectOnly(e.target.value === 'direct')}
-                      className="w-full h-9 pl-2.5 pr-7 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-[#8da2fb]/40 focus:border-[#8da2fb]"
+                      className="w-full h-12 pl-3 pr-8 rounded-lg border border-gray-200 bg-white text-base text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-[#034891]/40 focus:border-[#034891] truncate"
                     >
                       <option value="all">All Flights</option>
                       <option value="direct">Direct Only</option>
                     </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                   </div>
                 </div>
 
                 <button
                   type="submit"
                   className={cn(
-                    'h-9 px-5 rounded-xl font-semibold text-white transition-all duration-200 flex-shrink-0',
-                    'bg-[#8da2fb] hover:bg-[#7c92f0] active:scale-[0.98]',
-                    'flex items-center justify-center gap-1.5 text-sm shadow-sm whitespace-nowrap'
+                    'h-12 px-6 rounded-xl font-semibold text-white transition-all duration-200 flex-shrink-0',
+                    'bg-[#034891] hover:bg-[#023670] active:scale-[0.98]',
+                    'flex items-center justify-center gap-2 text-base shadow-sm whitespace-nowrap'
                   )}
                 >
-                  <Search className="w-4 h-4" />
+                  <Search className="w-5 h-5" />
                   Search
                 </button>
               </div>

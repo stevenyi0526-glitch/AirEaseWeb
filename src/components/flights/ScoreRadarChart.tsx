@@ -119,7 +119,7 @@ const DIMENSION_EXPLANATIONS: Record<string, { description: string; getExplanati
 const DIMENSION_STYLES: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
   'Safety': { icon: ShieldCheck, color: 'text-teal-600', bg: 'bg-teal-50' },
   'Reliability': { icon: Clock, color: 'text-green-600', bg: 'bg-green-50' },
-  'Comfort': { icon: Sofa, color: 'text-blue-600', bg: 'bg-blue-50' },
+  'Comfort': { icon: Sofa, color: 'text-[#034891]', bg: 'bg-[#E6F0FA]' },
   'Service': { icon: HeartHandshake, color: 'text-purple-600', bg: 'bg-purple-50' },
   'Value': { icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   'Amenities': { icon: Gem, color: 'text-indigo-600', bg: 'bg-indigo-50' },
@@ -378,7 +378,7 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
               onClick={() => setCabinView('economy')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 cabinView === 'economy'
-                  ? 'bg-blue-500 text-white shadow-md'
+                  ? 'bg-[#034891] text-white shadow-md'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -465,7 +465,7 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
               {/* How it's calculated button */}
               <button
                 onClick={() => toggleCardExpansion(item.subject)}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
+                className="flex items-center gap-1 text-xs text-[#034891] hover:text-[#023670] font-medium mt-1"
               >
                 <Info size={12} />
                 {isExpanded ? 'Hide calculation' : 'How it\'s calculated'}

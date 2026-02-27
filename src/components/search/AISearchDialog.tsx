@@ -223,9 +223,9 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
       {/* Dialog */}
       <div className="relative w-full max-w-4xl h-[85vh] bg-surface rounded-3xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-divider bg-gradient-to-r from-primary/10 to-purple-500/10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-divider bg-blue-50">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center shadow-lg">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -250,9 +250,9 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               {/* Welcome Message */}
               {messages.length === 0 && (
                 <div className="space-y-6">
-                  <div className="bg-gradient-to-br from-primary/5 to-purple-500/5 rounded-2xl p-6 border border-primary/10">
+                  <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100">
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center flex-shrink-0">
                         <Sparkles className="w-5 h-5 text-white" />
                       </div>
                       <div>
@@ -311,7 +311,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
                       'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
                       msg.role === 'user'
                         ? 'bg-primary'
-                        : 'bg-gradient-to-br from-primary to-purple-500'
+                        : 'bg-blue-500'
                     )}
                   >
                     {msg.role === 'user' ? (
@@ -336,7 +336,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               {/* Loading Indicator */}
               {isLoading && (
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
                     <Sparkles className="w-4 h-4 text-white" />
                   </div>
                   <div className="bg-surface-alt rounded-2xl rounded-tl-sm px-4 py-3">
@@ -552,7 +552,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
                 className={cn(
                   'w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all',
                   isSearchComplete(currentParams)
-                    ? 'bg-gradient-to-r from-primary to-purple-500 text-white shadow-lg hover:shadow-xl hover:scale-[1.02]'
+                    ? 'bg-blue-500 text-white shadow-lg hover:shadow-xl hover:bg-blue-600 hover:scale-[1.02]'
                     : 'bg-surface-alt text-text-muted cursor-not-allowed'
                 )}
               >

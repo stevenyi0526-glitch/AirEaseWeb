@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Plane, Calendar, AlertTriangle, Leaf, Check } from 'lucide-react';
+import { Plane, Calendar, AlertTriangle, Leaf, Check, Users, Loader2, Info } from 'lucide-react';
 import type { FlightWithScore } from '../../api/types';
 import { formatTime, formatDuration, formatDate } from '../../utils/formatters';
 import { formatPriceWithCurrency } from '../common/CurrencySelector';
@@ -19,6 +19,15 @@ interface FlightCardProps {
   returnDate?: string;
   /** Display currency code — prices are converted client-side from USD */
   displayCurrency?: string;
+  /** Whether seat availability data is still loading from Amadeus */
+  isTicketLoading?: boolean;
+  /**
+   * Override the price label shown below the price.
+   * - 'round trip': price is a round-trip total (from SerpAPI round-trip search)
+   * - 'per person': one-way or per-leg price
+   * - undefined: auto-detect based on isRoundTrip prop
+   */
+  priceLabel?: 'round trip' | 'per person';
 }
 
 /**
@@ -40,6 +49,8 @@ const FlightCard: React.FC<FlightCardProps> = ({
   isRoundTrip = false,
   returnDate: _returnDate,
   displayCurrency = 'USD',
+  isTicketLoading = false,
+  priceLabel,
 }) => {
   const { flight, score } = flightWithScore;
 
@@ -48,8 +59,12 @@ const FlightCard: React.FC<FlightCardProps> = ({
   const arrivalDate = new Date(flight.arrivalTime);
   const isNextDay = arrivalDate.getDate() !== departureDate.getDate();
 
-  // Calculate estimated individual leg prices for round trips
-  // Typically outbound is slightly more expensive than return (55/45 split)
+  // Determine effective price label
+  // If priceLabel is explicitly set, use it. Otherwise fall back to isRoundTrip behavior.
+  const effectivePriceLabel = priceLabel ?? (isRoundTrip ? 'round trip' : 'per person');
+  const showRoundTripBreakdown = isRoundTrip && effectivePriceLabel === 'round trip' && !priceLabel;
+
+  // Calculate estimated individual leg prices for round trips (only for legacy breakdown display)
   const outboundPrice = isRoundTrip ? Math.round(flight.price * 0.55) : flight.price;
   const returnPrice = isRoundTrip ? Math.round(flight.price * 0.45) : 0;
 
@@ -144,21 +159,54 @@ const FlightCard: React.FC<FlightCardProps> = ({
 
           {/* Price + Carbon Emissions */}
           <div className="text-right ml-2 md:ml-4">
-            {isRoundTrip ? (
+            {effectivePriceLabel === 'round trip' ? (
               <>
-                {/* Round trip total with breakdown */}
+                {/* Round trip total */}
                 <p className="text-2xl font-bold text-primary">{formatPriceWithCurrency(flight.price, displayCurrency)}</p>
                 <p className="text-xs text-text-muted">round trip total</p>
-                <div className="text-xs text-text-secondary mt-1 space-y-0.5">
-                  <p>Outbound: ~{formatPriceWithCurrency(outboundPrice, displayCurrency)}</p>
-                  <p>Return: ~{formatPriceWithCurrency(returnPrice, displayCurrency)}</p>
-                </div>
+                {showRoundTripBreakdown && (
+                  <div className="text-xs text-text-secondary mt-1 space-y-0.5">
+                    <p>Outbound: ~{formatPriceWithCurrency(outboundPrice, displayCurrency)}</p>
+                    <p>Return: ~{formatPriceWithCurrency(returnPrice, displayCurrency)}</p>
+                  </div>
+                )}
               </>
             ) : (
               <>
                 <p className="text-2xl font-bold text-primary">{formatPriceWithCurrency(flight.price, displayCurrency)}</p>
                 <p className="text-xs text-text-muted">per person</p>
               </>
+            )}
+
+            {/* Seats Remaining Badge */}
+            {isTicketLoading ? (
+              /* Loading state: spinner + message */
+              <div className="flex items-center justify-end gap-1 mt-1 text-xs text-text-secondary">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Fetching remaining tickets</span>
+              </div>
+            ) : flight.seatsRemaining != null && flight.seatsRemaining > 0 ? (
+              /* Has Amadeus data */
+              <div className={cn(
+                "flex items-center justify-end gap-1 mt-1 text-xs",
+                flight.seatsRemaining >= 9
+                  ? "text-text-secondary"
+                  : "text-red-600 font-semibold"
+              )}>
+                <Users className="w-3 h-3" />
+                <span>
+                  {flight.seatsRemaining >= 9
+                    ? 'More than 9 tickets remaining'
+                    : `${flight.seatsRemaining} ticket${flight.seatsRemaining === 1 ? '' : 's'} left`
+                  }
+                </span>
+              </div>
+            ) : (
+              /* No Amadeus data — show info message */
+              <div className="flex items-center justify-end gap-1 mt-1 text-xs text-text-muted">
+                <Info className="w-3 h-3" />
+                <span>Ticket info not available</span>
+              </div>
             )}
             
             {/* Carbon Emissions Badge */}

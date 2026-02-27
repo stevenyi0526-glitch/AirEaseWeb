@@ -21,12 +21,12 @@ export default {
         border: '#E2E8F0',
         divider: '#EDF2F7',
 
-        // Primary brand (buttons, links, focus)
+        // Primary brand — dark navy (buttons, links, focus)
         primary: {
-          DEFAULT: '#1A73E8',
-          hover: '#155CC4',
-          light: '#E8F0FE',
-          50: '#EFF6FF',
+          DEFAULT: '#034891',
+          hover: '#023670',
+          light: '#E6F0FA',
+          50: '#F0F5FA',
         },
 
         // Secondary (teal accent for chips/toggles)
@@ -59,22 +59,23 @@ export default {
         score: {
           DEFAULT: '#22C55E',
           excellent: '#22C55E',  // 85+
-          good: '#3B82F6',       // 70-85
+          good: '#034891',       // 70-85
           fair: '#F59E0B',       // 50-70
           poor: '#6B7280',       // <50
         },
 
-        // Legacy AirEase brand colors (for gradient)
+        // Legacy AirEase brand colors — dark navy
         airease: {
-          blue: '#2196F3',
-          'blue-dark': '#1976D2',
-          'blue-light': '#64B5F6',
-          'blue-50': '#E3F2FD',
+          blue: '#034891',
+          'blue-dark': '#023670',
+          'blue-light': '#0560B8',
+          'blue-50': '#E6F0FA',
         },
       },
 
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        causten: ['"Causten Round"', 'Nunito', 'Quicksand', 'system-ui', 'sans-serif'],
       },
 
       fontSize: {
@@ -99,7 +100,7 @@ export default {
         'card-hover': '0 8px 30px rgba(15, 23, 42, 0.10)',
         'sticky': '0 4px 16px rgba(15, 23, 42, 0.08)',
         'dropdown': '0 10px 40px rgba(15, 23, 42, 0.12)',
-        'button': '0 2px 8px rgba(26, 115, 232, 0.25)',
+        'button': '0 2px 8px rgba(27, 43, 90, 0.25)',
       },
 
       spacing: {

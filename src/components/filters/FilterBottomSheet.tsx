@@ -92,10 +92,10 @@ const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
                   <h4 className="text-sm font-semibold text-text-primary mb-3">Stops</h4>
                   <div className="flex flex-wrap gap-2">
                     {[
-                      { value: 'any', label: 'Any' },
+                      { value: 'any', label: 'All Flights' },
                       { value: '0', label: 'Direct' },
-                      { value: '1', label: '1 stop' },
-                      { value: '2+', label: '2+ stops' },
+                      { value: '1', label: '1 Stop' },
+                      { value: '2', label: '2 Stops' },
                     ].map((option) => (
                       <button
                         key={option.value}

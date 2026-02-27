@@ -19,7 +19,7 @@ interface CompareRadarChartProps {
 
 // Color palette for different flights
 const COLORS = [
-  '#3b82f6', // Blue
+  '#034891', // Blue
   '#10b981', // Green
   '#f59e0b', // Amber
 ];
@@ -247,7 +247,7 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
         Flight Comparison Radar
       </h3>
       <p className="text-sm text-text-secondary text-center mb-4">
-        Score Scale: 0-10 · <span className="font-medium text-green-600">8-10 Excellent</span> • <span className="font-medium text-blue-600">5-7.9 Good</span> • <span className="font-medium text-amber-600">0-4.9 Fair</span>
+        Score Scale: 0-10 · <span className="font-medium text-green-600">8-10 Excellent</span> • <span className="font-medium text-[#034891]">5-7.9 Good</span> • <span className="font-medium text-amber-600">0-4.9 Fair</span>
       </p>
       
       <div className="h-[420px] w-full">
@@ -340,15 +340,15 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
         </div>
         
         {/* Original values reference */}
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <h5 className="font-medium text-blue-800 text-sm mb-2">Original Values Reference</h5>
+        <div className="mt-4 p-3 bg-[#E6F0FA] rounded-lg">
+          <h5 className="font-medium text-[#023670] text-sm mb-2">Original Values Reference</h5>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {flights.map((f, idx) => (
               <div key={f.flight.id} className="text-xs">
                 <span className="font-medium" style={{ color: COLORS[idx] }}>
                   {f.flight.airline}:
                 </span>
-                <span className="text-blue-700 ml-1">
+                <span className="text-[#034891] ml-1">
                   {formatPrice(f.flight.price, f.flight.currency)} · {formatDuration(f.flight.durationMinutes)} · {f.flight.stops === 0 ? 'Direct' : `${f.flight.stops} stop${f.flight.stops > 1 ? 's' : ''}`}
                 </span>
               </div>

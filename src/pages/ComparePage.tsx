@@ -10,7 +10,7 @@ import { cn } from '../utils/cn';
 
 // Color palette matching CompareRadarChart for flight identification
 const FLIGHT_COLORS = [
-  { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300', hex: '#3b82f6' },
+  { bg: 'bg-[#E6F0FA]', text: 'text-[#034891]', border: 'border-[#B0CCE6]', hex: '#034891' },
   { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300', hex: '#10b981' },
   { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300', hex: '#f59e0b' },
 ];

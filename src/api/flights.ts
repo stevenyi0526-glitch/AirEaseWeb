@@ -233,4 +233,37 @@ export const flightsApi = {
     );
     return results;
   },
+
+  /**
+   * Get seat availability for ALL flights on a route in ONE API call.
+   * Uses Amadeus Flight Availabilities API (batch).
+   * Results are cached on the backend for 30 minutes.
+   * 
+   * @param origin - Departure airport IATA code (e.g., "HKG")
+   * @param destination - Arrival airport IATA code (e.g., "NRT")
+   * @param date - Departure date (YYYY-MM-DD)
+   * @param cabin - Cabin class (economy/business/first)
+   * @returns Map of flight keys to remaining seat counts: { "CX 888": 9, "BA 27": 4 }
+   */
+  getAvailability: async (params: {
+    origin: string;
+    destination: string;
+    date: string;
+    cabin?: string;
+  }): Promise<Record<string, number>> => {
+    try {
+      const response = await apiClient.get('/v1/flights/availability', {
+        params: {
+          origin: params.origin,
+          destination: params.destination,
+          date: params.date,
+          cabin: params.cabin || 'economy',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.warn('[Availability] Failed to fetch seat availability:', error);
+      return {};
+    }
+  },
 };

@@ -385,7 +385,7 @@ const SmoothPriceChart: React.FC<SmoothPriceChartProps> = ({
           <path
             d={chartData.smoothPathD}
             fill="none"
-            stroke="#3b82f6"
+            stroke="#034891"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"

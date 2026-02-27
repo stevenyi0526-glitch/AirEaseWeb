@@ -11,7 +11,7 @@ interface UserProfileDropdownProps {
 }
 
 const labelConfig: Record<UserLabel, { icon: typeof Briefcase; label: string; color: string; bgColor: string }> = {
-  business: { icon: Briefcase, label: 'Business', color: 'text-blue-600 bg-blue-100', bgColor: 'bg-blue-500' },
+  business: { icon: Briefcase, label: 'Business', color: 'text-[#034891] bg-[#E6F0FA]', bgColor: 'bg-[#034891]' },
   family: { icon: Users, label: 'Family', color: 'text-green-600 bg-green-100', bgColor: 'bg-emerald-500' },
   student: { icon: GraduationCap, label: 'Student', color: 'text-purple-600 bg-purple-100', bgColor: 'bg-purple-500' },
 };
@@ -113,7 +113,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
             {/* Current Label Badge with distinct colors */}
             <div className={cn(
               'inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full text-xs font-semibold text-white',
-              currentLabel === 'business' && 'bg-blue-500',
+              currentLabel === 'business' && 'bg-[#034891]',
               currentLabel === 'family' && 'bg-emerald-500',
               currentLabel === 'student' && 'bg-purple-500'
             )}>
@@ -153,7 +153,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                         isSelected 
                           ? 'bg-white shadow-md ring-2 ring-offset-1' 
                           : 'hover:bg-white/70 hover:shadow-sm',
-                        isSelected && label === 'business' && 'ring-blue-500',
+                        isSelected && label === 'business' && 'ring-[#034891]',
                         isSelected && label === 'family' && 'ring-emerald-500',
                         isSelected && label === 'student' && 'ring-purple-500',
                         isUpdating && 'opacity-50 cursor-not-allowed'
@@ -162,7 +162,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                       {/* Colored icon background */}
                       <div className={cn(
                         'w-8 h-8 rounded-lg flex items-center justify-center',
-                        label === 'business' && 'bg-blue-500',
+                        label === 'business' && 'bg-[#034891]',
                         label === 'family' && 'bg-emerald-500',
                         label === 'student' && 'bg-purple-500'
                       )}>
@@ -180,7 +180,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                       </div>
                       {isSelected && <Check className={cn(
                         'w-5 h-5',
-                        label === 'business' && 'text-blue-500',
+                        label === 'business' && 'text-[#034891]',
                         label === 'family' && 'text-emerald-500',
                         label === 'student' && 'text-purple-500'
                       )} />}
@@ -240,21 +240,21 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                   placeholder="Current password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none text-gray-900"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-[#034891] focus:ring-1 focus:ring-[#034891]/20 outline-none text-gray-900"
                 />
                 <input
                   type="password"
                   placeholder="New password (min 6 chars)"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none text-gray-900"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-[#034891] focus:ring-1 focus:ring-[#034891]/20 outline-none text-gray-900"
                 />
                 <input
                   type="password"
                   placeholder="Confirm new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none text-gray-900"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-[#034891] focus:ring-1 focus:ring-[#034891]/20 outline-none text-gray-900"
                 />
                 <button
                   onClick={async () => {
@@ -279,7 +279,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                     }
                   }}
                   disabled={pwLoading}
-                  className="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-2 bg-[#034891] text-white text-sm font-medium rounded-lg hover:bg-[#023670] disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {pwLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Changing...</> : 'Update Password'}
                 </button>

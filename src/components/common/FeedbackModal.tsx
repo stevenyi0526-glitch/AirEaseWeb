@@ -135,7 +135,7 @@ export function FeedbackModal({
       {/* Modal */}
       <div className="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+        <div className="bg-gradient-to-r from-[#034891] to-[#0560B8] px-6 py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-white">Feedback & Rating</h2>
             <button
@@ -163,7 +163,7 @@ export function FeedbackModal({
               onClick={() => setActiveTab('report')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                 activeTab === 'report'
-                  ? 'bg-white text-blue-700'
+                  ? 'bg-white text-[#034891]'
                   : 'bg-white/20 text-white/80 hover:bg-white/30'
               }`}
             >
@@ -329,7 +329,7 @@ export function FeedbackModal({
         <>
         {/* Flight Info Banner (if provided via props) */}
         {hasPrefilledFlightInfo && (
-          <div className="bg-blue-50 dark:bg-blue-900/30 px-6 py-3 border-b border-blue-100 dark:border-blue-800">
+          <div className="bg-[#E6F0FA] dark:bg-[#023670]/30 px-6 py-3 border-b border-[#B0CCE6] dark:border-[#023670]">
             <div className="text-sm">
               <span className="text-gray-500 dark:text-gray-400">Related Flight: </span>
               <span className="font-medium text-gray-900 dark:text-white">
@@ -355,7 +355,7 @@ export function FeedbackModal({
               placeholder="We'll use this to respond to your feedback"
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                       focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                       focus:ring-2 focus:ring-[#034891] focus:border-transparent
                        placeholder:text-gray-400"
               required
               disabled={isSubmitting}
@@ -377,7 +377,7 @@ export function FeedbackModal({
                     placeholder="Flight # (e.g., CA123)"
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                             focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                             focus:ring-2 focus:ring-[#034891] focus:border-transparent
                              placeholder:text-gray-400"
                     disabled={isSubmitting}
                   />
@@ -390,7 +390,7 @@ export function FeedbackModal({
                     placeholder="Airline"
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                             focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                             focus:ring-2 focus:ring-[#034891] focus:border-transparent
                              placeholder:text-gray-400"
                     disabled={isSubmitting}
                   />
@@ -403,7 +403,7 @@ export function FeedbackModal({
                     placeholder="Route (e.g., HKG → PVG)"
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                             focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                             focus:ring-2 focus:ring-[#034891] focus:border-transparent
                              placeholder:text-gray-400"
                     disabled={isSubmitting}
                   />
@@ -418,7 +418,7 @@ export function FeedbackModal({
                     placeholder="Flight Date"
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                             focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                             focus:ring-2 focus:ring-[#034891] focus:border-transparent
                              placeholder:text-gray-400"
                     disabled={isSubmitting}
                   />
@@ -437,7 +437,7 @@ export function FeedbackModal({
               onChange={(e) => setCategory(e.target.value as ReportCategory)}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                       focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       focus:ring-2 focus:ring-[#034891] focus:border-transparent"
               disabled={isSubmitting}
             >
               {REPORT_CATEGORIES.map((cat) => (
@@ -460,7 +460,7 @@ export function FeedbackModal({
               rows={4}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                       focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                       focus:ring-2 focus:ring-[#034891] focus:border-transparent
                        placeholder:text-gray-400 resize-none"
               required
               minLength={10}
@@ -492,8 +492,8 @@ export function FeedbackModal({
             type="submit"
             disabled={isSubmitting || submitStatus === 'success'}
             className="w-full flex items-center justify-center gap-2 px-6 py-3 
-                     bg-gradient-to-r from-blue-600 to-purple-600 
-                     hover:from-blue-700 hover:to-purple-700
+                     bg-gradient-to-r from-[#034891] to-[#0560B8] 
+                     hover:from-[#023670] hover:to-[#034891]
                      text-white font-medium rounded-lg
                      disabled:opacity-50 disabled:cursor-not-allowed
                      transition-all duration-200"
