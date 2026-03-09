@@ -424,18 +424,6 @@ const FlightDetailPage: React.FC = () => {
                 <p className="text-base font-semibold text-text-primary">🔖 {safetyProfile.flight_info.tail_number}</p>
               </div>
             )}
-
-            {flight.seatsRemaining && (
-              <div className="p-3 bg-surface-alt rounded-lg">
-                <p className="text-xs text-text-muted mb-0.5">Availability</p>
-                <p className={cn(
-                  'text-base font-semibold',
-                  flight.seatsRemaining < 5 ? 'text-danger' : 'text-text-primary'
-                )}>
-                  {flight.seatsRemaining} seats remaining
-                </p>
-              </div>
-            )}
           </div>
         </div>
 

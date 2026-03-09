@@ -225,7 +225,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-divider bg-blue-50">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-200 flex items-center justify-center shadow-lg">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -252,7 +252,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
                 <div className="space-y-6">
                   <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100">
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-200 flex items-center justify-center flex-shrink-0">
                         <Sparkles className="w-5 h-5 text-white" />
                       </div>
                       <div>
@@ -311,7 +311,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
                       'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
                       msg.role === 'user'
                         ? 'bg-primary'
-                        : 'bg-blue-500'
+                        : 'bg-gradient-to-br from-blue-500 to-blue-200'
                     )}
                   >
                     {msg.role === 'user' ? (
@@ -336,7 +336,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               {/* Loading Indicator */}
               {isLoading && (
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-200 flex items-center justify-center">
                     <Sparkles className="w-4 h-4 text-white" />
                   </div>
                   <div className="bg-surface-alt rounded-2xl rounded-tl-sm px-4 py-3">

@@ -73,7 +73,7 @@ const HomePage: React.FC = () => {
 </h1>
 
           <p className="text-sm sm:text-base text-slate-400 mb-1 text-center tracking-wide">
-            Your professional flight butler
+            Your AI Flight Helper
           </p>
           <p className="text-base sm:text-lg text-slate-500 mb-8 text-center">
             {getGreeting()}, {isAuthenticated ? user?.username : 'Traveler'}. Find your perfect flight.
@@ -86,7 +86,7 @@ const HomePage: React.FC = () => {
                 onClick={() => setSearchMode('ai')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                   searchMode === 'ai'
-                    ? 'bg-blue-500 text-white shadow-lg'
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-200 text-white shadow-lg'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -127,6 +127,62 @@ const HomePage: React.FC = () => {
           <SearchForm />
         )}
       </div>
+
+      {/* Flight History Section - Above "Why Airease" */}
+      {isAuthenticated && (
+        <div className="relative z-10 pb-4" ref={historyRef}>
+          <div className="w-full max-w-sm sm:max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto px-4">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="p-4 border-b border-slate-100 flex items-center gap-2">
+                <History className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-slate-800">Recent Searches</h3>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                {loadingHistory ? (
+                  <div className="p-6 text-center text-slate-400 text-sm">Loading...</div>
+                ) : searchHistory.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400 text-sm">
+                    No search history yet. Start searching to see your recent flights here.
+                  </div>
+                ) : (
+                  searchHistory.map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 hover:bg-slate-50 border-b border-slate-50 last:border-b-0 cursor-pointer group transition-colors"
+                      onClick={() => {
+                        window.location.href = `/flights?from=${encodeURIComponent(item.departure_city)}&to=${encodeURIComponent(item.arrival_city)}&date=${item.departure_date}${item.return_date ? `&returnDate=${item.return_date}` : ''}&adults=${item.passengers}&cabin=${item.cabin_class}`;
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
+                            <Plane className="w-3.5 h-3.5 text-primary" />
+                            <span>{item.departure_city}</span>
+                            <span className="text-slate-300">→</span>
+                            <span>{item.arrival_city}</span>
+                          </div>
+                          <div className="text-xs text-slate-400 mt-1 ml-5.5">
+                            {formatDate(item.departure_date)}
+                            {item.return_date && ` – ${formatDate(item.return_date)}`}
+                            <span className="mx-1.5">·</span>
+                            {item.passengers} pax · {item.cabin_class}
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => handleDeleteHistory(item.id, e)}
+                          className="p-1.5 rounded-full hover:bg-red-50 text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Features Section - Why Choose Airease (Airplane Window Design) */}
       <div className="relative z-10 mt-6 pb-4">
@@ -297,62 +353,6 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Flight History Section - Below "Why Airease" */}
-      {isAuthenticated && (
-        <div className="relative z-10 pb-12" ref={historyRef}>
-          <div className="w-full max-w-sm sm:max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto px-4">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-              <div className="p-4 border-b border-slate-100 flex items-center gap-2">
-                <History className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold text-slate-800">Recent Searches</h3>
-              </div>
-              <div className="max-h-64 overflow-y-auto">
-                {loadingHistory ? (
-                  <div className="p-6 text-center text-slate-400 text-sm">Loading...</div>
-                ) : searchHistory.length === 0 ? (
-                  <div className="p-6 text-center text-slate-400 text-sm">
-                    No search history yet. Start searching to see your recent flights here.
-                  </div>
-                ) : (
-                  searchHistory.map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-3 hover:bg-slate-50 border-b border-slate-50 last:border-b-0 cursor-pointer group transition-colors"
-                      onClick={() => {
-                        window.location.href = `/flights?from=${encodeURIComponent(item.departure_city)}&to=${encodeURIComponent(item.arrival_city)}&date=${item.departure_date}${item.return_date ? `&returnDate=${item.return_date}` : ''}&adults=${item.passengers}&cabin=${item.cabin_class}`;
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
-                            <Plane className="w-3.5 h-3.5 text-primary" />
-                            <span>{item.departure_city}</span>
-                            <span className="text-slate-300">→</span>
-                            <span>{item.arrival_city}</span>
-                          </div>
-                          <div className="text-xs text-slate-400 mt-1 ml-5.5">
-                            {formatDate(item.departure_date)}
-                            {item.return_date && ` – ${formatDate(item.return_date)}`}
-                            <span className="mx-1.5">·</span>
-                            {item.passengers} pax · {item.cabin_class}
-                          </div>
-                        </div>
-                        <button
-                          onClick={(e) => handleDeleteHistory(item.id, e)}
-                          className="p-1.5 rounded-full hover:bg-red-50 text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Footer */}
       <footer className="relative z-10 w-full py-6 text-center">

@@ -4,10 +4,10 @@ import { Plane, Calendar, AlertTriangle, Leaf, Check, Users, Loader2, Info } fro
 import type { FlightWithScore } from '../../api/types';
 import { formatTime, formatDuration, formatDate } from '../../utils/formatters';
 import { formatPriceWithCurrency } from '../common/CurrencySelector';
+import { getAircraftModelAge } from '../../utils/aircraftModelYears';
 import ScoreBadge from './ScoreBadge';
 import FlightHighlightTags from './FlightHighlightTags';
 import FavoriteButton from './FavoriteButton';
-import CompareButton from '../compare/CompareButton';
 import { cn } from '../../utils/cn';
 
 interface FlightCardProps {
@@ -45,7 +45,6 @@ const FlightCard: React.FC<FlightCardProps> = ({
   flightWithScore,
   onSelect,
   isSelected = false,
-  showCompare = true,
   isRoundTrip = false,
   returnDate: _returnDate,
   displayCurrency = 'USD',
@@ -104,7 +103,17 @@ const FlightCard: React.FC<FlightCardProps> = ({
             </div>
             <div>
               <h3 className="font-semibold text-text-primary">{flight.airline}</h3>
-              <p className="text-sm text-text-secondary">{flight.flightNumber}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-text-secondary">{flight.flightNumber}</p>
+                {flight.aircraftModel && (
+                  <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">
+                    {flight.aircraftModel}
+                    {getAircraftModelAge(flight.aircraftModel) !== null && (
+                      <span className="text-slate-400 ml-1">({getAircraftModelAge(flight.aircraftModel)}yr)</span>
+                    )}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -276,12 +285,9 @@ const FlightCard: React.FC<FlightCardProps> = ({
             )}
           </div>
 
-          {/* Right side: Compare + Favorite + View Details */}
+          {/* Right side: Favorite + View Details */}
           <div className="flex items-center gap-2">
             <FavoriteButton flightWithScore={flightWithScore} size="sm" />
-            {showCompare && (
-              <CompareButton flightWithScore={flightWithScore} />
-            )}
             <Link
               to={`/flights/${flight.id}`}
               state={{ flightWithScore }}

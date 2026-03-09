@@ -7,20 +7,19 @@ import { generateRecommendations } from '../api/recommendations';
 import { trackSortAction, trackFlightSelection } from '../api/preferences';
 import { bookingApi } from '../api/booking';
 import { AIRLINES } from '../lib/mockApi';
-import { useFlightSearchParams, filtersToApiParams, type SortBy } from '../hooks/useFlightSearchParams';
+import { useFlightSearchParams, filtersToApiParams, type SortBy, type CabinClass } from '../hooks/useFlightSearchParams';
 import { useAuth } from '../contexts/AuthContext';
 import FilterPanel from '../components/filters/FilterPanel';
 import SortDropdown from '../components/filters/SortDropdown';
 import FlightCard from '../components/flights/FlightCard';
 import FlightCardSkeleton from '../components/flights/FlightCardSkeleton';
 import FloatingSelectedBar from '../components/flights/FloatingSelectedBar';
-import PriceTrendChart from '../components/flights/PriceTrendChart';
-import CompareTray from '../components/compare/CompareTray';
 import FilterBottomSheet from '../components/filters/FilterBottomSheet';
 import SearchLoading from '../components/common/SearchLoading';
 import CurrencySelector, { type CurrencyCode, formatPriceWithCurrency, setLiveExchangeRates } from '../components/common/CurrencySelector';
 import AIRecommendations from '../components/flights/AIRecommendations';
 import PassengerSelector from '../components/search/PassengerSelector';
+import CabinClassSelector from '../components/search/CabinClassSelector';
 import { fetchExchangeRates } from '../api/exchangeRates';
 import { cn } from '../utils/cn';
 import type { FlightWithScore } from '../api/types';
@@ -36,6 +35,8 @@ import type { FlightWithScore } from '../api/types';
 // Each user requirement is tracked as a checklist item (met ✓ / not met ✗)
 // so the AI recommendation card can show ticks for all matched criteria.
 // ============================================================================
+
+import { getAircraftModelYear } from '../utils/aircraftModelYears';
 
 /** A single requirement check for the AI recommendation checklist */
 export interface AIRequirementCheck {
@@ -234,9 +235,14 @@ const FlightsPage: React.FC = () => {
   const [recommendationExplanation, setRecommendationExplanation] = useState('');
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   
-  // Pagination state - show 40 flights at a time
-  const FLIGHTS_PER_PAGE = 40;
-  const [displayCount, setDisplayCount] = useState(FLIGHTS_PER_PAGE);
+  // Pagination state
+  // Page 1: 5 cards, "Next Page" button
+  // Page 2: 5 cards initially, then "Show More" adds 20 at a time
+  const PAGE1_SIZE = 5;
+  const PAGE2_INITIAL = 5;
+  const SHOW_MORE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState<1 | 2>(1);
+  const [page2Extra, setPage2Extra] = useState(0); // how many extra batches loaded on page 2
 
   // Get user's traveler type for personalized scoring
   const travelerType = user?.label || 'default';
@@ -622,16 +628,8 @@ const FlightsPage: React.FC = () => {
         return flights.sort((a, b) => b.score.overallScore - a.score.overallScore);
       case 'price':
         return flights.sort((a, b) => a.flight.price - b.flight.price);
-      case 'duration':
-        return flights.sort((a, b) => a.flight.durationMinutes - b.flight.durationMinutes);
-      case 'departure':
-        return flights.sort((a, b) => 
-          new Date(a.flight.departureTime).getTime() - new Date(b.flight.departureTime).getTime()
-        );
-      case 'arrival':
-        return flights.sort((a, b) => 
-          new Date(a.flight.arrivalTime).getTime() - new Date(b.flight.arrivalTime).getTime()
-        );
+      case 'model':
+        return flights.sort((a, b) => getAircraftModelYear(b.flight.aircraftModel) - getAircraftModelYear(a.flight.aircraftModel));
       default:
         return flights;
     }
@@ -712,16 +710,8 @@ const FlightsPage: React.FC = () => {
         return result.sort((a, b) => b.score.overallScore - a.score.overallScore);
       case 'price':
         return result.sort((a, b) => a.flight.price - b.flight.price);
-      case 'duration':
-        return result.sort((a, b) => a.flight.durationMinutes - b.flight.durationMinutes);
-      case 'departure':
-        return result.sort((a, b) => 
-          new Date(a.flight.departureTime).getTime() - new Date(b.flight.departureTime).getTime()
-        );
-      case 'arrival':
-        return result.sort((a, b) => 
-          new Date(a.flight.arrivalTime).getTime() - new Date(b.flight.arrivalTime).getTime()
-        );
+      case 'model':
+        return result.sort((a, b) => getAircraftModelYear(b.flight.aircraftModel) - getAircraftModelYear(a.flight.aircraftModel));
       default:
         return result;
     }
@@ -793,49 +783,7 @@ const FlightsPage: React.FC = () => {
     multiCityAvailability
   ]);
 
-  // Current leg's price insights (for Price Analysis chart)
-  const currentLegPriceInsights = useMemo(() => {
-    const isRoundTrip = filters.tripType === 'roundtrip' && filters.returnDate;
-    const isMultiCity = filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2;
-    
-    // Debug logging for price insights
-    console.log('[PriceInsights Debug]', {
-      tripType: filters.tripType,
-      returnDate: filters.returnDate,
-      activeFlightTab,
-      isRoundTrip,
-      isMultiCity,
-      departurePriceInsights: roundTripData?.departurePriceInsights ? 'YES' : 'NO',
-      returnPriceInsights: roundTripData?.returnPriceInsights ? 'YES' : 'NO',
-      rawDataPriceInsights: rawData?.priceInsights ? 'YES' : 'NO',
-    });
-    
-    if (isMultiCity) {
-      return multiCityData?.[activeMultiCityLeg]?.priceInsights || null;
-    }
-    
-    if (isRoundTrip) {
-      const result = activeFlightTab === 'departure' 
-        ? roundTripData?.departurePriceInsights 
-        : roundTripData?.returnPriceInsights;
-      console.log('[PriceInsights] Selected for', activeFlightTab, ':', result ? 'Available' : 'Not available');
-      return result;
-    }
-    
-    return rawData?.priceInsights || null;
-  }, [
-    filters.tripType, 
-    filters.returnDate, 
-    filters.multiCityLegs.length,
-    activeFlightTab, 
-    activeMultiCityLeg,
-    rawData?.priceInsights,
-    roundTripData?.departurePriceInsights,
-    roundTripData?.returnPriceInsights,
-    multiCityData
-  ]);
-
-  // Current leg's route info (for Price Analysis chart labels)
+  // Current leg's route info (for route labels)
   const currentLegRoute = useMemo(() => {
     const isRoundTrip = filters.tripType === 'roundtrip' && filters.returnDate;
     const isMultiCity = filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2;
@@ -940,9 +888,10 @@ const FlightsPage: React.FC = () => {
     });
   }, []);
 
-  // Reset display count when filters or sort changes
+  // Reset pagination when filters or sort changes
   React.useEffect(() => {
-    setDisplayCount(FLIGHTS_PER_PAGE);
+    setCurrentPage(1);
+    setPage2Extra(0);
   }, [filters.sortBy, filters.stops, filters.departureTimeMin, filters.departureTimeMax, filters.minPrice, filters.maxPrice, filters.airlines, filters.aircraftType]);
 
   // ============================================================================
@@ -1248,7 +1197,7 @@ const FlightsPage: React.FC = () => {
                     filters.tripType === 'roundtrip' 
                       ? "bg-primary/10 text-primary" 
                       : filters.tripType === 'multicity'
-                        ? "bg-amber-100 text-amber-700"
+                        ? "bg-blue-100 text-blue-700"
                         : "bg-gray-100 text-gray-600"
                   )}>
                     {filters.tripType === 'roundtrip' ? 'Round Trip' : 
@@ -1317,6 +1266,13 @@ const FlightsPage: React.FC = () => {
                 compact
               />
 
+              {/* Cabin Class Selector */}
+              <CabinClassSelector
+                value={filters.cabin}
+                onChange={(cabin: CabinClass) => updateFilters({ cabin })}
+                compact
+              />
+
               <SortDropdown
                 value={filters.sortBy}
                 onChange={handleSortChange}
@@ -1371,35 +1327,13 @@ const FlightsPage: React.FC = () => {
               />
             )}
 
-            {/* Price Insights Chart - Uses currentLegPriceInsights (single-way focus) */}
-            {!isLoadingCurrentLeg && !error && currentLegPriceInsights && (
-              <PriceTrendChart
-                priceInsights={currentLegPriceInsights}
-                currency={currency}
-                departureCity={currentLegRoute.from}
-                arrivalCity={currentLegRoute.to}
-                cabinClass={filters.cabin}
-                className="mb-4"
-              />
-            )}
-
             {/* Results Header */}
             <div className="mb-4">
-              <h1 className="text-xl md:text-2xl font-bold text-text-primary">
-                {isLoadingCurrentLeg ? (
-                  'Searching...'
-                ) : error ? (
-                  'Search error'
-                ) : (
-                  // Show correct count based on current leg
-                  `${currentLegFlights.length} Flights Available`
-                )}
-              </h1>
-              <p className="text-sm text-text-secondary mt-1">
+              <p className="text-sm text-text-secondary">
                 {currentLegRoute.from} → {currentLegRoute.to}
                 {' • '}Sorted by {filters.sortBy === 'score' 
-                  ? (travelerType === 'student' ? 'Best Price' : 'Airease Score') 
-                  : filters.sortBy}
+                  ? 'Best Experience'
+                  : filters.sortBy === 'model' ? 'Latest Model' : filters.sortBy}
                 {hasActiveFilters && ' • Filters applied'}
               </p>
             </div>
@@ -1423,15 +1357,15 @@ const FlightsPage: React.FC = () => {
 
             {/* Multi-city Notice Banner */}
             {filters.tripType === 'multicity' && filters.multiCityLegs.length >= 2 && !isLoadingMultiCity && (
-              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3">
-                <div className="p-2 rounded-full bg-amber-100">
-                  <Plane className="w-4 h-4 text-amber-600" />
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+                <div className="p-2 rounded-full bg-blue-100">
+                  <Plane className="w-4 h-4 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-amber-900">
+                  <p className="text-sm font-medium text-blue-900">
                     Multi-city Trip - {filters.multiCityLegs.length} Flights
                   </p>
-                  <p className="text-xs text-amber-700">
+                  <p className="text-xs text-blue-700">
                     Select flights for each leg using the tabs above. Each leg is priced independently.
                   </p>
                 </div>
@@ -1577,15 +1511,15 @@ const FlightsPage: React.FC = () => {
                       </div>
                       
                       {/* Current leg info banner */}
-                      <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-3 flex items-center gap-3 border-x border-b border-amber-200">
-                        <div className="p-2 rounded-full bg-amber-100">
-                          <Plane className="w-4 h-4 text-amber-600" />
+                      <div className="bg-gradient-to-r from-blue-50 to-sky-50 p-3 flex items-center gap-3 border-x border-b border-blue-200">
+                        <div className="p-2 rounded-full bg-blue-100">
+                          <Plane className="w-4 h-4 text-blue-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-amber-900">
+                          <p className="text-sm font-medium text-blue-900">
                             Flight {activeMultiCityLeg + 1}: {filters.multiCityLegs[activeMultiCityLeg]?.from} → {filters.multiCityLegs[activeMultiCityLeg]?.to}
                           </p>
-                          <p className="text-xs text-amber-700">
+                          <p className="text-xs text-blue-700">
                             {filters.multiCityLegs[activeMultiCityLeg]?.date} • {multiCityData?.[activeMultiCityLeg]?.flights?.length || 0} flights available
                           </p>
                         </div>
@@ -1657,9 +1591,19 @@ const FlightsPage: React.FC = () => {
                       return 'per person';
                     })();
                     
+                    // Pagination logic:
+                    // Page 1: first 5 flights + "Next Page" button
+                    // Page 2: next 5 flights + "Show More" (20 at a time)
+                    const page2DisplayCount = PAGE2_INITIAL + page2Extra * SHOW_MORE_SIZE;
+                    const visibleFlights = currentPage === 1
+                      ? currentLegFlights.slice(0, PAGE1_SIZE)
+                      : currentLegFlights.slice(PAGE1_SIZE, PAGE1_SIZE + page2DisplayCount);
+                    const hasMorePage2 = currentPage === 2 && (PAGE1_SIZE + page2DisplayCount) < currentLegFlights.length;
+                    const remainingCount = currentLegFlights.length - PAGE1_SIZE - page2DisplayCount;
+                    
                     return (
                       <>
-                        {currentLegFlights.slice(0, displayCount).map((flight) => (
+                        {visibleFlights.map((flight) => (
                           <FlightCard
                             key={flight.flight.id}
                             flightWithScore={flight}
@@ -1671,27 +1615,47 @@ const FlightsPage: React.FC = () => {
                           />
                         ))}
                         
-                        {/* Load More Button */}
-                        {displayCount < currentLegFlights.length && (
-                          <div className="flex justify-center pt-4">
+                        {/* Page 1 → "Next Page" button */}
+                        {currentPage === 1 && currentLegFlights.length > PAGE1_SIZE && (
+                          <div className="flex flex-col items-center gap-3 pt-6">
+                            <p className="text-sm text-text-muted">
+                              Page 1 of 2 • Showing {Math.min(PAGE1_SIZE, currentLegFlights.length)} of {currentLegFlights.length} flights
+                            </p>
                             <button
-                              onClick={() => setDisplayCount(prev => prev + FLIGHTS_PER_PAGE)}
-                              className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-dark text-white font-medium rounded-xl transition-colors shadow-lg hover:shadow-xl"
+                              onClick={() => { setCurrentPage(2); setPage2Extra(0); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                              className="flex items-center gap-2 px-8 py-3 bg-primary hover:bg-primary-dark text-white font-semibold rounded-xl transition-colors shadow-lg hover:shadow-xl"
                             >
-                              <ChevronDown className="w-5 h-5" />
-                              Load More Flights
-                              <span className="text-sm opacity-80">
-                                ({currentLegFlights.length - displayCount} more)
-                              </span>
+                              Next Page →
                             </button>
                           </div>
                         )}
                         
-                        {/* Showing count indicator */}
-                        {currentLegFlights.length > FLIGHTS_PER_PAGE && (
-                          <p className="text-center text-sm text-text-muted pt-2">
-                            Showing {Math.min(displayCount, currentLegFlights.length)} of {currentLegFlights.length} flights
-                          </p>
+                        {/* Page 2 → "Show More" button + page indicator */}
+                        {currentPage === 2 && (
+                          <div className="flex flex-col items-center gap-3 pt-6">
+                            {/* Back to page 1 link */}
+                            <button
+                              onClick={() => { setCurrentPage(1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                              className="text-sm text-primary hover:underline"
+                            >
+                              ← Back to Page 1
+                            </button>
+                            <p className="text-sm text-text-muted">
+                              Page 2 • Showing {Math.min(page2DisplayCount, currentLegFlights.length - PAGE1_SIZE)} more flights
+                            </p>
+                            {hasMorePage2 && (
+                              <button
+                                onClick={() => setPage2Extra(prev => prev + 1)}
+                                className="flex items-center gap-2 px-8 py-3 bg-primary hover:bg-primary-dark text-white font-semibold rounded-xl transition-colors shadow-lg hover:shadow-xl"
+                              >
+                                <ChevronDown className="w-5 h-5" />
+                                Show More
+                                <span className="text-sm opacity-80">
+                                  ({Math.min(SHOW_MORE_SIZE, remainingCount)} more)
+                                </span>
+                              </button>
+                            )}
+                          </div>
                         )}
 
                         {/* Login prompt for non-authenticated users */}
@@ -1726,9 +1690,6 @@ const FlightsPage: React.FC = () => {
               )}
             </div>
           </div>
-
-          {/* Right: Compare Tray (Desktop) */}
-          <CompareTray />
         </div>
       </main>
 

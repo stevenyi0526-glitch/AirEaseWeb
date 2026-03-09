@@ -40,7 +40,7 @@ const ReasonCard: React.FC<{
       <div className="flex items-start gap-3 w-full">
         <div className={cn(
           'reason-number flex-shrink-0',
-          isPositive ? 'bg-primary' : 'bg-amber-500'
+          isPositive ? 'bg-primary' : 'bg-slate-500'
         )}>
           {index + 1}
         </div>

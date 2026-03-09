@@ -75,10 +75,13 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
   };
 
   // Step 2: Submit verification code → completes registration
+  // Only called when user clicks "Verify & Create Account"
   const handleVerifyCode = async () => {
     const code = verificationCode.join('');
-    if (code.length !== 6) {
-      setError('Please enter the full 6-digit code');
+
+    // Check completeness ONLY when user clicks verify
+    if (code.length !== 6 || verificationCode.some(d => d === '')) {
+      setError('Please enter the full 6-digit code before verifying.');
       return;
     }
 
@@ -97,7 +100,21 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
       setVerificationCode(['', '', '', '', '', '']);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || 'Invalid verification code. Please try again.');
+      const detail = error.response?.data?.detail || '';
+      
+      // Map backend-specific errors to user-friendly messages
+      let errorMsg: string;
+      if (detail.includes('expired')) {
+        errorMsg = 'Your verification code has expired. Please request a new one.';
+      } else if (detail.includes('Incorrect')) {
+        errorMsg = 'The code you entered is incorrect. Please check your email and try again.';
+      } else if (detail.includes('No pending')) {
+        errorMsg = 'No pending verification found. Please go back and register again.';
+      } else {
+        errorMsg = detail || 'Verification failed. Please try again.';
+      }
+      
+      setError(errorMsg);
       setVerificationCode(['', '', '', '', '', '']);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } finally {
@@ -133,14 +150,12 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
     newCode[index] = value.slice(-1); // only last character
     setVerificationCode(newCode);
 
-    // Auto-advance to next input
+    // Clear error when user starts typing again
+    if (error) setError('');
+
+    // Auto-advance to next input (but do NOT auto-submit)
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-submit when all 6 digits entered
-    if (value && index === 5 && newCode.every(d => d !== '')) {
-      setTimeout(() => handleVerifyCode(), 150);
     }
   };
 
@@ -163,14 +178,12 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
     }
     setVerificationCode(newCode);
 
+    // Clear error when user pastes
+    if (error) setError('');
+
     // Focus the next empty or last input
     const nextEmpty = newCode.findIndex(d => d === '');
     inputRefs.current[nextEmpty >= 0 ? nextEmpty : 5]?.focus();
-
-    // Auto-submit if all 6 filled
-    if (newCode.every(d => d !== '')) {
-      setTimeout(() => handleVerifyCode(), 150);
-    }
   };
 
   return (

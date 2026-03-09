@@ -1,10 +1,21 @@
 import { apiClient } from './client';
 import type { AuthToken, LoginCredentials, RegisterData, User, UpdateUserData, CitySearchResult, Favorite, CreateFavorite, Traveler, CreateTraveler, UpdateTraveler, VerificationResponse } from './types';
 
+/**
+ * Encode sensitive fields (password) with Base64 before transmission.
+ * This is NOT encryption — it simply prevents the plaintext password from
+ * being trivially readable in browser DevTools / network logs.
+ * Real security is provided by HTTPS (TLS) in production.
+ */
+function encodePassword(plain: string): string {
+  return btoa(unescape(encodeURIComponent(plain)));
+}
+
 export const authApi = {
   /** Step 1: Initiate registration — sends verification code to email */
   register: async (data: RegisterData): Promise<VerificationResponse> => {
-    const response = await apiClient.post('/v1/auth/register', data);
+    const payload = { ...data, password: encodePassword(data.password), _enc: 'base64' };
+    const response = await apiClient.post('/v1/auth/register', payload);
     return response.data;
   },
 
@@ -21,7 +32,8 @@ export const authApi = {
   },
 
   login: async (credentials: LoginCredentials): Promise<AuthToken> => {
-    const response = await apiClient.post('/v1/auth/login', credentials);
+    const payload = { ...credentials, password: encodePassword(credentials.password), _enc: 'base64' };
+    const response = await apiClient.post('/v1/auth/login', payload);
     return response.data;
   },
 
@@ -45,12 +57,12 @@ export const authApi = {
   },
 
   resetPassword: async (email: string, code: string, newPassword: string): Promise<{ message: string }> => {
-    const response = await apiClient.post('/v1/auth/reset-password', { email, code, new_password: newPassword });
+    const response = await apiClient.post('/v1/auth/reset-password', { email, code, new_password: encodePassword(newPassword), _enc: 'base64' });
     return response.data;
   },
 
   changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
-    const response = await apiClient.post('/v1/auth/change-password', { current_password: currentPassword, new_password: newPassword });
+    const response = await apiClient.post('/v1/auth/change-password', { current_password: encodePassword(currentPassword), new_password: encodePassword(newPassword), _enc: 'base64' });
     return response.data;
   },
 

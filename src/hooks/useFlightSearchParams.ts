@@ -2,7 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useMemo, useCallback } from 'react';
 
 export type TripType = 'roundtrip' | 'oneway' | 'multicity';
-export type SortBy = 'score' | 'price' | 'duration' | 'departure' | 'arrival';
+export type SortBy = 'score' | 'price' | 'model';
 export type CabinClass = 'economy' | 'premium_economy' | 'business' | 'first';
 
 export interface MultiCityLeg {

@@ -40,7 +40,7 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
     return (
       <div className="bg-gradient-to-r from-blue-50 to-white rounded-2xl p-4 mb-6 border-2 border-blue-200 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-lg bg-blue-500">
+          <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-200">
             <Sparkles className="w-5 h-5 text-white animate-pulse" />
           </div>
           <div>
@@ -87,7 +87,7 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between mb-3 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-blue-500 shadow-lg">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-blue-200 shadow-lg">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>

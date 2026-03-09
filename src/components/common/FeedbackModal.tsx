@@ -298,8 +298,8 @@ export function FeedbackModal({
                 }
               }}
               className="w-full flex items-center justify-center gap-2 px-6 py-3 
-                       bg-gradient-to-r from-amber-500 to-orange-500 
-                       hover:from-amber-600 hover:to-orange-600
+                       bg-gradient-to-r from-blue-500 to-blue-600 
+                       hover:from-blue-600 hover:to-blue-700
                        text-white font-medium rounded-lg
                        disabled:opacity-50 disabled:cursor-not-allowed
                        transition-all duration-200"

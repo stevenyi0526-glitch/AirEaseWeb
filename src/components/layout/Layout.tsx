@@ -20,8 +20,8 @@ const Layout: React.FC = () => {
       <button
         onClick={() => setShowFeedbackModal(true)}
         className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 
-                   bg-gradient-to-r from-amber-500 to-orange-500 
-                   hover:from-amber-600 hover:to-orange-600
+                   bg-gradient-to-r from-blue-500 to-blue-600 
+                   hover:from-blue-600 hover:to-blue-700
                    text-white font-medium rounded-full shadow-lg
                    transition-all duration-200 hover:scale-105
                    group"

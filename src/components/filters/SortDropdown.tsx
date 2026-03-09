@@ -1,6 +1,6 @@
 import React, { Fragment } from 'react';
 import { Menu, Transition } from '@headlessui/react';
-import { ChevronDown, Check, Award, DollarSign, Clock, Plane } from 'lucide-react';
+import { ChevronDown, Check, Award, DollarSign, PlaneTakeoff } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import type { SortBy } from '../../hooks/useFlightSearchParams';
 
@@ -12,11 +12,9 @@ interface SortOption {
 }
 
 const SORT_OPTIONS: SortOption[] = [
-  { value: 'score', label: 'AirEase Score', description: 'Best overall experience', icon: Award },
+  { value: 'score', label: 'Best Experience', description: 'Best overall experience', icon: Award },
   { value: 'price', label: 'Lowest Price', description: 'Most affordable first', icon: DollarSign },
-  { value: 'duration', label: 'Shortest Flight', description: 'Quickest journey time', icon: Clock },
-  { value: 'departure', label: 'Earliest Departure', description: 'Morning flights first', icon: Plane },
-  { value: 'arrival', label: 'Earliest Arrival', description: 'Land sooner', icon: Plane },
+  { value: 'model', label: 'Latest Model', description: 'Newest aircraft first', icon: PlaneTakeoff },
 ];
 
 interface SortDropdownProps {

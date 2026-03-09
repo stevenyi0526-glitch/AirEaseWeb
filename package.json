@@ -7,7 +7,12 @@
     "dev": "vite --host",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "npx playwright test --project=chromium-desktop",
+    "test:all": "npx playwright test",
+    "test:headed": "npx playwright test --project=chromium-desktop --headed",
+    "test:report": "npx playwright show-report test-results/html-report",
+    "test:aws": "bash tests/run-aws-tests.sh"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
@@ -28,6 +33,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
@@ -39,6 +45,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "playwright": "^1.58.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",

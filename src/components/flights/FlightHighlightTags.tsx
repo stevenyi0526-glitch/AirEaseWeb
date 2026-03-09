@@ -16,8 +16,8 @@ const HIGHLIGHT_MAP: Record<string, HighlightTag> = {
     id: 'top_rated', 
     label: 'Top Rated', 
     icon: Award, 
-    color: 'text-amber-600', 
-    bgColor: 'bg-amber-50' 
+    color: 'text-blue-600', 
+    bgColor: 'bg-blue-50' 
   },
   'Direct Flight': { 
     id: 'direct', 

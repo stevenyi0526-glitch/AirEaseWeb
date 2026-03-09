@@ -185,7 +185,7 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
                     Same airline
                   </span>
                 ) : (
-                  <span className="text-xs bg-amber-500/30 border border-amber-400/40 text-amber-100 px-2 py-0.5 rounded-full">
+                  <span className="text-xs bg-sky-500/30 border border-sky-400/40 text-sky-100 px-2 py-0.5 rounded-full">
                     Mixed
                   </span>
                 )
@@ -271,7 +271,7 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
                         Same airline
                       </span>
                     ) : (
-                      <span className="text-xs bg-amber-500/30 border border-amber-400/40 text-amber-100 px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-sky-500/30 border border-sky-400/40 text-sky-100 px-2 py-0.5 rounded-full">
                         Mixed airlines
                       </span>
                     )
@@ -385,7 +385,7 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
               </span>
               {allSelected && (
                 isMixed ? (
-                  <span className="text-xs bg-amber-500/30 border border-amber-400/40 text-amber-100 px-2 py-0.5 rounded-full">
+                  <span className="text-xs bg-sky-500/30 border border-sky-400/40 text-sky-100 px-2 py-0.5 rounded-full">
                     Mixed
                   </span>
                 ) : (

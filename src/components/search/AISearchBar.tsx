@@ -180,7 +180,7 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
                 style={{ backgroundColor: '#f5f7f8', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)' }}
               />
             </div>
-            <div className="p-2.5 rounded-xl bg-blue-500">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-blue-200">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
           </div>
