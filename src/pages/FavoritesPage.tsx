@@ -1,12 +1,15 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Trash2, ArrowLeft, Plane, Calendar, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useFavoritesStore } from '../stores/favoritesStore';
 import { useAuth } from '../contexts/AuthContext';
 import ScoreBadge from '../components/flights/ScoreBadge';
 import { formatPrice, formatDate, formatTime } from '../utils/formatters';
+import { translateAirline } from '../utils/translate';
 
 const FavoritesPage: React.FC = () => {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const { favorites, isLoading, fetchFavorites, removeFavorite } = useFavoritesStore();
 
@@ -17,7 +20,7 @@ const FavoritesPage: React.FC = () => {
   }, [isAuthenticated, fetchFavorites]);
 
   const handleRemove = async (flightId: string) => {
-    if (confirm('Remove this flight from favorites?')) {
+    if (confirm(t('favorites.removeConfirm'))) {
       await removeFavorite(flightId);
     }
   };
@@ -26,12 +29,12 @@ const FavoritesPage: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <Heart className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-        <h1 className="text-2xl font-bold text-text-primary mb-2">Sign in to view favorites</h1>
+        <h1 className="text-2xl font-bold text-text-primary mb-2">{t('favorites.signInRequired')}</h1>
         <p className="text-text-secondary mb-6">
-          Save your favorite flights and access them from any device.
+          {t('favorites.signInDesc')}
         </p>
         <Link to="/" className="btn-primary">
-          Go to Home
+          {t('favorites.backToHome')}
         </Link>
       </div>
     );
@@ -45,15 +48,15 @@ const FavoritesPage: React.FC = () => {
         className="inline-flex items-center gap-1 text-text-secondary hover:text-primary mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        <span>Back to Home</span>
+        <span>{t('favorites.backToHome')}</span>
       </Link>
 
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-            <h1 className="text-2xl font-bold text-text-primary">My Favorites</h1>
+            <h1 className="text-2xl font-bold text-text-primary">{t('favorites.title')}</h1>
             <p className="text-text-secondary">
-              {favorites.length} saved flight{favorites.length !== 1 ? 's' : ''}
+              {t('favorites.savedFlights', { count: favorites.length })}
             </p>
           </div>
         </div>
@@ -62,17 +65,17 @@ const FavoritesPage: React.FC = () => {
         {isLoading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto" />
-            <p className="text-text-secondary mt-4">Loading favorites...</p>
+            <p className="text-text-secondary mt-4">{t('favorites.loadingFavorites')}</p>
           </div>
         ) : favorites.length === 0 ? (
           <div className="bg-surface rounded-2xl shadow-card p-12 text-center">
             <Heart className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-            <h2 className="text-xl font-semibold text-text-primary mb-2">No favorites yet</h2>
+            <h2 className="text-xl font-semibold text-text-primary mb-2">{t('favorites.noFavorites')}</h2>
             <p className="text-text-secondary mb-6">
-              Start exploring flights and save the ones you like!
+              {t('favorites.noFavoritesDesc')}
             </p>
             <Link to="/" className="btn-primary">
-              Search Flights
+              {t('favorites.searchFlights')}
             </Link>
           </div>
         ) : (
@@ -90,7 +93,7 @@ const FavoritesPage: React.FC = () => {
                         <Plane className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-text-primary">{favorite.airline}</h3>
+                        <h3 className="font-semibold text-text-primary">{translateAirline(favorite.airline)}</h3>
                         <p className="text-sm text-text-secondary">{favorite.flightNumber}</p>
                       </div>
                     </div>
@@ -127,13 +130,13 @@ const FavoritesPage: React.FC = () => {
                       className="flex items-center gap-1 text-danger hover:text-danger/80 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
-                      <span className="text-sm font-medium">Remove</span>
+                      <span className="text-sm font-medium">{t('common.remove')}</span>
                     </button>
                     <Link
                       to={`/flights/${favorite.flightId}`}
                       className="flex items-center gap-1 text-primary hover:text-primary-hover transition-colors"
                     >
-                      <span className="font-medium">View Details</span>
+                      <span className="font-medium">{t('common.viewDetails')}</span>
                       <ChevronRight className="w-4 h-4" />
                     </Link>
                   </div>

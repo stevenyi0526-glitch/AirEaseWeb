@@ -1,4 +1,6 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { translateAirline } from '../../utils/translate';
 import {
   Radar,
   RadarChart,
@@ -87,18 +89,7 @@ const DIMENSION_EXPLANATIONS: Record<string, { description: string; goodScore: s
  * Each dimension is classified into 3 tiers: Excellent (100), Good (60), Fair (30)
  */
 
-// Stage labels for display
-const STAGE_LABELS = {
-  stops: { excellent: 'Direct', good: '1 Stop', fair: 'Multiple' },
-  duration: { excellent: 'Short', good: 'Medium', fair: 'Long' },
-  price: { excellent: 'Budget', good: 'Moderate', fair: 'Premium' },
-  overall: { excellent: 'Excellent', good: 'Good', fair: 'Fair' },
-  safety: { excellent: 'Excellent', good: 'Good', fair: 'Concerns' },
-  reliability: { excellent: 'Punctual', good: 'Reliable', fair: 'Delays likely' },
-  comfort: { excellent: 'Premium', good: 'Comfortable', fair: 'Basic' },
-  service: { excellent: 'Exceptional', good: 'Good', fair: 'Basic' },
-  value: { excellent: 'Great Value', good: 'Fair Value', fair: 'Low Value' },
-};
+// Stage labels are now in i18n translations (radarChart.stage.*)
 
 /**
  * Radar Chart for comparing flight scores across multiple dimensions
@@ -106,14 +97,13 @@ const STAGE_LABELS = {
  * Dimensions classified for labels: Excellent (8-10), Good (5-7.9), Fair (0-4.9)
  */
 const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
+  const { t } = useTranslation();
 
   // Get stage label based on 0-10 score for tooltip display
-  const getStageLabel = (dimension: string, score: number): string => {
-    const key = dimension.toLowerCase() as keyof typeof STAGE_LABELS;
-    const labels = STAGE_LABELS[key] || STAGE_LABELS.overall;
-    if (score >= 8) return labels.excellent;
-    if (score >= 5) return labels.good;
-    return labels.fair;
+  const getStageLabel = (dimensionKey: string, score: number): string => {
+    if (score >= 8) return t(`radarChart.stage.${dimensionKey}_excellent`);
+    if (score >= 5) return t(`radarChart.stage.${dimensionKey}_good`);
+    return t(`radarChart.stage.${dimensionKey}_fair`);
   };
 
   // Note: overallScore is already on 0-10 scale (weighted avg of dimension scores)
@@ -175,65 +165,76 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
   void _getEfficiencyScore;
 
   // Build radar chart data using 0-10 scale
+  const dimensionKeys = ['Overall', 'Safety', 'Reliability', 'Comfort', 'Service', 'Value', 'Price', 'Duration', 'Stops'];
+
   const radarData = [
     {
-      dimension: 'Overall',
+      dimension: t('radarChart.dim.overall'),
+      dimensionKey: 'overall',
       fullMark: 10,
       ...Object.fromEntries(
         flights.map((f, idx) => [`flight${idx}`, f.score.overallScore])
       ),
     },
     {
-      dimension: 'Safety',
+      dimension: t('radarChart.dim.safety'),
+      dimensionKey: 'safety',
       fullMark: 10,
       ...Object.fromEntries(
         flights.map((f, idx) => [`flight${idx}`, f.score.dimensions.safety ?? 10])
       ),
     },
     {
-      dimension: 'Reliability',
+      dimension: t('radarChart.dim.reliability'),
+      dimensionKey: 'reliability',
       fullMark: 10,
       ...Object.fromEntries(
         flights.map((f, idx) => [`flight${idx}`, f.score.dimensions.reliability])
       ),
     },
     {
-      dimension: 'Comfort',
+      dimension: t('radarChart.dim.comfort'),
+      dimensionKey: 'comfort',
       fullMark: 10,
       ...Object.fromEntries(
         flights.map((f, idx) => [`flight${idx}`, f.score.dimensions.comfort])
       ),
     },
     {
-      dimension: 'Service',
+      dimension: t('radarChart.dim.service'),
+      dimensionKey: 'service',
       fullMark: 10,
       ...Object.fromEntries(
         flights.map((f, idx) => [`flight${idx}`, f.score.dimensions.service])
       ),
     },
     {
-      dimension: 'Value',
+      dimension: t('radarChart.dim.value'),
+      dimensionKey: 'value',
       fullMark: 10,
       ...Object.fromEntries(
         flights.map((f, idx) => [`flight${idx}`, f.score.dimensions.value])
       ),
     },
     {
-      dimension: 'Price',
+      dimension: t('radarChart.dim.price'),
+      dimensionKey: 'price',
       fullMark: 10,
       ...Object.fromEntries(
         flights.map((f, idx) => [`flight${idx}`, getPriceScore(f.flight.price, flights)])
       ),
     },
     {
-      dimension: 'Duration',
+      dimension: t('radarChart.dim.duration'),
+      dimensionKey: 'duration',
       fullMark: 10,
       ...Object.fromEntries(
         flights.map((f, idx) => [`flight${idx}`, getDurationScore(f.flight.durationMinutes, flights)])
       ),
     },
     {
-      dimension: 'Stops',
+      dimension: t('radarChart.dim.stops'),
+      dimensionKey: 'stops',
       fullMark: 10,
       ...Object.fromEntries(
         flights.map((f, idx) => [`flight${idx}`, getStopsScore(f.flight.stops)])
@@ -244,10 +245,10 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
   return (
     <div className="bg-surface rounded-2xl shadow-card p-6">
       <h3 className="text-lg font-semibold text-text-primary mb-2 text-center">
-        Flight Comparison Radar
+        {t('radarChart.flightComparisonRadar')}
       </h3>
       <p className="text-sm text-text-secondary text-center mb-4">
-        Score Scale: 0-10 · <span className="font-medium text-green-600">8-10 Excellent</span> • <span className="font-medium text-[#034891]">5-7.9 Good</span> • <span className="font-medium text-amber-600">0-4.9 Fair</span>
+        {t('radarChart.scoreScale')} · <span className="font-medium text-green-600">8-10 {t('radarChart.excellent')}</span> • <span className="font-medium text-[#034891]">5-7.9 {t('radarChart.good')}</span> • <span className="font-medium text-amber-600">0-4.9 {t('radarChart.fair')}</span>
       </p>
       
       <div className="h-[420px] w-full">
@@ -276,7 +277,7 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
             {flights.map((flight, idx) => (
               <Radar
                 key={flight.flight.id}
-                name={`${flight.flight.airline} (${flight.flight.flightNumber})`}
+                name={`${translateAirline(flight.flight.airline)} (${flight.flight.flightNumber})`}
                 dataKey={`flight${idx}`}
                 stroke={COLORS[idx]}
                 fill={COLORS[idx]}
@@ -304,8 +305,8 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
               }}
               formatter={(value, name, props) => {
                 const score = value as number;
-                const dimension = props.payload?.dimension || '';
-                const stageLabel = getStageLabel(dimension, score);
+                const dimensionKey = props.payload?.dimensionKey || 'overall';
+                const stageLabel = getStageLabel(dimensionKey, score);
                 return [`${score.toFixed(1)}/10 (${stageLabel})`, name];
               }}
               labelStyle={{
@@ -322,16 +323,16 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
       <div className="mt-6 pt-4 border-t border-divider">
         <div className="flex items-center gap-2 mb-4">
           <Info className="w-4 h-4 text-primary" />
-          <h4 className="font-medium text-text-primary">Score Calculation Reference</h4>
+          <h4 className="font-medium text-text-primary">{t('radarChart.scoreCalcReference')}</h4>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {Object.entries(DIMENSION_EXPLANATIONS).map(([key, explanation]) => (
+          {dimensionKeys.map((key) => (
             <div key={key} className="bg-surface-alt rounded-lg p-3">
-              <h5 className="font-medium text-text-primary text-sm mb-1">{key}</h5>
-              <p className="text-xs text-text-secondary mb-2">{explanation.description}</p>
+              <h5 className="font-medium text-text-primary text-sm mb-1">{t(`radarChart.dim.${key.toLowerCase()}`)}</h5>
+              <p className="text-xs text-text-secondary mb-2">{t(`radarChart.desc.${key.toLowerCase()}`)}</p>
               <div className="bg-white rounded p-2 border border-gray-100">
-                <p className="text-xs font-semibold text-gray-600 mb-1">Formula:</p>
-                {explanation.formula.map((line, i) => (
+                <p className="text-xs font-semibold text-gray-600 mb-1">{t('radarChart.formula')}</p>
+                {DIMENSION_EXPLANATIONS[key]?.formula.map((line, i) => (
                   <p key={i} className="text-xs text-gray-500">{line}</p>
                 ))}
               </div>
@@ -341,15 +342,15 @@ const CompareRadarChart: React.FC<CompareRadarChartProps> = ({ flights }) => {
         
         {/* Original values reference */}
         <div className="mt-4 p-3 bg-[#E6F0FA] rounded-lg">
-          <h5 className="font-medium text-[#023670] text-sm mb-2">Original Values Reference</h5>
+          <h5 className="font-medium text-[#023670] text-sm mb-2">{t('radarChart.originalValuesRef')}</h5>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {flights.map((f, idx) => (
               <div key={f.flight.id} className="text-xs">
                 <span className="font-medium" style={{ color: COLORS[idx] }}>
-                  {f.flight.airline}:
+                  {translateAirline(f.flight.airline)}:
                 </span>
                 <span className="text-[#034891] ml-1">
-                  {formatPrice(f.flight.price, f.flight.currency)} · {formatDuration(f.flight.durationMinutes)} · {f.flight.stops === 0 ? 'Direct' : `${f.flight.stops} stop${f.flight.stops > 1 ? 's' : ''}`}
+                  {formatPrice(f.flight.price, f.flight.currency)} · {formatDuration(f.flight.durationMinutes)} · {f.flight.stops === 0 ? t('radarChart.directFlight') : t(f.flight.stops === 1 ? 'radarChart.stop' : 'radarChart.stops', { count: f.flight.stops })}
                 </span>
               </div>
             ))}

@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Star, ThumbsUp, ThumbsDown, Utensils, Headphones, Armchair, User } from 'lucide-react';
 import type { UserReviewSummary } from '../../api/types';
 
@@ -9,6 +10,7 @@ interface UserReviewsCarouselProps {
 
 const UserReviewsCarousel: React.FC<UserReviewsCarouselProps> = ({ reviews, airlineName }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -55,11 +57,11 @@ const UserReviewsCarousel: React.FC<UserReviewsCarouselProps> = ({ reviews, airl
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold text-gray-800">
-            Traveler Reviews
+            {t('reviews.travelerReviews')}
             {airlineName && <span className="text-gray-500 font-normal"> • {airlineName}</span>}
           </h3>
           <p className="text-sm text-gray-500">
-            {reviews.length} review{reviews.length !== 1 ? 's' : ''} from verified travelers
+            {t('reviews.reviewCount', { count: reviews.length })}
           </p>
         </div>
         
@@ -105,7 +107,7 @@ const UserReviewsCarousel: React.FC<UserReviewsCarouselProps> = ({ reviews, airl
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-700 capitalize">
-                    {review.travelType || 'Traveler'}
+                    {review.travelType || t('reviews.traveler')}
                   </p>
                   {review.route && (
                     <p className="text-xs text-gray-400">{review.route}</p>
@@ -122,12 +124,12 @@ const UserReviewsCarousel: React.FC<UserReviewsCarouselProps> = ({ reviews, airl
                 {review.recommended ? (
                   <>
                     <ThumbsUp size={12} />
-                    <span>Recommended</span>
+                    <span>{t('reviews.recommended')}</span>
                   </>
                 ) : (
                   <>
                     <ThumbsDown size={12} />
-                    <span>Not Recommended</span>
+                    <span>{t('reviews.notRecommended')}</span>
                   </>
                 )}
               </div>
@@ -150,21 +152,21 @@ const UserReviewsCarousel: React.FC<UserReviewsCarouselProps> = ({ reviews, airl
               {review.ratings.food !== undefined && review.ratings.food > 0 && (
                 <RatingBar 
                   rating={review.ratings.food} 
-                  label="Food" 
+                  label={t('reviews.food')} 
                   icon={<Utensils size={12} />} 
                 />
               )}
               {review.ratings.service !== undefined && review.ratings.service > 0 && (
                 <RatingBar 
                   rating={review.ratings.service} 
-                  label="Service" 
+                  label={t('reviews.service')} 
                   icon={<Headphones size={12} />} 
                 />
               )}
               {review.ratings.seatComfort !== undefined && review.ratings.seatComfort > 0 && (
                 <RatingBar 
                   rating={review.ratings.seatComfort} 
-                  label="Seat" 
+                  label={t('reviews.seat')} 
                   icon={<Armchair size={12} />} 
                 />
               )}
@@ -172,7 +174,7 @@ const UserReviewsCarousel: React.FC<UserReviewsCarouselProps> = ({ reviews, airl
                 <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-100">
                   <Star size={14} className="text-amber-400 fill-amber-400" />
                   <span className="text-sm font-medium text-gray-700">
-                    Overall: {review.ratings.overall}/5
+                    {t('reviews.overall', { score: review.ratings.overall })}
                   </span>
                 </div>
               )}

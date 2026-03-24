@@ -356,6 +356,16 @@
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
 
+  /* Marquee scrolling text animation for mobile AI search placeholder */
+  @keyframes marquee-scroll {
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
   /* Flying plane animation */
   @keyframes fly-plane {
     0% {

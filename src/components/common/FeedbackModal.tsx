@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Send, AlertCircle, CheckCircle, Loader2, Star, MessageSquareWarning } from 'lucide-react';
 import type { ReportCategory, ReportCreate } from '../../api/reports';
 import { REPORT_CATEGORIES, submitReport } from '../../api/reports';
@@ -30,6 +31,7 @@ export function FeedbackModal({
   flightInfo,
   userEmail: initialEmail = '',
 }: FeedbackModalProps) {
+  const { t, i18n } = useTranslation();
   const [email, setEmail] = useState(initialEmail);
   const [category, setCategory] = useState<ReportCategory>('other');
   const [content, setContent] = useState('');
@@ -58,13 +60,13 @@ export function FeedbackModal({
     e.preventDefault();
     
     if (!email || !content) {
-      setErrorMessage('Please fill in your email and feedback content');
+      setErrorMessage(t('feedbackModal.fillRequired'));
       setSubmitStatus('error');
       return;
     }
 
     if (content.length < 10) {
-      setErrorMessage('Feedback content must be at least 10 characters');
+      setErrorMessage(t('feedbackModal.minChars'));
       setSubmitStatus('error');
       return;
     }
@@ -109,7 +111,7 @@ export function FeedbackModal({
       }, 2000);
     } catch (error) {
       console.error('Failed to submit report:', error);
-      setErrorMessage('Submission failed. Please try again later.');
+      setErrorMessage(t('feedbackModal.failedSubmitReport'));
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);
@@ -133,11 +135,11 @@ export function FeedbackModal({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg max-h-[90vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-y-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-[#034891] to-[#0560B8] px-6 py-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">Feedback & Rating</h2>
+            <h2 className="text-xl font-bold text-white">{t('feedbackModal.title')}</h2>
             <button
               onClick={handleClose}
               disabled={isSubmitting}
@@ -157,7 +159,7 @@ export function FeedbackModal({
               }`}
             >
               <Star className="w-3.5 h-3.5" />
-              Rate Trip
+              {t('feedbackModal.ratingTab')}
             </button>
             <button
               onClick={() => setActiveTab('report')}
@@ -168,7 +170,7 @@ export function FeedbackModal({
               }`}
             >
               <MessageSquareWarning className="w-3.5 h-3.5" />
-              Report Issue
+              {t('feedbackModal.reportTab')}
             </button>
           </div>
         </div>
@@ -180,7 +182,7 @@ export function FeedbackModal({
             {hasPrefilledFlightInfo && (
               <div className="bg-purple-50 dark:bg-purple-900/30 px-4 py-3 rounded-lg border border-purple-100 dark:border-purple-800">
                 <div className="text-sm">
-                  <span className="text-gray-500 dark:text-gray-400">Rating for: </span>
+                  <span className="text-gray-500 dark:text-gray-400">{t('feedbackModal.ratingFor')} </span>
                   <span className="font-medium text-gray-900 dark:text-white">
                     {flightInfo.flightNumber && `${flightInfo.flightNumber} `}
                     {flightInfo.airline && `(${flightInfo.airline}) `}
@@ -193,7 +195,7 @@ export function FeedbackModal({
             {/* Star Rating */}
             <div className="text-center py-4">
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                How was your trip?
+                {t('feedbackModal.howWasTrip')}
               </p>
               <div className="flex items-center justify-center gap-2">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -217,26 +219,26 @@ export function FeedbackModal({
               </div>
               <p className="text-xs text-gray-400 mt-2">
                 {tripRating === 0
-                  ? 'Tap a star to rate'
+                  ? t('feedbackModal.tapToRate')
                   : tripRating <= 2
-                  ? 'We\'re sorry to hear that'
+                  ? t('feedbackModal.sorryToHear')
                   : tripRating <= 3
-                  ? 'Thanks for your feedback'
+                  ? t('feedbackModal.thanksForFeedback')
                   : tripRating <= 4
-                  ? 'Glad you enjoyed it!'
-                  : 'Excellent! ✨'}
+                  ? t('feedbackModal.gladYouEnjoyed')
+                  : t('feedbackModal.excellent')}
               </p>
             </div>
 
             {/* Comment */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Share your experience <span className="text-gray-400 font-normal">(optional)</span>
+                {t('feedbackModal.shareExperience')} <span className="text-gray-400 font-normal">{t('feedbackModal.optional')}</span>
               </label>
               <textarea
                 value={tripComment}
                 onChange={(e) => setTripComment(e.target.value)}
-                placeholder="Tell us more about your flight experience..."
+                placeholder={t('feedbackModal.tellUsMore')}
                 rows={3}
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white
@@ -258,7 +260,7 @@ export function FeedbackModal({
             {submitStatus === 'success' && (
               <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400">
                 <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                <span className="text-sm">Thank you for rating this trip!</span>
+                <span className="text-sm">{t('feedbackModal.thankYouRating')}</span>
               </div>
             )}
 
@@ -291,7 +293,7 @@ export function FeedbackModal({
                     onClose();
                   }, 2000);
                 } catch {
-                  setErrorMessage('Failed to submit rating. Please try again.');
+                  setErrorMessage(t('feedbackModal.failedSubmitRating'));
                   setSubmitStatus('error');
                 } finally {
                   setIsSubmitting(false);
@@ -307,17 +309,17 @@ export function FeedbackModal({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Submitting...
+                  {t('feedbackModal.submitting')}
                 </>
               ) : submitStatus === 'success' ? (
                 <>
                   <CheckCircle className="w-5 h-5" />
-                  Submitted!
+                  {t('feedbackModal.submitted')}
                 </>
               ) : (
                 <>
                   <Star className="w-5 h-5" />
-                  Submit Rating
+                  {t('feedbackModal.submitRating')}
                 </>
               )}
             </button>
@@ -331,7 +333,7 @@ export function FeedbackModal({
         {hasPrefilledFlightInfo && (
           <div className="bg-[#E6F0FA] dark:bg-[#023670]/30 px-6 py-3 border-b border-[#B0CCE6] dark:border-[#023670]">
             <div className="text-sm">
-              <span className="text-gray-500 dark:text-gray-400">Related Flight: </span>
+              <span className="text-gray-500 dark:text-gray-400">{t('feedbackModal.relatedFlight')} </span>
               <span className="font-medium text-gray-900 dark:text-white">
                 {flightInfo.flightNumber && `${flightInfo.flightNumber} `}
                 {flightInfo.airline && `(${flightInfo.airline}) `}
@@ -346,13 +348,13 @@ export function FeedbackModal({
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Your Email <span className="text-red-500">*</span>
+              {t('feedbackModal.emailLabel')} <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="We'll use this to respond to your feedback"
+              placeholder={t('feedbackModal.emailPlaceholder')}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                        focus:ring-2 focus:ring-[#034891] focus:border-transparent
@@ -366,7 +368,7 @@ export function FeedbackModal({
           {!hasPrefilledFlightInfo && (
             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-3">
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Flight Information <span className="text-gray-400 font-normal">(optional)</span>
+                {t('feedbackModal.flightInformation')} <span className="text-gray-400 font-normal">{t('feedbackModal.optional')}</span>
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -374,7 +376,7 @@ export function FeedbackModal({
                     type="text"
                     value={manualFlightNumber}
                     onChange={(e) => setManualFlightNumber(e.target.value)}
-                    placeholder="Flight # (e.g., CA123)"
+                    placeholder={t('feedbackModal.flightNumberPlaceholder')}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                              focus:ring-2 focus:ring-[#034891] focus:border-transparent
@@ -387,7 +389,7 @@ export function FeedbackModal({
                     type="text"
                     value={manualAirline}
                     onChange={(e) => setManualAirline(e.target.value)}
-                    placeholder="Airline"
+                    placeholder={t('feedbackModal.airlinePlaceholder')}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                              focus:ring-2 focus:ring-[#034891] focus:border-transparent
@@ -400,7 +402,7 @@ export function FeedbackModal({
                     type="text"
                     value={manualRoute}
                     onChange={(e) => setManualRoute(e.target.value)}
-                    placeholder="Route (e.g., HKG → PVG)"
+                    placeholder={t('feedbackModal.routePlaceholder')}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                              focus:ring-2 focus:ring-[#034891] focus:border-transparent
@@ -415,7 +417,7 @@ export function FeedbackModal({
                     onChange={(e) => setManualDate(e.target.value)}
                     onFocus={(e) => (e.target.type = 'date')}
                     onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
-                    placeholder="Flight Date"
+                    placeholder={t('feedbackModal.flightDatePlaceholder')}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                              focus:ring-2 focus:ring-[#034891] focus:border-transparent
@@ -430,7 +432,7 @@ export function FeedbackModal({
           {/* Category */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Issue Category <span className="text-red-500">*</span>
+              {t('feedbackModal.issueCategory')} <span className="text-red-500">*</span>
             </label>
             <select
               value={category}
@@ -442,7 +444,7 @@ export function FeedbackModal({
             >
               {REPORT_CATEGORIES.map((cat) => (
                 <option key={cat.value} value={cat.value}>
-                  {cat.labelEn}
+                  {i18n.language === 'zh-TW' ? cat.label : cat.labelEn}
                 </option>
               ))}
             </select>
@@ -451,12 +453,12 @@ export function FeedbackModal({
           {/* Content */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description <span className="text-red-500">*</span>
+              {t('feedbackModal.description')} <span className="text-red-500">*</span>
             </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Please describe the issue or suggestion in detail (minimum 10 characters)..."
+              placeholder={t('feedbackModal.descriptionPlaceholder')}
               rows={4}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
@@ -483,7 +485,7 @@ export function FeedbackModal({
           {submitStatus === 'success' && (
             <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400">
               <CheckCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">Submitted successfully! Thank you for your feedback.</span>
+              <span className="text-sm">{t('feedbackModal.submittedSuccess')}</span>
             </div>
           )}
 
@@ -501,24 +503,24 @@ export function FeedbackModal({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Submitting...
+                {t('feedbackModal.submitting')}
               </>
             ) : submitStatus === 'success' ? (
               <>
                 <CheckCircle className="w-5 h-5" />
-                Submitted
+                {t('feedbackModal.submitted')}
               </>
             ) : (
               <>
                 <Send className="w-5 h-5" />
-                Submit Feedback
+                {t('feedbackModal.submitFeedback')}
               </>
             )}
           </button>
 
           {/* Privacy Note */}
           <p className="text-xs text-center text-gray-400">
-            Your feedback helps us improve. We'll respond via email.
+            {t('feedbackModal.privacyNote')}
           </p>
         </form>
         </>

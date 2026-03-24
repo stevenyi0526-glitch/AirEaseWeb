@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { X, Plane, ArrowRight } from 'lucide-react';
 
@@ -68,6 +69,7 @@ export function BookingReturnPopup() {
   const [visible, setVisible] = useState(false);
   const [booking, setBooking] = useState<BookingRecord | null>(null);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Only show after a small delay (user has returned to the site)
@@ -97,10 +99,10 @@ export function BookingReturnPopup() {
   const timeAgo = (() => {
     const diff = Date.now() - booking.timestamp;
     const hours = Math.floor(diff / (1000 * 60 * 60));
-    if (hours < 1) return 'just now';
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 1) return t('bookingTracker.justNow');
+    if (hours < 24) return t('bookingTracker.hoursAgo', { hours });
     const days = Math.floor(hours / 24);
-    return `${days}d ago`;
+    return t('bookingTracker.daysAgo', { days });
   })();
 
   return (
@@ -110,7 +112,7 @@ export function BookingReturnPopup() {
         <div className="bg-gradient-to-r from-[#034891] to-[#0560B8] px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             <Plane className="w-4 h-4" />
-            <span className="text-sm font-semibold">Continue Booking?</span>
+            <span className="text-sm font-semibold">{t('bookingTracker.continueBooking')}</span>
           </div>
           <button
             onClick={dismiss}
@@ -123,7 +125,7 @@ export function BookingReturnPopup() {
         {/* Content */}
         <div className="p-4">
           <p className="text-sm text-gray-600 mb-2">
-            You viewed this flight <span className="font-medium">{timeAgo}</span>:
+            {t('bookingTracker.youViewed', { timeAgo })}
           </p>
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -143,7 +145,7 @@ export function BookingReturnPopup() {
             }}
             className="w-full py-2.5 bg-gradient-to-r from-[#034891] to-[#0560B8] text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 hover:from-[#023670] hover:to-[#034891] transition-all"
           >
-            <span>View Flight Details</span>
+            <span>{t('bookingTracker.viewFlightDetails')}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

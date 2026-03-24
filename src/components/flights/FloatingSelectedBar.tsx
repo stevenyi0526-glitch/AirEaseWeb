@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Plane, ExternalLink, Check, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import MixedAirlineBookButton from './MixedAirlineBookButton';
 import { cn } from '../../utils/cn';
+import { translateAirline } from '../../utils/translate';
 import type { FlightWithScore } from '../../api/types';
 
 interface FloatingSelectedBarProps {
@@ -23,6 +25,7 @@ interface FloatingSelectedBarProps {
     returnDate?: string;
     from?: string;
     to?: string;
+    date?: string;
   };
   // Handlers
   onBookNow: (flights: FlightWithScore[]) => void;
@@ -44,6 +47,7 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
   onClearDeparture,
   onClearReturn,
 }) => {
+  const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -77,49 +81,38 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
     // Price computation
     const priceText = bothSelected
       ? usingCombinedPricing
-        ? `Round Trip: ${formatPrice(selectedReturnFlight.flight.price, currency)}`
-        : `Total: ${formatPrice(selectedDepartureFlight.flight.price + selectedReturnFlight.flight.price, currency)}`
+        ? `${t('search.roundTrip')}: ${formatPrice(selectedReturnFlight.flight.price, currency)}`
+        : `${t('flights.total')}: ${formatPrice(selectedDepartureFlight.flight.price + selectedReturnFlight.flight.price, currency)}`
       : selectedDepartureFlight
-        ? `${formatPrice(selectedDepartureFlight.flight.price, currency)}${usingCombinedPricing ? ' (est.)' : ''}`
-        : `${formatPrice(selectedReturnFlight!.flight.price, currency)}`;
+        ? `${t('flights.outbound')}: ${formatPrice(selectedDepartureFlight.flight.price, currency)}${usingCombinedPricing ? '' : ''}`
+        : `${t('flights.returnLabel')}: ${formatPrice(selectedReturnFlight!.flight.price, currency)}`;
 
-    // Book now button logic for mixed airlines
+    // Book now button logic — always show all booking options
     const renderBookButton = () => {
       if (!bothSelected) return null;
 
-      if (!sameAirline) {
-        const combinedMatch = combinedReturnFlights?.find(
-          f => f.flight.flightNumber === selectedReturnFlight.flight.flightNumber
-        );
-        const combinedToken = combinedMatch?.flight.bookingToken;
-        const tokens = combinedToken
-          ? [combinedToken]
-          : [
-              selectedDepartureFlight.flight.bookingToken || selectedDepartureFlight.flight.departureToken,
-              selectedReturnFlight.flight.bookingToken || selectedReturnFlight.flight.departureToken,
-            ].filter(Boolean) as string[];
-
-        return (
-          <MixedAirlineBookButton
-            bookingTokens={tokens}
-            returnDate={filters.returnDate}
-            departureId={selectedDepartureFlight.flight.departureAirportCode || selectedDepartureFlight.flight.departureCityCode}
-            arrivalId={selectedDepartureFlight.flight.arrivalAirportCode || selectedDepartureFlight.flight.arrivalCityCode}
-            outboundDate={new Date(selectedDepartureFlight.flight.departureTime).toISOString().split('T')[0]}
-            airlineName={selectedDepartureFlight.flight.airline}
-            onFallback={() => onBookNow([selectedDepartureFlight, selectedReturnFlight])}
-          />
-        );
-      }
+      const combinedMatch = combinedReturnFlights?.find(
+        f => f.flight.flightNumber === selectedReturnFlight.flight.flightNumber
+      );
+      const combinedToken = combinedMatch?.flight.bookingToken;
+      const tokens = combinedToken
+        ? [combinedToken]
+        : [
+            selectedDepartureFlight.flight.bookingToken || selectedDepartureFlight.flight.departureToken,
+            selectedReturnFlight.flight.bookingToken || selectedReturnFlight.flight.departureToken,
+          ].filter(Boolean) as string[];
 
       return (
-        <button
-          onClick={() => onBookNow([selectedDepartureFlight, selectedReturnFlight])}
-          className="bg-white text-blue-700 font-bold rounded-lg px-5 py-2.5 flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm text-sm whitespace-nowrap"
-        >
-          <ExternalLink className="w-4 h-4" />
-          Book Now
-        </button>
+        <MixedAirlineBookButton
+          bookingTokens={tokens}
+          returnDate={filters.returnDate}
+          departureId={selectedDepartureFlight.flight.departureAirportCode || selectedDepartureFlight.flight.departureCityCode}
+          arrivalId={selectedDepartureFlight.flight.arrivalAirportCode || selectedDepartureFlight.flight.arrivalCityCode}
+          outboundDate={filters.date || selectedDepartureFlight.flight.departureTime.slice(0, 10)}
+          airlineName={selectedDepartureFlight.flight.airline}
+          airlineCode={selectedDepartureFlight.flight.airlineCode}
+          onFallback={() => onBookNow([selectedDepartureFlight, selectedReturnFlight])}
+        />
       );
     };
 
@@ -127,7 +120,7 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
       <div
         className={cn(
           "fixed bottom-6 left-1/2 -translate-x-1/2 z-50",
-          "w-[calc(100vw-48px)] max-w-[720px] min-w-0",
+          "w-[calc(100vw-48px)] max-w-[900px] min-w-0",
           "transition-all duration-500 ease-out",
           isVisible
             ? "translate-y-0 opacity-100"
@@ -143,16 +136,16 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
           style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
         >
           {/* Desktop layout */}
-          <div className="hidden sm:flex items-center gap-3 min-w-0">
-            {/* Flight chips */}
-            <div className="flex items-center gap-2 min-w-0 flex-shrink">
+          <div className="hidden sm:flex items-center gap-2.5 min-w-0">
+            {/* Flight chips — shrinkable, each chip truncates airline name */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               {selectedDepartureFlight && (
-                <div className="flex items-center gap-1.5 bg-blue-600/60 border border-white/20 rounded-full px-3 py-1.5 text-sm">
-                  <Plane className="w-3.5 h-3.5" />
-                  <span className="font-medium">{selectedDepartureFlight.flight.flightNumber}</span>
-                  <span className="text-white/70 text-xs">({selectedDepartureFlight.flight.airline})</span>
+                <div className="flex items-center gap-1.5 bg-blue-600/60 border border-white/20 rounded-full px-3 py-1.5 text-sm min-w-0">
+                  <Plane className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="font-medium whitespace-nowrap">{selectedDepartureFlight.flight.flightNumber}</span>
+                  <span className="text-white/70 text-xs truncate min-w-0">({translateAirline(selectedDepartureFlight.flight.airline)})</span>
                   {onClearDeparture && (
-                    <button onClick={onClearDeparture} className="ml-1 hover:bg-white/20 rounded-full p-0.5 transition-colors">
+                    <button onClick={onClearDeparture} className="ml-0.5 hover:bg-white/20 rounded-full p-0.5 transition-colors flex-shrink-0">
                       <X className="w-3 h-3" />
                     </button>
                   )}
@@ -162,12 +155,12 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
                 <span className="text-white/50 text-sm flex-shrink-0">⇄</span>
               )}
               {selectedReturnFlight && (
-                <div className="flex items-center gap-1.5 bg-blue-600/60 border border-white/20 rounded-full px-3 py-1.5 text-sm">
-                  <Plane className="w-3.5 h-3.5 rotate-180" />
-                  <span className="font-medium">{selectedReturnFlight.flight.flightNumber}</span>
-                  <span className="text-white/70 text-xs">({selectedReturnFlight.flight.airline})</span>
+                <div className="flex items-center gap-1.5 bg-blue-600/60 border border-white/20 rounded-full px-3 py-1.5 text-sm min-w-0">
+                  <Plane className="w-3.5 h-3.5 rotate-180 flex-shrink-0" />
+                  <span className="font-medium whitespace-nowrap">{selectedReturnFlight.flight.flightNumber}</span>
+                  <span className="text-white/70 text-xs truncate min-w-0">({translateAirline(selectedReturnFlight.flight.airline)})</span>
                   {onClearReturn && (
-                    <button onClick={onClearReturn} className="ml-1 hover:bg-white/20 rounded-full p-0.5 transition-colors">
+                    <button onClick={onClearReturn} className="ml-0.5 hover:bg-white/20 rounded-full p-0.5 transition-colors flex-shrink-0">
                       <X className="w-3 h-3" />
                     </button>
                   )}
@@ -175,25 +168,25 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
               )}
             </div>
 
-            {/* Price */}
+            {/* Price + badge — never shrinks */}
             <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
-              <span className="text-lg font-bold">{priceText}</span>
+              <span className="text-base font-bold">{priceText}</span>
               {bothSelected && (
                 sameAirline ? (
-                  <span className="text-xs bg-green-500/30 border border-green-400/40 text-green-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="text-xs bg-green-500/30 border border-green-400/40 text-green-100 px-2 py-0.5 rounded-full flex items-center gap-1 whitespace-nowrap">
                     <Check className="w-3 h-3" />
-                    Same airline
+                    {t('booking.sameAirline')}
                   </span>
                 ) : (
-                  <span className="text-xs bg-sky-500/30 border border-sky-400/40 text-sky-100 px-2 py-0.5 rounded-full">
-                    Mixed
+                  <span className="text-xs bg-sky-500/30 border border-sky-400/40 text-sky-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                    {t('booking.mixed')}
                   </span>
                 )
               )}
             </div>
 
-            {/* Book button */}
-            <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+            {/* Book button — never shrinks */}
+            <div className="flex items-center flex-shrink-0">
               {renderBookButton()}
             </div>
           </div>
@@ -239,7 +232,7 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
                         <Plane className="w-3.5 h-3.5" />
-                        <span>{selectedDepartureFlight.flight.flightNumber} ({selectedDepartureFlight.flight.airline})</span>
+                        <span>{selectedDepartureFlight.flight.flightNumber} ({translateAirline(selectedDepartureFlight.flight.airline)})</span>
                       </div>
                       {(!usingCombinedPricing || !selectedReturnFlight) && (
                         <span className="text-white/80">
@@ -253,7 +246,7 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
                         <Plane className="w-3.5 h-3.5 rotate-180" />
-                        <span>{selectedReturnFlight.flight.flightNumber} ({selectedReturnFlight.flight.airline})</span>
+                        <span>{selectedReturnFlight.flight.flightNumber} ({translateAirline(selectedReturnFlight.flight.airline)})</span>
                       </div>
                       {!usingCombinedPricing && (
                         <span className="text-white/80">{formatPrice(selectedReturnFlight.flight.price, currency)}</span>
@@ -268,11 +261,11 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
                     sameAirline ? (
                       <span className="text-xs bg-green-500/30 border border-green-400/40 text-green-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                         <Check className="w-3 h-3" />
-                        Same airline
+                        {t('booking.sameAirline')}
                       </span>
                     ) : (
                       <span className="text-xs bg-sky-500/30 border border-sky-400/40 text-sky-100 px-2 py-0.5 rounded-full">
-                        Mixed airlines
+                        {t('booking.mixed')}
                       </span>
                     )
                   )}
@@ -305,14 +298,15 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
         .map(f => f.flight.bookingToken || f.flight.departureToken)
         .filter(Boolean) as string[];
 
-      if (isMixed && allTokens.length > 0) {
+      if (allTokens.length > 0) {
         return (
           <MixedAirlineBookButton
             bookingTokens={allTokens}
             departureId={validFlights[0].flight.departureAirportCode || validFlights[0].flight.departureCityCode}
             arrivalId={validFlights[0].flight.arrivalAirportCode || validFlights[0].flight.arrivalCityCode}
-            outboundDate={new Date(validFlights[0].flight.departureTime).toISOString().split('T')[0]}
+            outboundDate={filters.date || validFlights[0].flight.departureTime.slice(0, 10)}
             airlineName={validFlights[0].flight.airline}
+            airlineCode={validFlights[0].flight.airlineCode}
             onFallback={() => onBookNow(validFlights)}
           />
         );
@@ -324,7 +318,7 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
           className="bg-white text-blue-700 font-bold rounded-lg px-5 py-2.5 flex items-center gap-2 hover:bg-blue-50 transition-colors shadow-sm text-sm whitespace-nowrap"
         >
           <ExternalLink className="w-4 h-4" />
-          Book Now
+          {t('common.bookNow')}
         </button>
       );
     };
@@ -333,7 +327,7 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
       <div
         className={cn(
           "fixed bottom-6 left-1/2 -translate-x-1/2 z-50",
-          "w-[calc(100vw-48px)] max-w-[720px] min-w-0",
+          "w-[calc(100vw-48px)] max-w-[900px] min-w-0",
           "transition-all duration-500 ease-out",
           isVisible
             ? "translate-y-0 opacity-100"
@@ -348,7 +342,7 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
           style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
         >
           {/* Desktop layout */}
-          <div className="hidden sm:flex items-center gap-3 min-w-0">
+          <div className="hidden sm:flex items-center gap-3 min-w-0 flex-nowrap">
             {/* Flight chips */}
             <div className="flex items-center gap-1.5 min-w-0 flex-shrink flex-wrap">
               {selectedMultiCityFlights.map((flight, idx) => (
@@ -379,19 +373,19 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
             <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
               <span className="text-lg font-bold">
                 {allSelected
-                  ? `Total: ${formatPrice(totalPrice, currency)}`
-                  : `${validFlights.length}/${selectedMultiCityFlights.length} selected`
+                  ? `${t('flights.total')}: ${formatPrice(totalPrice, currency)}`
+                  : `${validFlights.length}/${selectedMultiCityFlights.length} ${t('common.selected').toLowerCase()}`
                 }
               </span>
               {allSelected && (
                 isMixed ? (
                   <span className="text-xs bg-sky-500/30 border border-sky-400/40 text-sky-100 px-2 py-0.5 rounded-full">
-                    Mixed
+                    {t('booking.mixed')}
                   </span>
                 ) : (
                   <span className="text-xs bg-green-500/30 border border-green-400/40 text-green-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Check className="w-3 h-3" />
-                    Same airline
+                    {t('booking.sameAirline')}
                   </span>
                 )
               )}
@@ -437,7 +431,7 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
                   <div key={idx} className="flex items-center justify-between text-sm">
                     <span className={flight ? "text-white" : "text-white/40"}>
                       Leg {idx + 1}: {flight
-                        ? `${flight.flight.flightNumber} (${flight.flight.airline})`
+                        ? `${flight.flight.flightNumber} (${translateAirline(flight.flight.airline)})`
                         : 'Not selected'}
                     </span>
                     {flight && (

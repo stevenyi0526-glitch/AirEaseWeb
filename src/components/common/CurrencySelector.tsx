@@ -1,20 +1,21 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
 
 // Supported currencies with symbols and names
 export const CURRENCIES = [
-  { code: 'USD', symbol: '$', name: 'US Dollar' },
-  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
-  { code: 'EUR', symbol: '€', name: 'Euro' },
-  { code: 'GBP', symbol: '£', name: 'British Pound' },
-  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
-  { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar' },
-  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
-  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
-  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
-  { code: 'KRW', symbol: '₩', name: 'South Korean Won' },
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
-  { code: 'THB', symbol: '฿', name: 'Thai Baht' },
+  { code: 'USD', symbol: '$', name: 'US Dollar', nameZh: '美元' },
+  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan', nameZh: '人民幣' },
+  { code: 'EUR', symbol: '€', name: 'Euro', nameZh: '歐元' },
+  { code: 'GBP', symbol: '£', name: 'British Pound', nameZh: '英鎊' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen', nameZh: '日圓' },
+  { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar', nameZh: '港幣' },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', nameZh: '新加坡幣' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', nameZh: '澳幣' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar', nameZh: '加幣' },
+  { code: 'KRW', symbol: '₩', name: 'South Korean Won', nameZh: '韓圜' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee', nameZh: '印度盧比' },
+  { code: 'THB', symbol: '฿', name: 'Thai Baht', nameZh: '泰銖' },
 ] as const;
 
 export type CurrencyCode = typeof CURRENCIES[number]['code'];
@@ -36,6 +37,9 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
   className,
   compact = false,
 }) => {
+  const { i18n } = useTranslation();
+  const isZh = i18n.language === 'zh-TW';
+
   return (
     <div className={cn('relative', className)}>
       <select
@@ -55,7 +59,7 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
       >
         {CURRENCIES.map((currency) => (
           <option key={currency.code} value={currency.code}>
-            {compact ? currency.code : `${currency.symbol} ${currency.code} - ${currency.name}`}
+            {compact ? currency.code : `${currency.symbol} ${currency.code} - ${isZh ? currency.nameZh : currency.name}`}
           </option>
         ))}
       </select>
@@ -127,8 +131,8 @@ export function formatPriceWithCurrency(price: number, currencyCode: string): st
   // Format based on currency
   if (currencyCode === 'JPY' || currencyCode === 'KRW') {
     // No decimal places for these currencies
-    return `${symbol}${converted.toLocaleString()}`;
+    return `${symbol}${converted.toLocaleString('en-US')}`;
   }
   
-  return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  return `${symbol}${converted.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }

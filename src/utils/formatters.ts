@@ -1,4 +1,5 @@
 // Date and time formatters
+import i18n from '../i18n';
 
 export const formatTime = (dateString: string): string => {
   const date = new Date(dateString);
@@ -11,7 +12,15 @@ export const formatTime = (dateString: string): string => {
 
 export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
+  const lang = i18n.language;
+  if (lang === 'zh-TW') {
+    return date.toLocaleDateString('zh-TW', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+  return date.toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -53,7 +62,7 @@ export const formatDateForApi = (date: Date): string => {
 
 export const getGreeting = (): string => {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 18) return 'Good Afternoon';
-  return 'Good Evening';
+  if (hour < 12) return i18n.t('home.greeting.morning');
+  if (hour < 18) return i18n.t('home.greeting.afternoon');
+  return i18n.t('home.greeting.evening');
 };

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { User, LogOut, Settings, Heart, Users, Briefcase, GraduationCap, ChevronDown, Check, KeyRound, Trash2, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { authApi } from '../../api/auth';
 import type { UserLabel } from '../../api/types';
@@ -17,6 +18,7 @@ const labelConfig: Record<UserLabel, { icon: typeof Briefcase; label: string; co
 };
 
 const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = false }) => {
+  const { t } = useTranslation();
   const { user, updateUser, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showLabelPicker, setShowLabelPicker] = useState(false);
@@ -93,7 +95,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
             isHomePage ? 'text-white/70' : 'text-text-muted'
           )}>
             <LabelIcon className="w-3 h-3" />
-            {labelConfig[currentLabel].label}
+            {t(`profile.${currentLabel}Traveler`)}
           </span>
         </div>
         <ChevronDown className={cn(
@@ -118,7 +120,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
               currentLabel === 'student' && 'bg-purple-500'
             )}>
               <LabelIcon className="w-3 h-3" />
-              {labelConfig[currentLabel].label} Traveler
+              {t(`profile.${currentLabel}Traveler`)}
             </div>
           </div>
 
@@ -130,7 +132,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
               className="w-full px-4 py-2.5 flex items-center gap-3 text-gray-700 hover:bg-gray-50 transition-colors"
             >
               <Settings className="w-4 h-4 text-gray-400" />
-              <span className="flex-1 text-left text-sm">Change Travel Profile</span>
+              <span className="flex-1 text-left text-sm">{t('profile.changeTravelProfile')}</span>
               <ChevronDown className={cn(
                 'w-4 h-4 text-gray-400 transition-transform',
                 showLabelPicker && 'rotate-180'
@@ -173,9 +175,9 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                           {config.label}
                         </span>
                         <span className="text-xs text-gray-500">
-                          {label === 'business' && 'Prioritize reliability & service'}
-                          {label === 'family' && 'Prioritize comfort & service'}
-                          {label === 'student' && 'Prioritize price & value'}
+                          {label === 'business' && t('profile.prioritizeReliability')}
+                          {label === 'family' && t('profile.prioritizeComfort')}
+                          {label === 'student' && t('profile.prioritizePrice')}
                         </span>
                       </div>
                       {isSelected && <Check className={cn(
@@ -197,7 +199,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
               className="w-full px-4 py-2.5 flex items-center gap-3 text-gray-700 hover:bg-gray-50 transition-colors"
             >
               <Heart className="w-4 h-4 text-gray-400" />
-              <span className="text-sm">My Favorites</span>
+              <span className="text-sm">{t('profile.myFavorites')}</span>
             </Link>
 
             {/* Travelers */}
@@ -207,7 +209,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
               className="w-full px-4 py-2.5 flex items-center gap-3 text-gray-700 hover:bg-gray-50 transition-colors"
             >
               <Users className="w-4 h-4 text-gray-400" />
-              <span className="text-sm">Saved Travelers</span>
+              <span className="text-sm">{t('profile.savedTravelers')}</span>
             </Link>
 
             {/* Change Password */}
@@ -216,7 +218,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
               className="w-full px-4 py-2.5 flex items-center gap-3 text-gray-700 hover:bg-gray-50 transition-colors"
             >
               <KeyRound className="w-4 h-4 text-gray-400" />
-              <span className="flex-1 text-left text-sm">Change Password</span>
+              <span className="flex-1 text-left text-sm">{t('profile.changePassword')}</span>
               <ChevronDown className={cn(
                 'w-4 h-4 text-gray-400 transition-transform',
                 showChangePassword && 'rotate-180'
@@ -237,21 +239,21 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                 )}
                 <input
                   type="password"
-                  placeholder="Current password"
+                  placeholder={t('profile.currentPassword')}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-[#034891] focus:ring-1 focus:ring-[#034891]/20 outline-none text-gray-900"
                 />
                 <input
                   type="password"
-                  placeholder="New password (min 6 chars)"
+                  placeholder={t('profile.newPasswordMin')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-[#034891] focus:ring-1 focus:ring-[#034891]/20 outline-none text-gray-900"
                 />
                 <input
                   type="password"
-                  placeholder="Confirm new password"
+                  placeholder={t('profile.confirmNewPassword')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-[#034891] focus:ring-1 focus:ring-[#034891]/20 outline-none text-gray-900"
@@ -272,8 +274,12 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                       setConfirmPassword('');
                       setTimeout(() => { setPwSuccess(''); setShowChangePassword(false); }, 2000);
                     } catch (err: unknown) {
-                      const error = err as { response?: { data?: { detail?: string } } };
-                      setPwError(error.response?.data?.detail || 'Failed to change password');
+                      const error = err as { response?: { status?: number; data?: { detail?: string } } };
+                      const msg = error.response?.data?.detail || 'Failed to change password';
+                      if (error.response?.status === 401) {
+                        alert('Current password is incorrect. Please try again.');
+                      }
+                      setPwError(msg);
                     } finally {
                       setPwLoading(false);
                     }
@@ -281,7 +287,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                   disabled={pwLoading}
                   className="w-full py-2 bg-[#034891] text-white text-sm font-medium rounded-lg hover:bg-[#023670] disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {pwLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Changing...</> : 'Update Password'}
+                  {pwLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{t('profile.changingPassword')}</> : t('profile.updatePassword')}
                 </button>
               </div>
             )}
@@ -297,7 +303,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
               className="w-full px-4 py-2.5 flex items-center gap-3 text-red-600 hover:bg-red-50 transition-colors"
             >
               <LogOut className="w-4 h-4" />
-              <span className="text-sm">Logout</span>
+              <span className="text-sm">{t('profile.logout')}</span>
             </button>
 
             {/* Delete Account */}
@@ -306,13 +312,13 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
               className="w-full px-4 py-2.5 flex items-center gap-3 text-red-400 hover:bg-red-50 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
-              <span className="text-sm">Delete Account</span>
+              <span className="text-sm">{t('profile.deleteAccount')}</span>
             </button>
 
             {showDeleteConfirm && (
               <div className="px-3 py-3 bg-red-50 mx-2 rounded-lg mb-2 space-y-2">
                 <p className="text-xs text-red-700 font-medium">
-                  ⚠️ This will permanently delete your account and all data. This action cannot be undone.
+                  {t('profile.deleteAccountWarning')}
                 </p>
                 {deleteError && (
                   <div className="p-2 bg-red-100 border border-red-300 rounded text-red-700 text-xs">
@@ -324,7 +330,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                     onClick={() => { setShowDeleteConfirm(false); setDeleteError(''); }}
                     className="flex-1 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     onClick={async () => {
@@ -344,7 +350,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                     disabled={deleteLoading}
                     className="flex-1 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {deleteLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Deleting...</> : 'Delete Forever'}
+                    {deleteLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{t('profile.deleting')}</> : t('profile.deleteForever')}
                   </button>
                 </div>
               </div>

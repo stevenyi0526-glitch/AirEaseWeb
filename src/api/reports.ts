@@ -53,11 +53,11 @@ export interface ReportResponse {
 
 // Category labels for frontend use
 export const REPORT_CATEGORIES: ReportCategoryInfo[] = [
-  { value: 'aircraft_mismatch', label: '机型不符', labelEn: 'Aircraft Type Mismatch' },
-  { value: 'missing_facilities', label: '设施缺失', labelEn: 'Missing Facilities' },
-  { value: 'price_error', label: '价格错误', labelEn: 'Price Error' },
-  { value: 'flight_info_error', label: '航班信息错误', labelEn: 'Flight Info Error' },
-  { value: 'time_inaccurate', label: '时间不准确', labelEn: 'Incorrect Time' },
+  { value: 'aircraft_mismatch', label: '機型不符', labelEn: 'Aircraft Type Mismatch' },
+  { value: 'missing_facilities', label: '設施缺失', labelEn: 'Missing Facilities' },
+  { value: 'price_error', label: '價格錯誤', labelEn: 'Price Error' },
+  { value: 'flight_info_error', label: '航班資訊錯誤', labelEn: 'Flight Info Error' },
+  { value: 'time_inaccurate', label: '時間不準確', labelEn: 'Incorrect Time' },
   { value: 'other', label: '其他', labelEn: 'Other' },
 ];
 

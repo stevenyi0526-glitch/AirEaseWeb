@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Sparkles, Star, Check, X } from 'lucide-react';
 import type { FlightWithScore } from '../../api/types';
 import FlightCard from './FlightCard';
@@ -18,8 +19,12 @@ interface AIRecommendationsProps {
   explanation: string;
   isLoading?: boolean;
   onFlightClick?: (flight: FlightWithScore) => void;
+  onSelect?: (flight: FlightWithScore) => void;
+  isSelected?: (flight: FlightWithScore) => boolean;
   displayCurrency?: string;
   isAISearch?: boolean;
+  priceLabel?: 'round trip' | 'per person';
+  isTicketLoading?: boolean;
 }
 
 /**
@@ -30,12 +35,18 @@ interface AIRecommendationsProps {
  */
 const AIRecommendations: React.FC<AIRecommendationsProps> = ({
   recommendations,
-  explanation,
+  explanation: _explanation,
   isLoading = false,
   onFlightClick: _onFlightClick,
+  onSelect,
+  isSelected,
   displayCurrency = 'USD',
   isAISearch = false,
+  priceLabel,
+  isTicketLoading,
 }) => {
+  const { t } = useTranslation();
+
   if (isLoading) {
     return (
       <div className="bg-gradient-to-r from-blue-50 to-white rounded-2xl p-4 mb-6 border-2 border-blue-200 shadow-sm">
@@ -44,8 +55,8 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
             <Sparkles className="w-5 h-5 text-white animate-pulse" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800">AI Top Pick</h3>
-            <p className="text-sm text-gray-500">Finding your perfect flight...</p>
+            <h3 className="font-semibold text-gray-800">{t('aiRecommendations.aiTopPick')}</h3>
+            <p className="text-sm text-gray-500">{t('aiRecommendations.findingPerfectFlight')}</p>
           </div>
         </div>
         <div className="bg-white rounded-xl p-5 animate-pulse">
@@ -78,46 +89,45 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
   const requirementChecks = (topPick as { ai_requirement_checks?: AIRequirementCheck[] }).ai_requirement_checks || [];
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 via-sky-50 to-white rounded-2xl p-4 mb-6 border-2 border-blue-200 shadow-md relative overflow-hidden">
+    <div className="bg-gradient-to-r from-blue-50 via-sky-50 to-white rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 border-2 border-blue-200 shadow-md relative overflow-visible">
       {/* Decorative background sparkles */}
-      <div className="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none">
+      <div className="absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 opacity-10 pointer-events-none">
         <Sparkles className="w-full h-full text-blue-500" />
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-3 relative z-10">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-blue-200 shadow-lg">
-            <Sparkles className="w-5 h-5 text-white" />
+      <div className="flex items-center justify-between mb-2 sm:mb-3 relative z-10">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-500 to-blue-200 shadow-lg">
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-gray-800 text-lg">AI Top Pick</h3>
-              <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-medium">
-                {isAISearch ? 'Best Match' : '#1 For You'}
+              <h3 className="font-bold text-gray-800 text-base sm:text-lg">{t('aiRecommendations.aiTopPick')}</h3>
+              <span className="text-[10px] sm:text-xs bg-blue-500 text-white px-1.5 sm:px-2 py-0.5 rounded-full font-medium">
+                {isAISearch ? t('aiRecommendations.topPick') : t('aiRecommendations.forYou')}
               </span>
             </div>
-            <p className="text-sm text-gray-600">{explanation}</p>
           </div>
         </div>
       </div>
 
       {/* AI Search: Requirement checklist with ticks */}
       {isAISearch && requirementChecks.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3 relative z-10">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-3 relative z-10">
           {requirementChecks.map((check, i) => (
             <span
               key={i}
-              className={`text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 border ${
+              className={`text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium flex items-center gap-1 sm:gap-1.5 border ${
                 check.met
                   ? 'bg-green-50 text-green-700 border-green-200'
                   : 'bg-gray-50 text-gray-400 border-gray-200'
               }`}
             >
               {check.met ? (
-                <Check className="w-3.5 h-3.5 text-green-500" />
+                <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-500" />
               ) : (
-                <X className="w-3.5 h-3.5 text-gray-400" />
+                <X className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400" />
               )}
               {check.label}
             </span>
@@ -127,13 +137,13 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
 
       {/* Classic search: Star-based recommendation reasons */}
       {!isAISearch && reasons.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3 relative z-10">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-3 relative z-10">
           {reasons.map((reason, i) => (
             <span
               key={i}
-              className="text-xs bg-white/80 backdrop-blur-sm text-blue-700 px-3 py-1.5 rounded-full border border-blue-200 font-medium flex items-center gap-1"
+              className="text-[10px] sm:text-xs bg-white/80 backdrop-blur-sm text-blue-700 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-blue-200 font-medium flex items-center gap-1"
             >
-              <Star className="w-3 h-3 text-blue-500" />
+              <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-500" />
               {reason}
             </span>
           ))}
@@ -146,6 +156,10 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
           flightWithScore={topPick}
           showCompare={true}
           displayCurrency={displayCurrency}
+          onSelect={onSelect ? () => onSelect(topPick) : undefined}
+          isSelected={isSelected ? isSelected(topPick) : false}
+          priceLabel={priceLabel}
+          isTicketLoading={isTicketLoading}
         />
       </div>
     </div>

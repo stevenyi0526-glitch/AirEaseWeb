@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Lock, Clock, Star } from 'lucide-react';
 import LoginModal from '../auth/LoginModal';
 import RegisterModal from '../auth/RegisterModal';
@@ -14,6 +15,7 @@ const FlightCardBlurred: React.FC<FlightCardBlurredProps> = ({
 }) => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <>
@@ -79,7 +81,7 @@ const FlightCardBlurred: React.FC<FlightCardBlurredProps> = ({
           <div className="w-12 h-12 rounded-full bg-airease-blue/10 flex items-center justify-center mb-3">
             <Lock className="w-6 h-6 text-airease-blue" />
           </div>
-          <p className="text-gray-700 font-semibold mb-1">Sign in to view this flight</p>
+          <p className="text-gray-700 font-semibold mb-1">{t('blurredCard.signInToView')}</p>
           <p className="text-sm text-gray-500 mb-4">
             {departureCode} → {arrivalCode}
           </p>
@@ -90,7 +92,7 @@ const FlightCardBlurred: React.FC<FlightCardBlurredProps> = ({
             }}
             className="btn-primary"
           >
-            Sign Up Free
+            {t('blurredCard.signUpFree')}
           </button>
         </div>
       </div>

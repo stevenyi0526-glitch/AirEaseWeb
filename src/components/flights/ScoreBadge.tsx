@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import i18n from '../../i18n';
 
 interface ScoreBadgeProps {
   score: number;
@@ -92,8 +93,8 @@ export function getScoreColorClass(score: number): string {
 // Helper to get score text
 export function getScoreText(score: number): string {
   const fivePoint = score <= 10 ? score / 2 : score / 20;
-  if (fivePoint >= 4.25) return 'Excellent';
-  if (fivePoint >= 3.5) return 'Good';
-  if (fivePoint >= 2.5) return 'Fair';
-  return 'Poor';
+  if (fivePoint >= 4.25) return i18n.t('scoreBadge.excellent');
+  if (fivePoint >= 3.5) return i18n.t('scoreBadge.good');
+  if (fivePoint >= 2.5) return i18n.t('scoreBadge.fair');
+  return i18n.t('scoreBadge.poor');
 }

@@ -98,18 +98,6 @@ export async function getNearestAirportFromLocation(): Promise<AirportCoordinate
 // ============================================================
 
 /**
- * Get time preference based on current time
- */
-function getTimePreferenceFromCurrentTime(): 'morning' | 'afternoon' | 'evening' | 'night' {
-  const hour = new Date().getHours();
-  
-  if (hour >= 6 && hour < 12) return 'morning';
-  if (hour >= 12 && hour < 18) return 'afternoon';
-  if (hour >= 18 && hour < 22) return 'evening';
-  return 'night';
-}
-
-/**
  * Format date to YYYY-MM-DD
  */
 function formatDate(date: Date): string {
@@ -117,10 +105,12 @@ function formatDate(date: Date): string {
 }
 
 /**
- * Get today's date formatted
+ * Get tomorrow's date formatted
  */
-function getToday(): string {
-  return formatDate(new Date());
+function getTomorrow(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return formatDate(d);
 }
 
 // ============================================================
@@ -243,20 +233,18 @@ export async function parseNaturalLanguageSearch(
       }
     }
 
-    // Step 4: Get date (default to today)
+    // Step 4: Get date (default to tomorrow)
     let date = parsed.date;
     if (!date) {
-      date = getToday();
+      date = getTomorrow();
     }
 
-    // Step 5: Get time preference
-    // If the user didn't specify a time preference, auto-detect from current time of day
-    let timePreference = parsed.time_preference;
-    if (timePreference === 'any') {
-      timePreference = getTimePreferenceFromCurrentTime();
-    }
+    // Step 5: Get time preference (default to all-day / no time filter)
+    const timePreference = parsed.time_preference;
+    // Keep 'any' as-is — the URL builder will simply not add depMin/depMax filters
 
     // Step 6: Build final params
+    // Defaults: all flights (no stops filter), sort by latest model
     const params: ParsedSearchParams = {
       departure_city: departureCity,
       departure_city_code: departureCode,
@@ -267,7 +255,7 @@ export async function parseNaturalLanguageSearch(
       passengers: parsed.passengers || 1,
       cabin_class: parsed.cabin_class || 'economy',
       sort_by: parsed.sort_by || 'score',
-      stops: parsed.stops || 'any',
+      stops: parsed.stops && parsed.stops !== 'any' ? parsed.stops : 'any',
       aircraft_type: parsed.aircraft_type || 'any',
       alliance: parsed.alliance || 'any',
       max_price: parsed.max_price ?? null,
@@ -313,7 +301,7 @@ export function paramsToSearchURL(params: ParsedSearchParams, originalQuery?: st
     adults: params.passengers.toString(),
     children: '0',
     tripType: 'oneway',
-    sortBy: params.sort_by,
+    sortBy: 'model',
   });
 
   // Mark this as an AI search so FlightsPage can use query-based recommendations

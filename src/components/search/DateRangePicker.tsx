@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
@@ -47,6 +48,17 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  const { t } = useTranslation();
+
+  // Detect mobile
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // Parse current selections
   const depDate = departureDate ? new Date(departureDate + 'T00:00:00') : null;
@@ -157,7 +169,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const days = buildCalendarDays(monthStart);
 
     return (
-      <div className="w-[280px]">
+      <div className={cn("w-[280px]", isMobile && "w-full")}>
         {/* Month title */}
         <div className="text-center font-semibold text-sm text-text-primary mb-2">
           {format(monthStart, 'MMMM yyyy')}
@@ -165,7 +177,15 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
         {/* Weekday headers */}
         <div className="grid grid-cols-7 text-center text-xs text-text-muted mb-1">
-          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+          {[
+            t('dateRangePicker.weekSu'),
+            t('dateRangePicker.weekMo'),
+            t('dateRangePicker.weekTu'),
+            t('dateRangePicker.weekWe'),
+            t('dateRangePicker.weekTh'),
+            t('dateRangePicker.weekFr'),
+            t('dateRangePicker.weekSa'),
+          ].map(d => (
             <div key={d} className="py-1">{d}</div>
           ))}
         </div>
@@ -246,7 +266,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <div className="flex gap-2">
             {/* Departure button */}
             <div className="flex-1 min-w-0">
-              <label className="block text-xs font-semibold text-gray-400 mb-1">Departure</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">{t('dateRangePicker.departure')}</label>
               <button
                 type="button"
                 onClick={openCalendar}
@@ -259,12 +279,12 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 )}
               >
                 <Calendar className="w-4 h-4 text-[#034891] flex-shrink-0" />
-                <span className="truncate">{departureDate ? format(new Date(departureDate + 'T00:00:00'), 'MMM d, yyyy') : 'Select date'}</span>
+                <span className="truncate">{departureDate ? format(new Date(departureDate + 'T00:00:00'), 'MMM d, yyyy') : t('dateRangePicker.selectDate')}</span>
               </button>
             </div>
             {/* Return button */}
             <div className="flex-1 min-w-0">
-              <label className="block text-xs font-semibold text-gray-400 mb-1">Return</label>
+              <label className="block text-xs font-semibold text-gray-400 mb-1">{t('dateRangePicker.return')}</label>
               <button
                 type="button"
                 onClick={openCalendar}
@@ -277,13 +297,13 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 )}
               >
                 <Calendar className="w-4 h-4 text-[#034891] flex-shrink-0" />
-                <span className="truncate">{returnDate ? format(new Date(returnDate + 'T00:00:00'), 'MMM d, yyyy') : 'Select date'}</span>
+                <span className="truncate">{returnDate ? format(new Date(returnDate + 'T00:00:00'), 'MMM d, yyyy') : t('dateRangePicker.selectDate')}</span>
               </button>
             </div>
           </div>
         ) : (
           <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1">Departure</label>
+            <label className="block text-xs font-semibold text-gray-400 mb-1">{t('dateRangePicker.departure')}</label>
             <button
               type="button"
               onClick={openCalendar}
@@ -296,7 +316,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
               )}
             >
               <Calendar className="w-4 h-4 text-[#034891] flex-shrink-0" />
-              <span className="truncate">{departureDate ? format(new Date(departureDate + 'T00:00:00'), 'MMM d, yyyy') : 'Select date'}</span>
+              <span className="truncate">{departureDate ? format(new Date(departureDate + 'T00:00:00'), 'MMM d, yyyy') : t('dateRangePicker.selectDate')}</span>
             </button>
           </div>
         )}
@@ -304,11 +324,24 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
       {/* Calendar dropdown — rendered via portal to escape overflow-hidden containers */}
       {open && dropdownPos && createPortal(
-        <div
-          id="date-range-dropdown"
-          className="fixed z-[9999] bg-white rounded-2xl shadow-2xl border border-gray-200 p-5 animate-fade-in"
-          style={{ top: dropdownPos.top, left: dropdownPos.left }}
-        >
+        <>
+          {/* Mobile backdrop */}
+          {isMobile && (
+            <div className="fixed inset-0 z-[9998] bg-black/30" onClick={() => setOpen(false)} />
+          )}
+          <div
+            id="date-range-dropdown"
+            className={cn(
+              "fixed z-[9999] bg-white shadow-2xl border border-gray-200 animate-fade-in",
+              isMobile
+                ? "inset-x-3 rounded-2xl p-4"
+                : "rounded-2xl p-5"
+            )}
+            style={isMobile
+              ? { top: '50%', transform: 'translateY(-50%)' }
+              : { top: dropdownPos.top, left: dropdownPos.left }
+            }
+          >
           {/* Navigation */}
           <div className="flex items-center justify-between mb-4">
             <button
@@ -323,9 +356,9 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
             <div className="text-xs text-text-muted text-center">
               {isRoundTrip
                 ? isSelectingReturn
-                  ? '← Select return date'
-                  : 'Select departure date →'
-                : 'Select departure date'}
+                  ? t('dateRangePicker.selectReturnDate')
+                  : t('dateRangePicker.selectDepartureDateArrow')
+                : t('dateRangePicker.selectDepartureDate')}
             </div>
 
             <button
@@ -337,24 +370,30 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
             </button>
           </div>
 
-          {/* Two-month calendar */}
-          <div className="flex gap-6">
-            {renderMonth(leftMonth)}
-            {renderMonth(rightMonth)}
-          </div>
+          {/* Calendar — single month on mobile, two months on desktop */}
+          {isMobile ? (
+            <div className="flex justify-center">
+              {renderMonth(leftMonth)}
+            </div>
+          ) : (
+            <div className="flex gap-6">
+              {renderMonth(leftMonth)}
+              {renderMonth(rightMonth)}
+            </div>
+          )}
 
           {/* Footer: selected dates summary */}
           {isRoundTrip && (
-            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-4 text-sm">
+            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm flex-wrap">
                 <div>
-                  <span className="text-text-muted text-xs">Departure: </span>
+                  <span className="text-text-muted text-xs">{t('dateRangePicker.dep')}</span>
                   <span className="font-medium text-text-primary">
                     {depDate ? format(depDate, 'MMM d, yyyy') : '—'}
                   </span>
                 </div>
                 <div>
-                  <span className="text-text-muted text-xs">Return: </span>
+                  <span className="text-text-muted text-xs">{t('dateRangePicker.ret')}</span>
                   <span className="font-medium text-text-primary">
                     {retDate ? format(retDate, 'MMM d, yyyy') : '—'}
                   </span>
@@ -364,14 +403,15 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="px-4 py-1.5 bg-[#034891] text-white text-sm font-medium rounded-lg hover:bg-[#023670] transition-colors"
+                  className="px-3 sm:px-4 py-1.5 bg-[#034891] text-white text-sm font-medium rounded-lg hover:bg-[#023670] transition-colors flex-shrink-0"
                 >
-                  Done
+                  {t('dateRangePicker.done')}
                 </button>
               )}
             </div>
           )}
-        </div>,
+        </div>
+        </>,
         document.body
       )}
     </div>

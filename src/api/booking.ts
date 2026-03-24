@@ -44,6 +44,7 @@ export async function fetchBookingLinks(params: {
   outboundDate?: string;
   returnDate?: string;
   airlineName?: string;
+  airlineCode?: string;
 }): Promise<BookingLink[]> {
   const baseUrl = API_URL || window.location.origin;
 
@@ -60,6 +61,7 @@ export async function fetchBookingLinks(params: {
       if (params.outboundDate) url.searchParams.set('outbound_date', params.outboundDate);
       if (params.returnDate) url.searchParams.set('return_date', params.returnDate);
       if (params.airlineName) url.searchParams.set('airline_name', params.airlineName);
+      if (params.airlineCode) url.searchParams.set('airline_code', params.airlineCode);
 
       try {
         const response = await fetch(url.toString());

@@ -1,6 +1,8 @@
 import React from 'react';
 import { RotateCcw, Sun, Sunset, Moon, Sunrise } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
+import { translateAirline } from '../../utils/translate';
 import { trackTimeFilter } from '../../api/preferences';
 import type { FlightSearchFilters } from '../../hooks/useFlightSearchParams';
 
@@ -54,6 +56,8 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   className,
   trackPreferences = false,
 }) => {
+  const { t } = useTranslation();
+
   // Check if any filters are active
   const hasActiveFilters =
     filters.stops !== 'any' ||
@@ -91,27 +95,27 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
     <aside className={cn('w-72 flex-shrink-0 space-y-4', className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-text-primary">Filters</h3>
+        <h3 className="text-lg font-semibold text-text-primary">{t('filters.title')}</h3>
         {hasActiveFilters && (
           <button
             onClick={onResetFilters}
             className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-hover font-medium transition-colors"
           >
             <RotateCcw className="w-4 h-4" />
-            Reset
+            {t('filters.reset')}
           </button>
         )}
       </div>
 
       {/* Stops Filter */}
       <div className="filter-panel">
-        <h4 className="text-sm font-semibold text-text-primary mb-3">Stops</h4>
+        <h4 className="text-sm font-semibold text-text-primary mb-3">{t('filters.stops')}</h4>
         <div className="space-y-2">
           {[
-            { value: 'any', label: 'All Flights' },
-            { value: '0', label: 'Direct' },
-            { value: '1', label: '1 Stop' },
-            { value: '2', label: '2 Stops' },
+            { value: 'any', label: t('filters.allFlights') },
+            { value: '0', label: t('filters.direct') },
+            { value: '1', label: t('filters.oneStop') },
+            { value: '2', label: t('filters.twoStops') },
           ].map((option) => (
             <label
               key={option.value}
@@ -140,7 +144,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
 
       {/* Departure Time Filter */}
       <div className="filter-panel">
-        <h4 className="text-sm font-semibold text-text-primary mb-3">Departure Time</h4>
+        <h4 className="text-sm font-semibold text-text-primary mb-3">{t('filters.departureTime')}</h4>
         <div className="grid grid-cols-2 gap-2">
           {timePeriods.map((period) => {
             const isSelected = 
@@ -177,7 +181,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
 
       {/* Aircraft Type Filter */}
       <div className="filter-panel">
-        <h4 className="text-sm font-semibold text-text-primary mb-3">Aircraft Type</h4>
+        <h4 className="text-sm font-semibold text-text-primary mb-3">{t('filters.aircraftType')}</h4>
         <div className="space-y-2">
           {aircraftTypes.map((type) => {
             const isSelected = filters.aircraftType === type.id;
@@ -217,7 +221,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
 
       {/* Airline Alliance Filter */}
       <div className="filter-panel">
-        <h4 className="text-sm font-semibold text-text-primary mb-3">Airline Alliance</h4>
+        <h4 className="text-sm font-semibold text-text-primary mb-3">{t('filters.airlines')}</h4>
         <div className="space-y-2">
           {alliances.map((alliance) => {
             const isSelected = filters.alliance === alliance.id;
@@ -252,7 +256,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
 
       {/* Price Range Filter */}
       <div className="filter-panel">
-        <h4 className="text-sm font-semibold text-text-primary mb-3">Price Range</h4>
+        <h4 className="text-sm font-semibold text-text-primary mb-3">{t('filters.priceRange')}</h4>
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <div className="flex-1">
@@ -340,7 +344,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors truncate block">
-                      {airline.name}
+                      {translateAirline(airline.name)}
                     </span>
                   </div>
                   {airline.count !== undefined && (

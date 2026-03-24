@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MapPin, Loader2, Plane, Building2 } from 'lucide-react';
 import { autocompleteApi, type LocationSuggestion } from '../../api/autocomplete';
 import { searchAirports, AIRPORTS } from '../../lib/airports';
@@ -18,10 +19,11 @@ interface CityAutocompleteProps {
 const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   value,
   onChange,
-  placeholder = 'Search city or airport',
+  placeholder = undefined,
   label,
   className,
 }) => {
+  const { t } = useTranslation();
   const [query, setQuery] = useState(value);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -180,7 +182,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
           value={query}
           onChange={handleInputChange}
           onFocus={handleFocus}
-          placeholder={placeholder}
+          placeholder={placeholder || t('cityAutocomplete.searchPlaceholder')}
           className="input-field pl-10 pr-10 text-base h-12"
           autoComplete="off"
         />
@@ -198,7 +200,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
           {isLoading ? (
             <div className="px-4 py-3 text-center text-gray-500">
               <Loader2 className="w-5 h-5 animate-spin mx-auto mb-1" />
-              <span className="text-sm">Searching...</span>
+              <span className="text-sm">{t('cityAutocomplete.searching')}</span>
             </div>
           ) : results.length > 0 ? (
             <ul className="py-1">
@@ -207,7 +209,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
                 const Icon = isAirport ? Plane : Building2;
                 const iconBg = isAirport ? 'bg-primary/10' : 'bg-amber-50';
                 const iconColor = isAirport ? 'text-primary' : 'text-amber-600';
-                const badge = isAirport ? 'Airport' : 'City';
+                const badge = isAirport ? t('cityAutocomplete.airport') : t('cityAutocomplete.city');
                 const badgeBg = isAirport ? 'bg-primary/10 text-primary' : 'bg-amber-100 text-amber-700';
 
                 return (
@@ -236,7 +238,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
                           {suggestion.score && (
                             <>
                               <span className="text-gray-300">•</span>
-                              <span>Popularity: {suggestion.score}</span>
+                              <span>{t('cityAutocomplete.popularity', { score: suggestion.score })}</span>
                             </>
                           )}
                         </div>
@@ -256,15 +258,15 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
             </ul>
           ) : query.length >= 1 ? (
             <div className="px-4 py-3 text-center text-gray-500">
-              <p className="text-sm">No airports or cities found</p>
-              <p className="text-xs mt-1">Try a different search term</p>
+              <p className="text-sm">{t('cityAutocomplete.noResults')}</p>
+              <p className="text-xs mt-1">{t('cityAutocomplete.tryDifferent')}</p>
             </div>
           ) : null}
 
           {useLocalFallback && results.length > 0 && (
             <div className="px-3 py-2 bg-gray-50 border-t border-gray-100">
               <p className="text-xs text-gray-400 text-center">
-                Using local airport database
+                {t('cityAutocomplete.usingLocalDb')}
               </p>
             </div>
           )}

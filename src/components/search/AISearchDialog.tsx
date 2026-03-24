@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
   X,
@@ -43,15 +44,9 @@ const INITIAL_PARAMS: AISearchParams = {
   missing_fields: ['departure_city', 'arrival_city', 'date'],
 };
 
-const SUGGESTED_QUERIES = [
-  "Find me the cheapest flight from Hong Kong to Tokyo next weekend",
-  "I need a comfortable morning flight to Singapore tomorrow",
-  "What's the fastest way to get from London to New York on Friday?",
-  "Book 2 adults and 1 child to Paris in business class",
-];
-
 const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<AIConversationMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -103,10 +98,10 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
       setCurrentParams(response.search_params);
     } catch (err) {
       console.error('Error:', err);
-      setError('Sorry, I encountered an error. Please try again.');
+      setError(t('aiDialog.errorMessage'));
       const errorMessage: AIConversationMessage = {
         role: 'assistant',
-        content: 'I apologize, but I encountered an error processing your request. Could you please try again?',
+        content: t('aiDialog.errorApology'),
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -180,32 +175,32 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
 
   const getTimePreferenceLabel = (pref: string) => {
     const labels: Record<string, string> = {
-      morning: '🌅 Morning (6am-12pm)',
-      afternoon: '☀️ Afternoon (12pm-6pm)',
-      evening: '🌆 Evening (6pm-10pm)',
-      night: '🌙 Night (10pm-6am)',
-      any: '🕐 Any time',
+      morning: t('aiDialog.timeMorning'),
+      afternoon: t('aiDialog.timeAfternoon'),
+      evening: t('aiDialog.timeEvening'),
+      night: t('aiDialog.timeNight'),
+      any: t('aiDialog.timeAny'),
     };
     return labels[pref] || pref;
   };
 
   const getCabinLabel = (cabin: string) => {
     const labels: Record<string, string> = {
-      economy: 'Economy',
-      premium_economy: 'Premium Economy',
-      business: 'Business',
-      first: 'First Class',
+      economy: t('aiDialog.cabinEconomy'),
+      premium_economy: t('aiDialog.cabinPremiumEconomy'),
+      business: t('aiDialog.cabinBusiness'),
+      first: t('aiDialog.cabinFirst'),
     };
     return labels[cabin] || cabin;
   };
 
   const getPriorityLabel = (priority: string) => {
     const labels: Record<string, string> = {
-      cheapest: '💰 Cheapest',
-      fastest: '⚡ Fastest',
-      most_comfortable: '✨ Most Comfortable',
-      best_value: '🎯 Best Value',
-      balanced: '⚖️ Balanced',
+      cheapest: t('aiDialog.priorityCheapest'),
+      fastest: t('aiDialog.priorityFastest'),
+      most_comfortable: t('aiDialog.priorityComfortable'),
+      best_value: t('aiDialog.priorityBestValue'),
+      balanced: t('aiDialog.priorityBalanced'),
     };
     return labels[priority] || priority;
   };
@@ -229,8 +224,8 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-text-primary">AirEase AI Assistant</h2>
-              <p className="text-sm text-text-secondary">Tell me about your ideal flight</p>
+              <h2 className="text-xl font-bold text-text-primary">{t('aiDialog.title')}</h2>
+              <p className="text-sm text-text-secondary">{t('aiDialog.subtitle')}</p>
             </div>
           </div>
           <button
@@ -257,22 +252,20 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
                       </div>
                       <div>
                         <p className="text-text-primary leading-relaxed">
-                          Hi! I'm your AI flight search assistant. Tell me where you want to go
-                          and I'll help you find the perfect flight. You can describe your trip
-                          naturally, like:
+                          {t('aiDialog.welcomeMessage')}
                         </p>
                         <ul className="mt-3 space-y-2 text-text-secondary text-sm">
                           <li className="flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4 text-success" />
-                            "Find me a morning flight from Hong Kong to Shanghai next Friday"
+                            {t('aiDialog.example1')}
                           </li>
                           <li className="flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4 text-success" />
-                            "I need the cheapest business class to London for 2 adults"
+                            {t('aiDialog.example2')}
                           </li>
                           <li className="flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4 text-success" />
-                            "What's the most comfortable direct flight to Tokyo?"
+                            {t('aiDialog.example3')}
                           </li>
                         </ul>
                       </div>
@@ -281,9 +274,14 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
 
                   {/* Suggested Queries */}
                   <div>
-                    <p className="text-sm font-medium text-text-secondary mb-3">Try asking:</p>
+                    <p className="text-sm font-medium text-text-secondary mb-3">{t('aiDialog.tryAsking')}</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {SUGGESTED_QUERIES.map((query, idx) => (
+                      {[
+                        t('aiDialog.suggestedQuery1'),
+                        t('aiDialog.suggestedQuery2'),
+                        t('aiDialog.suggestedQuery3'),
+                        t('aiDialog.suggestedQuery4'),
+                      ].map((query, idx) => (
                         <button
                           key={idx}
                           onClick={() => handleSendMessage(query)}
@@ -342,7 +340,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
                   <div className="bg-surface-alt rounded-2xl rounded-tl-sm px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                      <span className="text-text-secondary">Thinking...</span>
+                      <span className="text-text-secondary">{t('aiDialog.thinking')}</span>
                     </div>
                   </div>
                 </div>
@@ -368,7 +366,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Describe your ideal flight..."
+                  placeholder={t('aiDialog.inputPlaceholder')}
                   className="flex-1 px-4 py-3 rounded-xl bg-surface-alt border border-divider focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-text-primary placeholder:text-text-muted"
                   disabled={isLoading}
                 />
@@ -393,7 +391,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
             <div className="p-4 border-b border-divider">
               <h3 className="font-semibold text-text-primary flex items-center gap-2">
                 <Plane className="w-4 h-4 text-primary" />
-                Search Parameters
+                {t('aiDialog.searchParameters')}
               </h3>
             </div>
 
@@ -401,7 +399,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               {/* Route */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-text-secondary uppercase tracking-wide">
-                  Route
+                  {t('aiDialog.route')}
                 </label>
                 <div className="bg-surface rounded-xl p-3 space-y-2">
                   <div className="flex items-center gap-2">
@@ -410,7 +408,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
                       'text-sm',
                       currentParams.departure_city ? 'text-text-primary' : 'text-text-muted italic'
                     )}>
-                      {currentParams.departure_city || 'Departure city not set'}
+                      {currentParams.departure_city || t('aiDialog.departureCityNotSet')}
                     </span>
                     {currentParams.departure_city_code && (
                       <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
@@ -424,7 +422,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
                       'text-sm',
                       currentParams.arrival_city ? 'text-text-primary' : 'text-text-muted italic'
                     )}>
-                      {currentParams.arrival_city || 'Arrival city not set'}
+                      {currentParams.arrival_city || t('aiDialog.arrivalCityNotSet')}
                     </span>
                     {currentParams.arrival_city_code && (
                       <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
@@ -438,7 +436,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               {/* Date */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-text-secondary uppercase tracking-wide">
-                  Date
+                  {t('aiDialog.date')}
                 </label>
                 <div className="bg-surface rounded-xl p-3 flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-primary" />
@@ -447,13 +445,13 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
                     currentParams.date ? 'text-text-primary' : 'text-text-muted italic'
                   )}>
                     {currentParams.date
-                      ? new Date(currentParams.date).toLocaleDateString('en-US', {
+                      ? new Date(currentParams.date).toLocaleDateString('zh-TW', {
                           weekday: 'short',
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
                         })
-                      : 'Date not set'}
+                      : t('aiDialog.dateNotSet')}
                   </span>
                 </div>
               </div>
@@ -461,7 +459,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               {/* Time Preference */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-text-secondary uppercase tracking-wide">
-                  Time Preference
+                  {t('aiDialog.timePreference')}
                 </label>
                 <div className="bg-surface rounded-xl p-3 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-primary" />
@@ -474,14 +472,20 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               {/* Passengers */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-text-secondary uppercase tracking-wide">
-                  Passengers
+                  {t('aiDialog.passengers')}
                 </label>
                 <div className="bg-surface rounded-xl p-3 flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" />
                   <span className="text-sm text-text-primary">
-                    {currentParams.passengers.adults} Adult{currentParams.passengers.adults !== 1 ? 's' : ''}
-                    {currentParams.passengers.children > 0 && `, ${currentParams.passengers.children} Child${currentParams.passengers.children !== 1 ? 'ren' : ''}`}
-                    {currentParams.passengers.infants > 0 && `, ${currentParams.passengers.infants} Infant${currentParams.passengers.infants !== 1 ? 's' : ''}`}
+                    {currentParams.passengers.adults !== 1
+                      ? t('aiDialog.adultCountPlural', { count: currentParams.passengers.adults })
+                      : t('aiDialog.adultCount', { count: currentParams.passengers.adults })}
+                    {currentParams.passengers.children > 0 && (currentParams.passengers.children !== 1
+                      ? t('aiDialog.childCountPlural', { count: currentParams.passengers.children })
+                      : t('aiDialog.childCount', { count: currentParams.passengers.children }))}
+                    {currentParams.passengers.infants > 0 && (currentParams.passengers.infants !== 1
+                      ? t('aiDialog.infantCountPlural', { count: currentParams.passengers.infants })
+                      : t('aiDialog.infantCount', { count: currentParams.passengers.infants }))}
                   </span>
                 </div>
               </div>
@@ -489,7 +493,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               {/* Cabin Class */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-text-secondary uppercase tracking-wide">
-                  Cabin Class
+                  {t('aiDialog.cabinClass')}
                 </label>
                 <div className="bg-surface rounded-xl p-3">
                   <span className="text-sm text-text-primary capitalize">
@@ -501,17 +505,17 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               {/* Stops */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-text-secondary uppercase tracking-wide">
-                  Stops
+                  {t('aiDialog.stops')}
                 </label>
                 <div className="bg-surface rounded-xl p-3">
                   <span className="text-sm text-text-primary">
                     {currentParams.max_stops === 0
-                      ? 'Direct flights only'
+                      ? t('aiDialog.directOnly')
                       : currentParams.max_stops === 1
-                      ? 'Max 1 stop'
+                      ? t('aiDialog.maxStops1')
                       : currentParams.max_stops === 2
-                      ? 'Max 2 stops'
-                      : 'Any number of stops'}
+                      ? t('aiDialog.maxStops2')
+                      : t('aiDialog.anyStops')}
                   </span>
                 </div>
               </div>
@@ -519,7 +523,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               {/* Priority */}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-text-secondary uppercase tracking-wide">
-                  Priority
+                  {t('aiDialog.priority')}
                 </label>
                 <div className="bg-surface rounded-xl p-3">
                   <span className="text-sm text-text-primary">
@@ -531,7 +535,7 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
               {/* Missing Fields */}
               {currentParams.missing_fields.length > 0 && !currentParams.is_complete && (
                 <div className="bg-warning/10 rounded-xl p-3">
-                  <p className="text-xs font-medium text-warning mb-2">Missing information:</p>
+                  <p className="text-xs font-medium text-warning mb-2">{t('aiDialog.missingInfo')}</p>
                   <ul className="text-xs text-text-secondary space-y-1">
                     {currentParams.missing_fields.map((field, idx) => (
                       <li key={idx} className="flex items-center gap-1">
@@ -557,11 +561,11 @@ const AISearchDialog: React.FC<AISearchDialogProps> = ({ isOpen, onClose }) => {
                 )}
               >
                 <Plane className="w-5 h-5" />
-                Search Flights
+                {t('aiDialog.searchFlights')}
               </button>
               {!isSearchComplete(currentParams) && (
                 <p className="text-xs text-text-muted text-center mt-2">
-                  Complete all required fields to search
+                  {t('aiDialog.completeAllFields')}
                 </p>
               )}
             </div>

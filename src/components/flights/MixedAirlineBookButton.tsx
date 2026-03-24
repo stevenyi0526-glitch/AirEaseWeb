@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { StepForward, Loader2, ExternalLink } from 'lucide-react';
 import { fetchBookingLinks, type BookingLink } from '../../api/booking';
@@ -12,6 +13,7 @@ interface MixedAirlineBookButtonProps {
   outboundDate?: string;
   returnDate?: string;
   airlineName?: string;
+  airlineCode?: string;
   /** Fallback action if no links available */
   onFallback: () => void;
 }
@@ -27,8 +29,10 @@ const MixedAirlineBookButton: React.FC<MixedAirlineBookButtonProps> = ({
   outboundDate,
   returnDate,
   airlineName,
+  airlineCode,
   onFallback: _onFallback,
 }) => {
+  const { t } = useTranslation();
   const [links, setLinks] = useState<BookingLink[]>([]);
   const [loading, setLoading] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -63,6 +67,7 @@ const MixedAirlineBookButton: React.FC<MixedAirlineBookButtonProps> = ({
         outboundDate,
         returnDate,
         airlineName,
+        airlineCode,
       });
       console.log('[MixedAirlineBookButton] fetchLinks result', {
         linkCount: result.length,
@@ -170,7 +175,7 @@ const MixedAirlineBookButton: React.FC<MixedAirlineBookButtonProps> = ({
       >
         <span className="px-4 py-2 flex items-center gap-1.5">
           <ExternalLink className="w-4 h-4" />
-          Book Now
+          {t('booking.bookNow')}
         </span>
         <span className="border-l border-white/30 px-2 py-2 flex items-center">
           <StepForward className="w-4 h-4" />
@@ -200,17 +205,17 @@ const MixedAirlineBookButton: React.FC<MixedAirlineBookButtonProps> = ({
           {/* Header */}
           <div className="px-3 py-2 text-sm font-bold text-gray-700 border-b border-gray-100 mb-2 flex items-center gap-2">
             <ExternalLink className="w-4 h-4 text-[#034891]" />
-            Choose Booking Platform
+            {t('booking.chooseBookingPlatform')}
           </div>
 
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-400">
               <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Loading platforms…</span>
+              <span>{t('booking.loadingPlatforms')}</span>
             </div>
           ) : links.length === 0 ? (
             <div className="px-4 py-5 text-sm text-gray-400 text-center">
-              No booking platforms found
+              {t('booking.noPlatformsFound')}
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
@@ -240,7 +245,7 @@ const MixedAirlineBookButton: React.FC<MixedAirlineBookButtonProps> = ({
                   <div className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold truncate">{link.name}</span>
                     <span className="block text-xs text-gray-400 mt-0.5">
-                      {link.isAirline ? 'Airline Official' : 'Travel Agency'}
+                      {link.isAirline ? t('booking.airlineOfficial') : t('booking.travelAgency')}
                     </span>
                   </div>
                   <ExternalLink className="w-4 h-4 text-gray-300 flex-shrink-0" />

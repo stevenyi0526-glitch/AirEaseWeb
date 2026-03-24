@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Mail, Lock, Loader2, ArrowLeft, RefreshCw, KeyRound, CheckCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { authApi } from '../../api/auth';
 
 interface ForgotPasswordModalProps {
@@ -11,6 +12,7 @@ interface ForgotPasswordModalProps {
 type Step = 'email' | 'verify' | 'success';
 
 const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClose, onSwitchToLogin }) => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -165,8 +167,8 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <KeyRound className="w-6 h-6 text-blue-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Forgot Password?</h2>
-              <p className="text-gray-500 mt-1">Enter your email and we'll send you a reset code</p>
+              <h2 className="text-2xl font-bold text-gray-900">{t('auth.forgotPasswordTitle')}</h2>
+              <p className="text-gray-500 mt-1">{t('auth.forgotPasswordDesc')}</p>
             </div>
 
             <form onSubmit={handleSubmitEmail} className="space-y-4">
@@ -177,7 +179,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.email')}</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -185,7 +187,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="input-field pl-10"
-                    placeholder="Enter your email"
+                    placeholder={t('auth.emailPlaceholder')}
                     required
                   />
                 </div>
@@ -197,17 +199,17 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
                 className="w-full btn-primary flex items-center justify-center gap-2"
               >
                 {isLoading ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" />Sending...</>
+                  <><Loader2 className="w-5 h-5 animate-spin" />{t('auth.sending')}</>
                 ) : (
-                  'Send Reset Code'
+                  t('auth.sendResetCode')
                 )}
               </button>
             </form>
 
             <div className="mt-6 text-center text-sm text-gray-500">
-              Remember your password?{' '}
+              {t('auth.rememberPassword')}{' '}
               <button onClick={onSwitchToLogin} className="text-airease-blue font-medium hover:underline">
-                Sign in
+                {t('auth.signInLink')}
               </button>
             </div>
           </>
@@ -226,11 +228,11 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Mail className="w-6 h-6 text-blue-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Check Your Email</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{t('auth.checkEmail')}</h2>
               <p className="text-gray-500 mt-1">
-                Enter the 6-digit code sent to <span className="font-medium text-gray-700">{email}</span>
+                {t('auth.checkEmailDesc')} <span className="font-medium text-gray-700">{email}</span>
               </p>
-              <p className="text-xs text-gray-400 mt-1">Code expires in {expiresIn} minutes</p>
+              <p className="text-xs text-gray-400 mt-1">{t('auth.codeExpires', { minutes: expiresIn })}</p>
             </div>
 
             {error && (
@@ -259,7 +261,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
             {/* New password fields */}
             <div className="space-y-3 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.newPassword')}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -267,13 +269,13 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="input-field pl-10"
-                    placeholder="At least 6 characters"
+                    placeholder={t('auth.newPasswordPlaceholder')}
                     minLength={6}
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.confirmPassword')}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -281,7 +283,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="input-field pl-10"
-                    placeholder="Re-enter new password"
+                    placeholder={t('auth.confirmPasswordPlaceholder')}
                     minLength={6}
                   />
                 </div>
@@ -294,9 +296,9 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
               className="w-full btn-primary flex items-center justify-center gap-2"
             >
               {isLoading ? (
-                <><Loader2 className="w-5 h-5 animate-spin" />Resetting...</>
+                <><Loader2 className="w-5 h-5 animate-spin" />{t('auth.resetting')}</>
               ) : (
-                'Reset Password'
+                t('auth.resetPassword')
               )}
             </button>
 
@@ -308,7 +310,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
                 className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50 inline-flex items-center gap-1"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+                {resendCooldown > 0 ? t('auth.resendIn', { seconds: resendCooldown }) : t('auth.resendCode')}
               </button>
             </div>
           </>
@@ -320,15 +322,15 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Reset!</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('auth.passwordReset')}</h2>
             <p className="text-gray-500 mb-6">
-              Your password has been successfully reset. You can now sign in with your new password.
+              {t('auth.passwordResetDesc')}
             </p>
             <button
               onClick={() => { onClose(); onSwitchToLogin(); }}
               className="w-full btn-primary"
             >
-              Sign In
+              {t('auth.signIn')}
             </button>
           </div>
         )}

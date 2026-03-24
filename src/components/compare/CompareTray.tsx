@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { X, ArrowRight, Scale, Plane } from 'lucide-react';
 import { useCompareStore, useCompareCount, useCanCompare } from '../../stores/compareStore';
@@ -18,6 +19,7 @@ const CompareTray: React.FC<CompareTrayProps> = ({ className }) => {
   const { flights, removeFlight, clearAll } = useCompareStore();
   const count = useCompareCount();
   const canCompare = useCanCompare();
+  const { t } = useTranslation();
 
   // Don't render if no flights
   if (count === 0) {
@@ -37,7 +39,7 @@ const CompareTray: React.FC<CompareTrayProps> = ({ className }) => {
             <div className="flex items-center gap-2">
               <Scale className="w-5 h-5 text-primary" />
               <h3 className="font-semibold text-text-primary">
-                Compare ({count}/3)
+                {t('compareUI.compareCount', { count })}
               </h3>
             </div>
             {count > 0 && (
@@ -45,7 +47,7 @@ const CompareTray: React.FC<CompareTrayProps> = ({ className }) => {
                 onClick={clearAll}
                 className="text-sm text-text-muted hover:text-danger transition-colors"
               >
-                Clear all
+                {t('compareUI.clearAll')}
               </button>
             )}
           </div>
@@ -86,7 +88,7 @@ const CompareTray: React.FC<CompareTrayProps> = ({ className }) => {
                 </div>
 
                 <div className="text-xs text-text-muted mt-1">
-                  {formatDuration(f.flight.durationMinutes)} • {f.flight.stops === 0 ? 'Direct' : `${f.flight.stops} stop${f.flight.stops > 1 ? 's' : ''}`}
+                  {formatDuration(f.flight.durationMinutes)} • {f.flight.stops === 0 ? t('common.direct') : `${f.flight.stops} stop${f.flight.stops > 1 ? 's' : ''}`}
                 </div>
               </div>
             ))}
@@ -98,7 +100,7 @@ const CompareTray: React.FC<CompareTrayProps> = ({ className }) => {
                 className="border-2 border-dashed border-border rounded-lg p-4 text-center"
               >
                 <span className="text-text-muted text-sm">
-                  Add a flight to compare
+                  {t('compareUI.addFlightToCompare')}
                 </span>
               </div>
             ))}
@@ -111,7 +113,7 @@ const CompareTray: React.FC<CompareTrayProps> = ({ className }) => {
                 to="/compare"
                 className="flex items-center justify-center gap-2 w-full py-3 btn-primary"
               >
-                Compare Flights
+                {t('compareUI.compareFlights')}
                 <ArrowRight className="w-4 h-4" />
               </Link>
             ) : (
@@ -119,7 +121,7 @@ const CompareTray: React.FC<CompareTrayProps> = ({ className }) => {
                 disabled
                 className="flex items-center justify-center gap-2 w-full py-3 btn-primary opacity-50 cursor-not-allowed"
               >
-                Add at least 2 flights
+                {t('compareUI.addAtLeast2')}
               </button>
             )}
           </div>
@@ -143,13 +145,13 @@ const CompareTray: React.FC<CompareTrayProps> = ({ className }) => {
             </div>
             <div>
               <span className="text-sm font-medium text-text-primary">
-                {count} flight{count !== 1 ? 's' : ''} selected
+                {t('compareUI.flightsSelected', { count })}
               </span>
               <button
                 onClick={clearAll}
                 className="block text-xs text-text-muted hover:text-danger"
               >
-                Clear
+                {t('compareUI.clear')}
               </button>
             </div>
           </div>
@@ -159,11 +161,11 @@ const CompareTray: React.FC<CompareTrayProps> = ({ className }) => {
               to="/compare"
               className="px-5 py-2.5 btn-primary text-sm"
             >
-              Compare
+              {t('compareUI.compare')}
             </Link>
           ) : (
             <span className="text-sm text-text-muted">
-              Add {2 - count} more
+              {t('compareUI.addMore', { count: 2 - count })}
             </span>
           )}
         </div>

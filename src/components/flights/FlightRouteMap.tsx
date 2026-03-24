@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -177,6 +178,7 @@ export function FlightRouteMap({
   const [routeData, setRouteData] = useState<FlightRouteCoordinates | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     async function fetchRoute() {
@@ -271,7 +273,7 @@ export function FlightRouteMap({
       >
         <div className="flex flex-col items-center gap-2 text-gray-500">
           <Plane className="w-8 h-8 animate-pulse" />
-          <span className="text-sm">Loading flight route...</span>
+          <span className="text-sm">{t('routeMap.loadingRoute')}</span>
         </div>
       </div>
     );
@@ -285,7 +287,7 @@ export function FlightRouteMap({
       >
         <div className="flex flex-col items-center gap-2 text-gray-400">
           <MapPin className="w-8 h-8" />
-          <span className="text-sm">{error || 'No route data available'}</span>
+          <span className="text-sm">{error || t('aiDialog.noRouteData')}</span>
         </div>
       </div>
     );
@@ -351,9 +353,9 @@ export function FlightRouteMap({
               <Popup>
                 <div className="text-center">
                   <div className="font-bold text-amber-600">{layover.iataCode}</div>
-                  <div className="text-xs text-gray-500">Stop {idx + 1}</div>
-                  {layoverTime?.arrival && <div className="text-xs">Arrive: {layoverTime.arrival}</div>}
-                  {layoverTime?.departure && <div className="text-xs">Depart: {layoverTime.departure}</div>}
+                  <div className="text-xs text-gray-500">{t('routeMap.stopNumber', { index: idx + 1 })}</div>
+                  {layoverTime?.arrival && <div className="text-xs">{t('routeMap.arrive', { time: layoverTime.arrival })}</div>}
+                  {layoverTime?.departure && <div className="text-xs">{t('routeMap.depart', { time: layoverTime.departure })}</div>}
                   <div className="text-sm">{layover.name}</div>
                 </div>
               </Popup>
@@ -393,7 +395,7 @@ export function FlightRouteMap({
       <div className="bg-gray-900/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg text-white">
         <div className="flex items-center gap-2 text-sm">
           <Plane className="w-4 h-4 text-[#0560B8]" /> {/* 调整图标颜色以在深色背景上更清晰 */}
-          <span className="font-medium">{flightInfo.distance.toLocaleString()} km</span>
+          <span className="font-medium">{flightInfo.distance.toLocaleString('en-US')} km</span>
         </div>
       </div>
     )}
@@ -412,7 +414,7 @@ export function FlightRouteMap({
       {/* Layover indicator */}
       {routeData.layovers.length > 0 && (
         <div className="absolute top-3 right-3 bg-amber-500/90 text-white text-xs font-medium px-2 py-1 rounded-full">
-          {routeData.layovers.length} stop{routeData.layovers.length > 1 ? 's' : ''}
+          {t(routeData.layovers.length > 1 ? 'common.stops' : 'common.stop', { count: routeData.layovers.length })}
         </div>
       )}
     </div>

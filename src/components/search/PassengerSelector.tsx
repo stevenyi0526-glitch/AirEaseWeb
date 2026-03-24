@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Users, Plus, Minus, ChevronDown } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -23,6 +24,7 @@ const PassengerSelector: React.FC<PassengerSelectorProps> = ({
   className = '',
   compact = false,
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [tempAdults, setTempAdults] = useState(adults);
   const [tempChildren, setTempChildren] = useState(children);
@@ -85,7 +87,7 @@ const PassengerSelector: React.FC<PassengerSelectorProps> = ({
       >
         <Users className="w-4 h-4 text-text-secondary" />
         <span className="text-text-primary font-medium">
-          {total} {compact ? '' : `passenger${total > 1 ? 's' : ''}`}
+          {total} {compact ? '' : (total > 1 ? t('passengerTrigger.passengers') : t('passengerTrigger.passenger'))}
         </span>
         <ChevronDown className={cn(
           'w-4 h-4 text-text-secondary transition-transform',
@@ -100,8 +102,8 @@ const PassengerSelector: React.FC<PassengerSelectorProps> = ({
             {/* Adults */}
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-text-primary">Adults</div>
-                <div className="text-xs text-text-muted">Age 12+</div>
+                <div className="font-medium text-text-primary">{t('passengerSelector.adults')}</div>
+                <div className="text-xs text-text-muted">{t('passengerSelector.adultsAge')}</div>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -139,8 +141,8 @@ const PassengerSelector: React.FC<PassengerSelectorProps> = ({
             {/* Children */}
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-text-primary">Children</div>
-                <div className="text-xs text-text-muted">Age 2-11</div>
+                <div className="font-medium text-text-primary">{t('passengerSelector.children')}</div>
+                <div className="text-xs text-text-muted">{t('passengerSelector.childrenAge')}</div>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -189,7 +191,7 @@ const PassengerSelector: React.FC<PassengerSelectorProps> = ({
                   : 'bg-primary text-white hover:bg-primary-dark'
               )}
             >
-              Update Search
+              {t('passengerSelector.updateSearch')}
             </button>
           </div>
         </div>

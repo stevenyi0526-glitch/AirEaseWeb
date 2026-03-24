@@ -1,12 +1,14 @@
 import React, { useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, X, Check, Minus, Trophy, Scale, Plane, Wifi, Zap, Monitor, UtensilsCrossed } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useCompareStore, useCanCompare } from '../stores/compareStore';
 import { formatPrice, formatDuration, formatTime } from '../utils/formatters';
 import ScoreBadge from '../components/flights/ScoreBadge';
 import CompareRadarChart from '../components/compare/CompareRadarChart';
 import ComparePDFExport from '../components/compare/ComparePDFExport';
 import { cn } from '../utils/cn';
+import { translateAirline } from '../utils/translate';
 
 // Color palette matching CompareRadarChart for flight identification
 const FLIGHT_COLORS = [
@@ -23,6 +25,7 @@ const FLIGHT_COLORS = [
  * - Highlight best values
  */
 const ComparePage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { flights, removeFlight, clearAll } = useCompareStore();
   const canCompare = useCanCompare();
@@ -35,13 +38,13 @@ const ComparePage: React.FC = () => {
         <div className="text-center">
           <Scale className="w-16 h-16 text-text-muted mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-text-primary mb-2">
-            Not enough flights to compare
+            {t('compare.notEnough')}
           </h2>
           <p className="text-text-secondary mb-6">
-            Add at least 2 flights to compare them side by side.
+            {t('compare.notEnoughDesc')}
           </p>
           <button onClick={() => navigate(-1)} className="btn-primary">
-            Go Back
+            {t('common.goBack')}
           </button>
         </div>
       </div>
@@ -57,17 +60,17 @@ const ComparePage: React.FC = () => {
   // Comparison specs configuration
   const specs = [
     {
-      category: 'Flight Details',
+      category: t('compare.flightDetails'),
       items: [
         {
-          label: 'Airease Score',
+          label: t('compare.aireaseScore'),
           getValue: (f: typeof flights[0]) => (
             <ScoreBadge score={f.score.overallScore} size="sm" showLabel={false} />
           ),
           isBest: (f: typeof flights[0]) => f.score.overallScore === bestScore,
         },
         {
-          label: 'Price',
+          label: t('compare.price'),
           getValue: (f: typeof flights[0]) => (
             <span className="text-lg font-bold text-primary">
               {formatPrice(f.flight.price, f.flight.currency)}
@@ -76,7 +79,7 @@ const ComparePage: React.FC = () => {
           isBest: (f: typeof flights[0]) => f.flight.price === bestPrice,
         },
         {
-          label: 'Duration',
+          label: t('compare.duration'),
           getValue: (f: typeof flights[0]) => (
             <span className="font-medium text-text-primary">
               {formatDuration(f.flight.durationMinutes)}
@@ -85,26 +88,26 @@ const ComparePage: React.FC = () => {
           isBest: (f: typeof flights[0]) => f.flight.durationMinutes === bestDuration,
         },
         {
-          label: 'Stops',
+          label: t('compare.stops'),
           getValue: (f: typeof flights[0]) => (
             <span className={cn(
               'font-medium',
               f.flight.stops === 0 ? 'text-success' : 'text-text-primary'
             )}>
-              {f.flight.stops === 0 ? 'Direct' : `${f.flight.stops} stop${f.flight.stops > 1 ? 's' : ''}`}
+              {f.flight.stops === 0 ? t('common.direct') : f.flight.stops === 1 ? t('common.stop', { count: 1 }) : t('common.stops', { count: f.flight.stops })}
             </span>
           ),
           isBest: (f: typeof flights[0]) => f.flight.stops === fewestStops,
         },
         {
-          label: 'Departure',
+          label: t('compare.departureLabel'),
           getValue: (f: typeof flights[0]) => (
             <span className="text-text-primary font-medium">{formatTime(f.flight.departureTime)}</span>
           ),
           isBest: () => false,
         },
         {
-          label: 'Arrival',
+          label: t('compare.arrival'),
           getValue: (f: typeof flights[0]) => (
             <span className="text-text-primary font-medium">{formatTime(f.flight.arrivalTime)}</span>
           ),
@@ -113,51 +116,51 @@ const ComparePage: React.FC = () => {
       ],
     },
     {
-      category: 'Amenities',
+      category: t('compare.amenities'),
       items: [
         {
-          label: 'WiFi',
+          label: t('detail.wifi'),
           icon: Wifi,
           getValue: (f: typeof flights[0]) =>
             f.facilities?.hasWifi ? (
               <span className="flex items-center gap-1.5 text-success font-medium">
-                <Check className="w-4 h-4" /> Available
+                <Check className="w-4 h-4" /> {t('detail.available')}
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-text-muted">
-                <Minus className="w-4 h-4" /> Not available
+                <Minus className="w-4 h-4" /> {t('detail.notAvailable')}
               </span>
             ),
           isBest: (f: typeof flights[0]) => f.facilities?.hasWifi === true,
         },
         {
-          label: 'Power Outlets',
+          label: t('detail.power'),
           icon: Zap,
           getValue: (f: typeof flights[0]) =>
             f.facilities?.hasPower ? (
               <span className="flex items-center gap-1.5 text-success font-medium">
-                <Check className="w-4 h-4" /> Available
+                <Check className="w-4 h-4" /> {t('detail.available')}
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-text-muted">
-                <Minus className="w-4 h-4" /> Not available
+                <Minus className="w-4 h-4" /> {t('detail.notAvailable')}
               </span>
             ),
           isBest: (f: typeof flights[0]) => f.facilities?.hasPower === true,
         },
         {
-          label: 'Entertainment',
+          label: t('detail.entertainment'),
           icon: Monitor,
           getValue: (f: typeof flights[0]) =>
             f.facilities?.hasIFE ? (
               <span className="text-text-primary font-medium">{f.facilities.ifeType}</span>
             ) : (
-              <span className="text-text-muted">Not available</span>
+              <span className="text-text-muted">{t('detail.notAvailable')}</span>
             ),
           isBest: (f: typeof flights[0]) => f.facilities?.hasIFE === true,
         },
         {
-          label: 'Seat Pitch',
+          label: t('detail.seatPitch'),
           getValue: (f: typeof flights[0]) => (
             <span className="text-text-primary font-medium">
               {f.facilities?.seatPitchInches ? `${f.facilities.seatPitchInches}"` : '—'}
@@ -171,13 +174,13 @@ const ComparePage: React.FC = () => {
           },
         },
         {
-          label: 'Meals',
+          label: t('detail.meals'),
           icon: UtensilsCrossed,
           getValue: (f: typeof flights[0]) =>
             f.facilities?.mealIncluded ? (
               <span className="text-text-primary font-medium">{f.facilities.mealType}</span>
             ) : (
-              <span className="text-text-muted">Not included</span>
+              <span className="text-text-muted">{t('detail.notIncluded')}</span>
             ),
           isBest: (f: typeof flights[0]) => f.facilities?.mealIncluded === true,
         },
@@ -196,10 +199,10 @@ const ComparePage: React.FC = () => {
               className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="hidden sm:inline">Back to results</span>
+              <span className="hidden sm:inline">{t('flights.backToResults')}</span>
             </button>
             <h1 className="text-lg font-semibold text-text-primary">
-              Compare Flights
+              {t('compare.title')}
             </h1>
             <div className="flex items-center gap-3">
               <ComparePDFExport flights={flights} radarChartRef={radarChartRef} />
@@ -207,7 +210,7 @@ const ComparePage: React.FC = () => {
                 onClick={clearAll}
                 className="text-sm text-text-muted hover:text-danger transition-colors"
               >
-                Clear all
+                {t('compare.clearAll')}
               </button>
             </div>
           </div>
@@ -240,7 +243,7 @@ const ComparePage: React.FC = () => {
                 {/* Best overall badge */}
                 {isBestOverall && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-success text-white text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1">
-                    <Trophy className="w-3 h-3" /> Best Choice
+                    <Trophy className="w-3 h-3" /> {t('compare.bestChoice')}
                   </div>
                 )}
 
@@ -251,7 +254,7 @@ const ComparePage: React.FC = () => {
 
                 {/* Airline Name - Always Visible */}
                 <h2 className="text-xl font-bold text-text-primary mb-1">
-                  {f.flight.airline}
+                  {translateAirline(f.flight.airline)}
                 </h2>
                 <p className={cn(
                   "text-sm font-medium px-3 py-1 rounded-full inline-block mb-3",
@@ -277,7 +280,7 @@ const ComparePage: React.FC = () => {
                 <p className="text-3xl font-bold text-primary mb-1">
                   {formatPrice(f.flight.price, f.flight.currency)}
                 </p>
-                <p className="text-sm text-text-muted">per person</p>
+                <p className="text-sm text-text-muted">{t('common.perPerson')}</p>
               </div>
             );
           })}
@@ -366,7 +369,7 @@ const ComparePage: React.FC = () => {
 
         {/* Mobile-friendly vertical cards */}
         <div className="mt-8 space-y-6 lg:hidden">
-          <h2 className="text-lg font-semibold text-text-primary">Detailed Comparison</h2>
+          <h2 className="text-lg font-semibold text-text-primary">{t('compare.detailedComparison')}</h2>
           {flights.map((f) => {
             const isBestPrice = f.flight.price === bestPrice;
             const isBestDuration = f.flight.durationMinutes === bestDuration;
@@ -381,7 +384,7 @@ const ComparePage: React.FC = () => {
                         <Plane className="w-6 h-6 text-primary " />
                       </div>
                       <div>
-                        <h3 className="font-bold text-text-primary text-lg">{f.flight.airline}</h3>
+                        <h3 className="font-bold text-text-primary text-lg">{translateAirline(f.flight.airline)}</h3>
                         <p className="text-sm text-text-secondary">{f.flight.flightNumber}</p>
                       </div>
                     </div>
@@ -392,45 +395,45 @@ const ComparePage: React.FC = () => {
                 {/* Specs */}
                 <div className="divide-y divide-divider">
                   <div className="flex items-center justify-between px-5 py-3">
-                    <span className="text-text-secondary">Price</span>
+                    <span className="text-text-secondary">{t('compare.price')}</span>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-primary text-lg">
                         {formatPrice(f.flight.price, f.flight.currency)}
                       </span>
                       {isBestPrice && (
                         <span className="text-xs bg-success-light text-success px-2 py-0.5 rounded-full font-medium">
-                          Best
+                          {t('compare.best')}
                         </span>
                       )}
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between px-5 py-3">
-                    <span className="text-text-secondary">Duration</span>
+                    <span className="text-text-secondary">{t('compare.duration')}</span>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-text-primary">
                         {formatDuration(f.flight.durationMinutes)}
                       </span>
                       {isBestDuration && (
                         <span className="text-xs bg-success-light text-success px-2 py-0.5 rounded-full font-medium">
-                          Fastest
+                          {t('compare.fastest')}
                         </span>
                       )}
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between px-5 py-3">
-                    <span className="text-text-secondary">Stops</span>
+                    <span className="text-text-secondary">{t('compare.stops')}</span>
                     <span className={cn(
                       "font-medium",
                       f.flight.stops === 0 ? "text-success" : "text-text-primary"
                     )}>
-                      {f.flight.stops === 0 ? 'Direct' : `${f.flight.stops} stop${f.flight.stops > 1 ? 's' : ''}`}
+                      {f.flight.stops === 0 ? t('common.direct') : f.flight.stops === 1 ? t('common.stop', { count: 1 }) : t('common.stops', { count: f.flight.stops })}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between px-5 py-3">
-                    <span className="text-text-secondary">Route</span>
+                    <span className="text-text-secondary">{t('compare.route')}</span>
                     <span className="flex items-center gap-1 text-text-primary font-medium">
                       {f.flight.departureCityCode}
                       <Plane className="w-3 h-3 text-primarys" />
@@ -439,7 +442,7 @@ const ComparePage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between px-5 py-3">
-                    <span className="text-text-secondary">Time</span>
+                    <span className="text-text-secondary">{t('compare.time')}</span>
                     <span className="text-text-primary font-medium">
                       {formatTime(f.flight.departureTime)} – {formatTime(f.flight.arrivalTime)}
                     </span>
@@ -447,7 +450,7 @@ const ComparePage: React.FC = () => {
 
                   {/* Amenities row */}
                   <div className="px-5 py-3">
-                    <span className="text-text-secondary text-sm block mb-2">Amenities</span>
+                    <span className="text-text-secondary text-sm block mb-2">{t('compare.amenities')}</span>
                     <div className="flex flex-wrap gap-2">
                       {f.facilities?.hasWifi && (
                         <span className="flex items-center gap-1 text-xs bg-success-light text-success px-2 py-1 rounded-full">

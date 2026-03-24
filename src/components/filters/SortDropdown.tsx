@@ -1,20 +1,21 @@
 import React, { Fragment } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { ChevronDown, Check, Award, DollarSign, PlaneTakeoff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
 import type { SortBy } from '../../hooks/useFlightSearchParams';
 
 interface SortOption {
   value: SortBy;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
   icon: typeof Award;
 }
 
 const SORT_OPTIONS: SortOption[] = [
-  { value: 'score', label: 'Best Experience', description: 'Best overall experience', icon: Award },
-  { value: 'price', label: 'Lowest Price', description: 'Most affordable first', icon: DollarSign },
-  { value: 'model', label: 'Latest Model', description: 'Newest aircraft first', icon: PlaneTakeoff },
+  { value: 'score', labelKey: 'flights.bestExperience', descKey: 'flights.bestExperienceDesc', icon: Award },
+  { value: 'price', labelKey: 'flights.bestPrice', descKey: 'flights.bestPriceDesc', icon: DollarSign },
+  { value: 'model', labelKey: 'flights.latestModel', descKey: 'flights.latestModelDesc', icon: PlaneTakeoff },
 ];
 
 interface SortDropdownProps {
@@ -31,6 +32,7 @@ const SortDropdown: React.FC<SortDropdownProps> = ({
   onChange,
   className,
 }) => {
+  const { t } = useTranslation();
   const currentOption = SORT_OPTIONS.find((opt) => opt.value === value) || SORT_OPTIONS[0];
   const CurrentIcon = currentOption.icon;
 
@@ -38,7 +40,7 @@ const SortDropdown: React.FC<SortDropdownProps> = ({
     <Menu as="div" className={cn('relative', className)}>
       <Menu.Button className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-text-secondary hover:text-text-primary bg-surface border border-border rounded-button hover:border-text-muted transition-colors">
         <CurrentIcon className="w-4 h-4 text-primary" />
-        <span className="hidden sm:inline">{currentOption.label}</span>
+        <span className="hidden sm:inline">{t(currentOption.labelKey)}</span>
         <ChevronDown className="w-4 h-4" />
       </Menu.Button>
 
@@ -54,7 +56,7 @@ const SortDropdown: React.FC<SortDropdownProps> = ({
         <Menu.Items className="absolute right-0 z-50 mt-2 w-64 origin-top-right dropdown-menu">
           <div className="p-1">
             <div className="px-3 py-2 text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Sort Results By
+              {t('flights.sortBy')}
             </div>
             {SORT_OPTIONS.map((option) => {
               const Icon = option.icon;
@@ -80,10 +82,10 @@ const SortDropdown: React.FC<SortDropdownProps> = ({
                           'text-sm font-medium',
                           value === option.value ? 'text-primary' : 'text-text-primary'
                         )}>
-                          {option.label}
+                          {t(option.labelKey)}
                         </div>
                         <div className="text-xs text-text-muted">
-                          {option.description}
+                          {t(option.descKey)}
                         </div>
                       </div>
                       {value === option.value && (

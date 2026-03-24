@@ -90,11 +90,13 @@ export const useTravelersStore = create<TravelersState>()(
       updateTraveler: async (id, updates) => {
         set({ isLoading: true });
         try {
+          // Encrypt passport if provided (non-empty), otherwise pass through
+          // empty string "" so backend clears the field
           const encryptedUpdates: UpdateTraveler = {
             ...updates,
             passportNumber: updates.passportNumber 
               ? encryptData(updates.passportNumber) 
-              : undefined,
+              : updates.passportNumber, // keep "" or undefined as-is
           };
           
           const updatedTraveler = await travelersApi.update(id, encryptedUpdates);

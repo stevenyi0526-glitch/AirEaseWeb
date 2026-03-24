@@ -32,9 +32,14 @@ class ApiClient {
       (response) => response,
       (error: AxiosError) => {
         if (error.response?.status === 401) {
-          localStorage.removeItem('airease_token');
-          // Dispatch custom event for auth state update
-          window.dispatchEvent(new Event('auth:logout'));
+          // Don't treat 401 on login/register/change-password as a session expiry
+          const url = error.config?.url || '';
+          const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/change-password');
+          if (!isAuthEndpoint) {
+            localStorage.removeItem('airease_token');
+            // Dispatch custom event for auth state update
+            window.dispatchEvent(new Event('auth:logout'));
+          }
         }
         return Promise.reject(error);
       }

@@ -52,6 +52,7 @@ export interface SafetyProfile {
     eng_mfgr: string | null;
     eng_model: string | null;
     eng_type: string | null;
+    num_engines: number | null;
   };
   safety_records: {
     this_plane_accidents: SafetyAccident[] | null;

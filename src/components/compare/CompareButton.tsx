@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Scale, Check } from 'lucide-react';
 import { useCompareStore } from '../../stores/compareStore';
 import type { FlightWithScore } from '../../api/types';
@@ -23,6 +24,7 @@ const CompareButton: React.FC<CompareButtonProps> = ({
   const { addFlight, removeFlight, isInCompare, canAddMore } = useCompareStore();
   const isComparing = isInCompare(flightWithScore.flight.id);
   const canAdd = canAddMore();
+  const { t } = useTranslation();
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -87,21 +89,21 @@ const CompareButton: React.FC<CompareButtonProps> = ({
       )}
       title={
         isComparing
-          ? 'Remove from compare'
+          ? t('compareUI.removeFromCompare')
           : canAdd
-          ? 'Add to compare'
-          : 'Compare list is full (max 3)'
+          ? t('compareUI.addToCompare')
+          : t('compareUI.compareListFull')
       }
     >
       {isComparing ? (
         <>
           <Check size={iconSizes[size]} />
-          <span>Comparing</span>
+          <span>{t('compareUI.comparing')}</span>
         </>
       ) : (
         <>
           <Scale size={iconSizes[size]} />
-          <span>Compare</span>
+          <span>{t('compareUI.compare')}</span>
         </>
       )}
     </button>

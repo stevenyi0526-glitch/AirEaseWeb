@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { MessageSquareWarning } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import Header from './Header';
 import { FeedbackModal } from '../common/FeedbackModal';
 
@@ -8,6 +9,7 @@ const Layout: React.FC = () => {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -19,7 +21,7 @@ const Layout: React.FC = () => {
       {/* Global Floating Feedback Button */}
       <button
         onClick={() => setShowFeedbackModal(true)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 
+        className="fixed bottom-6 left-6 z-40 flex items-center gap-2 px-4 py-3 
                    bg-gradient-to-r from-blue-500 to-blue-600 
                    hover:from-blue-600 hover:to-blue-700
                    text-white font-medium rounded-full shadow-lg
@@ -28,7 +30,7 @@ const Layout: React.FC = () => {
         title="Feedback & Report"
       >
         <MessageSquareWarning className="w-5 h-5" />
-        <span className="hidden sm:inline">Feedback</span>
+        <span className="hidden sm:inline">{t('common.feedback')}</span>
       </button>
 
       {/* Feedback Modal */}

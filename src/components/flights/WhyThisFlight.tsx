@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { FlightScore, FlightFacilities } from '../../api/types';
 import ScoreBadge from './ScoreBadge';
@@ -82,6 +83,7 @@ const WhyThisFlight: React.FC<WhyThisFlightProps> = ({
   className,
 }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
+  const { t } = useTranslation();
 
   // Get reasons from explanations
   const reasons = score.explanations || [];
@@ -96,7 +98,7 @@ const WhyThisFlight: React.FC<WhyThisFlightProps> = ({
         <div className="flex items-center gap-3">
           <ScoreBadge score={score.overallScore} size="md" showLabel={false} />
           <h3 className="text-lg font-semibold text-text-primary">
-            AirEase Score Analysis
+            {t('whyThisFlight.scoreAnalysis')}
           </h3>
         </div>
 
@@ -105,7 +107,7 @@ const WhyThisFlight: React.FC<WhyThisFlightProps> = ({
             onClick={() => setIsExpanded(!isExpanded)}
             className="flex items-center gap-1 text-primary font-medium hover:text-primary-hover transition-colors"
           >
-            {isExpanded ? 'See less' : 'See more'}
+            {isExpanded ? t('whyThisFlight.seeLess') : t('whyThisFlight.seeMore')}
             {isExpanded ? (
               <ChevronUp className="w-4 h-4" />
             ) : (
@@ -138,14 +140,14 @@ const WhyThisFlight: React.FC<WhyThisFlightProps> = ({
           />
         </div>
         <p className="text-sm text-text-muted text-center mt-2">
-          Score optimized for: <span className="font-medium text-primary">{score.personaWeightsApplied}</span>
+          {t('whyThisFlight.scoreOptimizedFor')} <span className="font-medium text-primary">{score.personaWeightsApplied}</span>
         </p>
       </div>
 
       {/* Reasons List */}
       {reasons.length > 0 && (
         <div className="px-4 md:px-5 py-4 md:py-5 space-y-3">
-          <p className="text-sm font-medium text-text-secondary mb-2">Why we recommend this flight</p>
+          <p className="text-sm font-medium text-text-secondary mb-2">{t('whyThisFlight.whyWeRecommend')}</p>
           {visibleReasons.map((reason, index) => (
             <ReasonCard
               key={index}
@@ -162,7 +164,7 @@ const WhyThisFlight: React.FC<WhyThisFlightProps> = ({
               onClick={() => setIsExpanded(true)}
               className="w-full py-2 text-sm text-primary font-medium hover:text-primary-hover transition-colors"
             >
-              +{reasons.length - 2} more reasons
+              {t('whyThisFlight.moreReasons', { count: reasons.length - 2 })}
             </button>
           )}
         </div>

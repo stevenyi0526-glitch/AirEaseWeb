@@ -57,7 +57,7 @@ const DEFAULT_FILTERS: FlightSearchFilters = {
   departureTimeMax: undefined,
   aircraftType: undefined,
   alliance: undefined,
-  sortBy: 'score',
+  sortBy: 'model',
 };
 
 export function useFlightSearchParams() {
@@ -81,7 +81,7 @@ export function useFlightSearchParams() {
     return {
       from: searchParams.get('from') || '',
       to: searchParams.get('to') || '',
-      date: searchParams.get('date') || '',
+      date: searchParams.get('date') || new Date().toISOString().split('T')[0],
       returnDate: searchParams.get('returnDate') || '',
       tripType: (searchParams.get('tripType') as TripType) || 'roundtrip',
       adults: parseInt(searchParams.get('adults') || '1', 10),
@@ -96,7 +96,7 @@ export function useFlightSearchParams() {
       departureTimeMax: searchParams.get('depMax') ? parseInt(searchParams.get('depMax')!, 10) : undefined,
       aircraftType: searchParams.get('aircraftType') || undefined,
       alliance: searchParams.get('alliance') || undefined,
-      sortBy: (searchParams.get('sortBy') as SortBy) || 'score',
+      sortBy: (searchParams.get('sortBy') as SortBy) || 'model',
     };
   }, [searchParams]);
 
@@ -106,6 +106,22 @@ export function useFlightSearchParams() {
 
     Object.entries(updates).forEach(([key, value]) => {
       // Handle special cases
+      if (key === 'multiCityLegs' && Array.isArray(value)) {
+        if (value.length > 0) {
+          newParams.set('multiCityLegs', JSON.stringify(value));
+          // Also update from/to/date from first leg for compatibility
+          const first = value[0] as MultiCityLeg;
+          if (first) {
+            newParams.set('from', first.from);
+            newParams.set('to', first.to);
+            newParams.set('date', first.date);
+          }
+        } else {
+          newParams.delete('multiCityLegs');
+        }
+        return;
+      }
+
       if (key === 'airlines' && Array.isArray(value)) {
         if (value.length > 0) {
           newParams.set('airlines', value.join(','));
@@ -157,7 +173,7 @@ export function useFlightSearchParams() {
     const newParams = new URLSearchParams();
 
     // Keep only essential search params
-    const keepParams = ['from', 'to', 'date', 'returnDate', 'tripType', 'adults', 'children', 'cabin'];
+    const keepParams = ['from', 'to', 'date', 'returnDate', 'tripType', 'adults', 'children', 'cabin', 'multiCityLegs'];
     keepParams.forEach(key => {
       const value = searchParams.get(key);
       if (value) {

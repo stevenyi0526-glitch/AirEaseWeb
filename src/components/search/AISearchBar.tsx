@@ -8,6 +8,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Search, MapPin, Loader2, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { parseNaturalLanguageSearch, paramsToSearchURL, getUserLocation } from '../../api/aiSearch';
 import { findNearestAirport } from '../../api/airports';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,19 +20,14 @@ interface AISearchBarProps {
   onSearchComplete?: () => void;
 }
 
-const EXAMPLE_QUERIES = [
-  'Fly to Shanghai next Friday morning, most comfortable',
-  'Cheapest flight to Tokyo tomorrow',
-  'Business class to Singapore',
-  'Morning flight to Seoul next Monday',
-  'Budget flight to Bangkok this weekend',
-];
+const FIXED_PLACEHOLDER = 'Give me the cheapest single-person business direct flight to Tokyo tomorrow.';
 
 const AISearchBar: React.FC<AISearchBarProps> = ({
   className = '',
   onSearchStart,
   onSearchComplete,
 }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -42,47 +38,11 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [nearestAirport, setNearestAirport] = useState<string | null>(null);
-  const [placeholder, setPlaceholder] = useState('');
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
+  const marqueeContainerRef = useRef<HTMLDivElement>(null);
 
-  // Animate placeholder with example queries
-  useEffect(() => {
-    const examples = EXAMPLE_QUERIES;
-    let charIndex = 0;
-    let currentExample = examples[placeholderIndex];
-    let isDeleting = false;
-    let timeout: ReturnType<typeof setTimeout>;
-
-    const type = () => {
-      if (!isDeleting) {
-        if (charIndex <= currentExample.length) {
-          setPlaceholder(currentExample.substring(0, charIndex));
-          charIndex++;
-          timeout = setTimeout(type, 50);
-        } else {
-          // Pause at the end
-          timeout = setTimeout(() => {
-            isDeleting = true;
-            type();
-          }, 2000);
-        }
-      } else {
-        if (charIndex > 0) {
-          charIndex--;
-          setPlaceholder(currentExample.substring(0, charIndex));
-          timeout = setTimeout(type, 30);
-        } else {
-          // Move to next example
-          isDeleting = false;
-          setPlaceholderIndex((prev) => (prev + 1) % examples.length);
-        }
-      }
-    };
-
-    type();
-
-    return () => clearTimeout(timeout);
-  }, [placeholderIndex]);
+  // Show moving text when: empty query + not focused
+  const showMarquee = !query && !isFocused && !isLoading;
 
   // Try to get user location on mount
   useEffect(() => {
@@ -118,9 +78,24 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
       return;
     }
     
-    if (!query.trim()) {
-      setError('Please enter a search query');
-      return;
+    // If the user hasn't typed anything, use the placeholder as the query
+    let searchQuery = query.trim() || FIXED_PLACEHOLDER;
+
+    // If the query is very short / looks like just a city name (no verbs, prepositions, etc.),
+    // enrich it into a full sentence using defaults so the AI parser always has enough context.
+    const looksLikeBareCityOrMinimal = (q: string): boolean => {
+      const lower = q.toLowerCase();
+      // If it contains flight-related keywords, it's already a proper query
+      const flightKeywords = /\b(fly|flight|cheap|direct|morning|afternoon|evening|business|first class|economy|from|到|去|飞|便宜|最|航班|机票|直飞|商务|头等)\b/i;
+      if (flightKeywords.test(q)) return false;
+      // Short queries (1-3 words) without keywords are likely just city names
+      const words = lower.split(/\s+/).filter(Boolean);
+      return words.length <= 3;
+    };
+
+    if (looksLikeBareCityOrMinimal(searchQuery) && searchQuery !== FIXED_PLACEHOLDER) {
+      const departure = nearestAirport || 'my nearest airport';
+      searchQuery = `Give me the top rated economy direct flight from ${departure} to ${searchQuery} tomorrow for 1 person`;
     }
 
     setIsLoading(true);
@@ -129,13 +104,13 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
 
     try {
       const result = await parseNaturalLanguageSearch(
-        query,
+        searchQuery,
         userLocation || undefined
       );
 
       if (result.success && result.params) {
         // Navigate to flights page with parsed params + original query for AI recommendations
-        const searchParams = paramsToSearchURL(result.params, query);
+        const searchParams = paramsToSearchURL(result.params, searchQuery);
         navigate(`/flights?${searchParams}`);
       } else {
         setError(result.error || 'Failed to parse search query');
@@ -166,17 +141,17 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
         >
           {/* Left Stub — AI Icon */}
           <div className="relative flex items-center justify-center px-5 border-r-2 border-dashed border-gray-200">
-            {/* Top semicircle cutout — clip bottom half */}
-            <div className="absolute -top-2.5 -right-2.5 w-5 h-5 overflow-hidden pointer-events-none">
+            {/* Top semicircle cutout — show bottom half of circle */}
+            <div className="absolute -top-2.5 -right-2.5 w-5 h-2.5 overflow-hidden pointer-events-none">
               <div
-                className="w-5 h-5 rounded-full"
+                className="absolute bottom-0 w-5 h-5 rounded-full"
                 style={{ backgroundColor: '#f5f7f8', boxShadow: 'inset 0 -1px 2px rgba(0,0,0,0.05)' }}
               />
             </div>
-            {/* Bottom semicircle cutout — clip top half */}
-            <div className="absolute -bottom-2.5 -right-2.5 w-5 h-5 overflow-hidden pointer-events-none">
+            {/* Bottom semicircle cutout — show top half of circle */}
+            <div className="absolute -bottom-2.5 -right-2.5 w-5 h-2.5 overflow-hidden pointer-events-none">
               <div
-                className="w-5 h-5 rounded-full"
+                className="absolute top-0 w-5 h-5 rounded-full"
                 style={{ backgroundColor: '#f5f7f8', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)' }}
               />
             </div>
@@ -189,7 +164,7 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
           <div className="relative flex-1 flex items-center px-5 py-3">
             {/* Top label */}
             <span className="absolute top-2 left-5 text-[10px] font-semibold tracking-widest text-gray-400 uppercase select-none">
-              Flight Query
+              {t('search.flightQuery')}
             </span>
 
             <input
@@ -200,10 +175,30 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
                 setQuery(e.target.value);
                 setError(null);
               }}
-              placeholder={placeholder || 'Try: "fly to Tokyo tomorrow morning"'}
-              className="w-full pt-4 pb-1 text-base sm:text-lg bg-transparent outline-none text-gray-700 placeholder-gray-400"
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              placeholder=""
+              className="w-full pt-4 pb-1 pr-8 text-base sm:text-lg bg-transparent outline-none text-gray-700 placeholder-gray-400"
               disabled={isLoading}
             />
+
+            {/* Mobile marquee scrolling placeholder */}
+            {showMarquee && (
+              <div
+                ref={marqueeContainerRef}
+                className="absolute left-5 right-8 top-1/2 translate-y-[2px] overflow-hidden pointer-events-none"
+              >
+                <div
+                  className="inline-flex whitespace-nowrap text-base sm:text-lg text-gray-400"
+                  style={{
+                    animation: 'marquee-scroll 14s linear infinite',
+                  }}
+                >
+                  <span className="pr-12">{t('search.placeholder')}</span>
+                  <span className="pr-12">{t('search.placeholder')}</span>
+                </div>
+              </div>
+            )}
 
             {/* Clear Button */}
             {query && !isLoading && (
@@ -221,10 +216,10 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
           <div className="flex items-center pr-3">
             <button
               type="submit"
-              disabled={isLoading || !query.trim()}
+              disabled={isLoading}
               className={cn(
                 'px-6 py-3 rounded-xl font-semibold text-white transition-all duration-200',
-                'bg-[#034891] hover:bg-[#023670]',
+                'bg-gradient-to-r from-blue-500 to-blue-200 hover:from-blue-600 hover:to-blue-300',
                 'disabled:opacity-50 disabled:cursor-not-allowed',
                 'flex items-center gap-2 whitespace-nowrap'
               )}
@@ -234,7 +229,7 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
               ) : (
                 <Search className="w-5 h-5" />
               )}
-              <span className="hidden sm:inline">Search</span>
+              <span className="hidden sm:inline">{t('common.search')}</span>
             </button>
           </div>
         </div>
@@ -243,13 +238,13 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
         {nearestAirport && (
           <div className="absolute -bottom-7 left-5 flex items-center gap-1.5 text-xs text-slate-400">
             <MapPin className="w-3.5 h-3.5" />
-            <span>Flying from {nearestAirport}</span>
+            <span>{t('search.flyingFrom', { airport: nearestAirport })}</span>
           </div>
         )}
         {isLocating && !nearestAirport && (
           <div className="absolute -bottom-7 left-5 flex items-center gap-1.5 text-xs text-slate-400">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>Detecting your location...</span>
+            <span>{t('search.detectingLocation')}</span>
           </div>
         )}
       </form>

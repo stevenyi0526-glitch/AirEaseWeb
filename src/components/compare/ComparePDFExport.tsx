@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Download, Loader2, CheckCircle } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import type { FlightWithScore } from '../../api/types';
 import { formatPrice, formatDuration, formatTime } from '../../utils/formatters';
 import { cn } from '../../utils/cn';
+import { translateAirline } from '../../utils/translate';
 
 interface ComparePDFExportProps {
   flights: FlightWithScore[];
@@ -15,6 +17,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
   const printableRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   const handleExportPDF = async () => {
     setIsExporting(true);
@@ -34,18 +37,18 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(24);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('AirEase Flight Comparison', margin, 25);
+      pdf.text(t('pdfExport.title'), margin, 25);
       
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Generated on ${new Date().toLocaleDateString('en-US', { 
+      pdf.text(t('pdfExport.generatedOn', { date: new Date().toLocaleDateString('en-US', { 
         weekday: 'long', 
         year: 'numeric', 
         month: 'long', 
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
-      })}`, margin, 34);
+      }) }), margin, 34);
 
       yPosition = 50;
 
@@ -53,7 +56,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       pdf.setTextColor(31, 41, 55);
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Flight Summary', margin, yPosition);
+      pdf.text(t('pdfExport.flightSummary'), margin, yPosition);
       yPosition += 8;
 
       // Find best values
@@ -88,7 +91,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
           pdf.setTextColor(255, 255, 255);
           pdf.setFontSize(7);
           pdf.setFont('helvetica', 'bold');
-          pdf.text('BEST CHOICE', xPos + cardWidth/2, yPosition + 3, { align: 'center' });
+          pdf.text(t('pdfExport.bestChoice'), xPos + cardWidth/2, yPosition + 3, { align: 'center' });
         }
 
         let cardY = yPosition + 12;
@@ -97,7 +100,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
         pdf.setTextColor(31, 41, 55);
         pdf.setFontSize(11);
         pdf.setFont('helvetica', 'bold');
-        let airlineName = flight.flight.airline;
+        let airlineName = translateAirline(flight.flight.airline);
         const maxTextWidth = cardWidth - 8; // leave 4mm padding on each side
         while (pdf.getTextWidth(airlineName) > maxTextWidth && airlineName.length > 3) {
           airlineName = airlineName.substring(0, airlineName.length - 1);
@@ -149,7 +152,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
         if (isBestPrice) {
           pdf.setFontSize(7);
           pdf.setTextColor(16, 185, 129);
-          pdf.text('LOWEST', xPos + cardWidth/2, cardY + 5, { align: 'center' });
+          pdf.text(t('pdfExport.lowest'), xPos + cardWidth/2, cardY + 5, { align: 'center' });
         }
         cardY += 10;
 
@@ -157,23 +160,23 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
         pdf.setTextColor(55, 65, 81);
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
-        const durationLabel = `Duration: ${formatDuration(flight.flight.durationMinutes)}`;
+        const durationLabel = t('pdfExport.durationLabel', { duration: formatDuration(flight.flight.durationMinutes) });
         pdf.text(durationLabel, xPos + cardWidth/2, cardY, { align: 'center' });
         if (isBestDuration) {
           // Show "FASTEST" label below duration instead of emoji (Helvetica doesn't support ⚡)
           pdf.setFontSize(6);
           pdf.setTextColor(16, 185, 129);
           pdf.setFont('helvetica', 'bold');
-          pdf.text('FASTEST', xPos + cardWidth/2, cardY + 3.5, { align: 'center' });
+          pdf.text(t('pdfExport.fastest'), xPos + cardWidth/2, cardY + 3.5, { align: 'center' });
           pdf.setFont('helvetica', 'normal');
           pdf.setTextColor(55, 65, 81);
           pdf.setFontSize(8);
         }
         cardY += 5;
 
-        const stopsText = flight.flight.stops === 0 ? 'Direct' : `${flight.flight.stops} stop${flight.flight.stops > 1 ? 's' : ''}`;
+        const stopsText = flight.flight.stops === 0 ? t('pdfExport.direct') : t(flight.flight.stops === 1 ? 'pdfExport.stop' : 'pdfExport.stops', { count: flight.flight.stops });
         pdf.setFontSize(8);
-        pdf.text(`Stops: ${stopsText}`, xPos + cardWidth/2, cardY, { align: 'center' });
+        pdf.text(t('pdfExport.stopsLabel', { stops: stopsText }), xPos + cardWidth/2, cardY, { align: 'center' });
         cardY += 5;
 
         pdf.setFontSize(8);
@@ -186,7 +189,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       pdf.setTextColor(31, 41, 55);
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Score Breakdown', margin, yPosition);
+      pdf.text(t('pdfExport.scoreBreakdown'), margin, yPosition);
       yPosition += 8;
 
       // Table header
@@ -197,7 +200,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       pdf.setTextColor(107, 114, 128);
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Dimension', margin + 3, yPosition + 5);
+      pdf.text(t('pdfExport.dimension'), margin + 3, yPosition + 5);
       
       flights.forEach((flight, idx) => {
         pdf.text(flight.flight.flightNumber, margin + colWidth * (idx + 1) + colWidth/2, yPosition + 5, { align: 'center' });
@@ -206,12 +209,12 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
 
       // Dimension rows
       const dimensions = [
-        { key: 'overallScore', label: 'Overall Score', getValue: (f: FlightWithScore) => f.score.overallScore },
-        { key: 'safety', label: 'Safety', getValue: (f: FlightWithScore) => f.score.dimensions.safety ?? 10 },
-        { key: 'reliability', label: 'Reliability', getValue: (f: FlightWithScore) => f.score.dimensions.reliability },
-        { key: 'comfort', label: 'Comfort', getValue: (f: FlightWithScore) => f.score.dimensions.comfort },
-        { key: 'service', label: 'Service', getValue: (f: FlightWithScore) => f.score.dimensions.service },
-        { key: 'value', label: 'Value', getValue: (f: FlightWithScore) => f.score.dimensions.value },
+        { key: 'overallScore', label: t('pdfExport.overallScore'), getValue: (f: FlightWithScore) => f.score.overallScore },
+        { key: 'safety', label: t('pdfExport.safety'), getValue: (f: FlightWithScore) => f.score.dimensions.safety ?? 10 },
+        { key: 'reliability', label: t('pdfExport.reliability'), getValue: (f: FlightWithScore) => f.score.dimensions.reliability },
+        { key: 'comfort', label: t('pdfExport.comfort'), getValue: (f: FlightWithScore) => f.score.dimensions.comfort },
+        { key: 'service', label: t('pdfExport.service'), getValue: (f: FlightWithScore) => f.score.dimensions.service },
+        { key: 'value', label: t('pdfExport.value'), getValue: (f: FlightWithScore) => f.score.dimensions.value },
       ];
 
       dimensions.forEach((dim, rowIdx) => {
@@ -251,7 +254,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       pdf.setTextColor(31, 41, 55);
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Amenities & Facilities', margin, yPosition);
+      pdf.text(t('pdfExport.amenitiesFacilities'), margin, yPosition);
       yPosition += 8;
 
       // Amenities table
@@ -261,7 +264,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       pdf.setTextColor(107, 114, 128);
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Amenity', margin + 3, yPosition + 5);
+      pdf.text(t('pdfExport.amenity'), margin + 3, yPosition + 5);
       
       flights.forEach((flight, idx) => {
         pdf.text(flight.flight.flightNumber, margin + colWidth * (idx + 1) + colWidth/2, yPosition + 5, { align: 'center' });
@@ -269,11 +272,11 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       yPosition += 10;
 
       const amenities = [
-        { label: 'WiFi', getValue: (f: FlightWithScore) => f.facilities?.hasWifi ? 'Yes' : 'No' },
-        { label: 'Power Outlets', getValue: (f: FlightWithScore) => f.facilities?.hasPower ? 'Yes' : 'No' },
-        { label: 'Entertainment', getValue: (f: FlightWithScore) => f.facilities?.hasIFE ? (f.facilities.ifeType || 'Yes') : 'No' },
-        { label: 'Seat Pitch', getValue: (f: FlightWithScore) => f.facilities?.seatPitchInches ? `${f.facilities.seatPitchInches}"` : '-' },
-        { label: 'Meals', getValue: (f: FlightWithScore) => f.facilities?.mealIncluded ? (f.facilities.mealType || 'Yes') : 'No' },
+        { label: t('pdfExport.wifi'), getValue: (f: FlightWithScore) => f.facilities?.hasWifi ? t('pdfExport.yes') : t('pdfExport.no') },
+        { label: t('pdfExport.powerOutlets'), getValue: (f: FlightWithScore) => f.facilities?.hasPower ? t('pdfExport.yes') : t('pdfExport.no') },
+        { label: t('pdfExport.entertainment'), getValue: (f: FlightWithScore) => f.facilities?.hasIFE ? (f.facilities.ifeType || t('pdfExport.yes')) : t('pdfExport.no') },
+        { label: t('pdfExport.seatPitch'), getValue: (f: FlightWithScore) => f.facilities?.seatPitchInches ? `${f.facilities.seatPitchInches}"` : '-' },
+        { label: t('pdfExport.meals'), getValue: (f: FlightWithScore) => f.facilities?.mealIncluded ? (f.facilities.mealType || t('pdfExport.yes')) : t('pdfExport.no') },
       ];
 
       amenities.forEach((amenity, rowIdx) => {
@@ -333,7 +336,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
           pdf.setTextColor(31, 41, 55);
           pdf.setFontSize(14);
           pdf.setFont('helvetica', 'bold');
-          pdf.text('Visual Comparison', margin, yPosition);
+          pdf.text(t('pdfExport.visualComparison'), margin, yPosition);
           yPosition += 8;
 
           pdf.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
@@ -348,7 +351,7 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
       pdf.setTextColor(156, 163, 175);
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('Generated by AirEase • Your Journey, Your Story', pageWidth / 2, footerY, { align: 'center' });
+      pdf.text(t('pdfExport.footer'), pageWidth / 2, footerY, { align: 'center' });
 
       // Save the PDF
       const fileName = `AirEase_Comparison_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -380,17 +383,17 @@ const ComparePDFExport: React.FC<ComparePDFExportProps> = ({ flights, radarChart
         {isExporting ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Generating PDF...</span>
+            <span>{t('pdfExport.generatingPDF')}</span>
           </>
         ) : exportSuccess ? (
           <>
             <CheckCircle className="w-4 h-4" />
-            <span>Downloaded!</span>
+            <span>{t('pdfExport.downloaded')}</span>
           </>
         ) : (
           <>
             <Download className="w-4 h-4" />
-            <span>Download PDF</span>
+            <span>{t('pdfExport.downloadPDF')}</span>
           </>
         )}
       </button>

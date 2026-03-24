@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Star, Plane, CheckCircle, Loader2, AlertCircle, MapPin, Calendar } from 'lucide-react';
 import { submitReport } from '../../api/reports';
 
@@ -41,6 +42,7 @@ export function BookingReviewModal({
   flightInfo,
   userEmail = '',
 }: BookingReviewModalProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -95,7 +97,7 @@ export function BookingReviewModal({
         handleClose();
       }, 1800);
     } catch {
-      setErrorMessage('Failed to submit review. Please try again.');
+      setErrorMessage(t('bookingReview.failedSubmit'));
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);
@@ -104,7 +106,7 @@ export function BookingReviewModal({
 
   if (!isOpen) return null;
 
-  const ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
+  const ratingLabels = ['', t('bookingReview.poor'), t('bookingReview.fair'), t('bookingReview.good'), t('bookingReview.great'), t('bookingReview.excellent')];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -135,8 +137,8 @@ export function BookingReviewModal({
               <Plane className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">How's the experience?</h2>
-              <p className="text-sm text-white/70">Share your thoughts before you go</p>
+              <h2 className="text-lg font-bold text-white">{t('bookingReview.howsExperience')}</h2>
+              <p className="text-sm text-white/70">{t('bookingReview.shareThoughts')}</p>
             </div>
           </div>
         </div>
@@ -181,7 +183,7 @@ export function BookingReviewModal({
           {/* Star rating */}
           <div className="text-center">
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Rate your browsing experience
+              {t('bookingReview.rateBrowsing')}
             </p>
             <div className="flex items-center justify-center gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -207,7 +209,7 @@ export function BookingReviewModal({
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 h-4">
               {(hoverRating || rating) > 0
                 ? ratingLabels[hoverRating || rating]
-                : 'Tap a star to rate'}
+                : t('bookingReview.tapToRate')}
             </p>
           </div>
 
@@ -216,7 +218,7 @@ export function BookingReviewModal({
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Any thoughts or suggestions? (optional)"
+              placeholder={t('bookingReview.anyThoughts')}
               rows={3}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600
                        bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-white text-sm
@@ -241,7 +243,7 @@ export function BookingReviewModal({
           {submitStatus === 'success' && (
             <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/30 rounded-lg text-green-600 dark:text-green-400">
               <CheckCircle className="w-4 h-4 flex-shrink-0" />
-              <span className="text-sm">Thank you for your review! ✈️</span>
+              <span className="text-sm">{t('bookingReview.thankYouReview')} ✈️</span>
             </div>
           )}
 
@@ -260,17 +262,17 @@ export function BookingReviewModal({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Submitting...
+                {t('bookingReview.submitting')}
               </>
             ) : submitStatus === 'success' ? (
               <>
                 <CheckCircle className="w-5 h-5" />
-                Submitted!
+                {t('bookingReview.submitted')}
               </>
             ) : (
               <>
                 <Star className="w-5 h-5" />
-                Submit Review
+                {t('bookingReview.submitReview')}
               </>
             )}
           </button>
@@ -281,7 +283,7 @@ export function BookingReviewModal({
               onClick={handleClose}
               className="w-full text-center text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
-              Skip for now
+              {t('bookingReview.skipForNow')}
             </button>
           )}
         </div>

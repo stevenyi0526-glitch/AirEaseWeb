@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plane } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
 
 interface SearchLoadingProps {
@@ -13,6 +14,7 @@ interface SearchLoadingProps {
  * Shows a plane flying between cities with progress animation
  */
 const SearchLoading: React.FC<SearchLoadingProps> = ({ from, to, className }) => {
+  const { t } = useTranslation();
   return (
     <div className={cn('flex flex-col items-center justify-center py-16', className)}>
       {/* Animated plane flying */}
@@ -48,10 +50,10 @@ const SearchLoading: React.FC<SearchLoadingProps> = ({ from, to, className }) =>
       {/* Loading text */}
       <div className="flex flex-col items-center gap-2">
         <p className="text-text-secondary animate-pulse">
-          Searching for the best flights...
+          {t('flights.searchingFlights')}
         </p>
         <p className="text-sm text-text-muted">
-          Powered by Google Flights
+          {t('common.poweredBy')}
         </p>
       </div>
       

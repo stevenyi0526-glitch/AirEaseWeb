@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   X,
   ChevronLeft,
@@ -41,25 +42,25 @@ function getSeverityStyle(severity: string | null): { bg: string; text: string; 
 /**
  * Category title mapping
  */
-function getCategoryInfo(queryType: 'tail' | 'airline' | 'model'): { icon: React.ReactNode; title: string; subtitle: string } {
+function getCategoryInfo(queryType: 'tail' | 'airline' | 'model', t: (key: string) => string): { icon: React.ReactNode; title: string; subtitle: string } {
   switch (queryType) {
     case 'tail':
       return {
         icon: <Plane className="w-5 h-5 text-green-600" />,
-        title: 'This Aircraft\'s Incident Records',
-        subtitle: 'NTSB-reported events for this specific aircraft',
+        title: t('incidents.tailTitle'),
+        subtitle: t('incidents.tailSubtitle'),
       };
     case 'airline':
       return {
         icon: <Shield className="w-5 h-5 text-[#034891]" />,
-        title: 'Airline Incident Records (10yr)',
-        subtitle: 'NTSB-reported events for this airline in the past 10 years',
+        title: t('incidents.airlineTitle'),
+        subtitle: t('incidents.airlineSubtitle'),
       };
     case 'model':
       return {
         icon: <AlertTriangle className="w-5 h-5 text-amber-600" />,
-        title: 'Model Incident Records (All Time)',
-        subtitle: 'NTSB-reported events for this aircraft model worldwide',
+        title: t('incidents.modelTitle'),
+        subtitle: t('incidents.modelSubtitle'),
       };
   }
 }
@@ -71,6 +72,7 @@ export const IncidentRecordsModal: React.FC<IncidentRecordsModalProps> = ({
   queryValue,
   label,
 }) => {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [data, setData] = useState<IncidentResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -105,7 +107,7 @@ export const IncidentRecordsModal: React.FC<IncidentRecordsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const categoryInfo = getCategoryInfo(queryType);
+  const categoryInfo = getCategoryInfo(queryType, t);
 
   return (
     <div
@@ -135,13 +137,13 @@ export const IncidentRecordsModal: React.FC<IncidentRecordsModalProps> = ({
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16">
               <Loader2 className="w-8 h-8 text-[#034891] animate-spin mb-3" />
-              <p className="text-sm text-gray-500">Loading incident records...</p>
+              <p className="text-sm text-gray-500">{t('incidents.loadingRecords')}</p>
             </div>
           ) : !data || data.records.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <Shield className="w-12 h-12 text-green-400 mb-3" />
-              <p className="text-base font-medium text-gray-700">No incident records found</p>
-              <p className="text-sm text-gray-500 mt-1">Clean safety record</p>
+              <p className="text-base font-medium text-gray-700">{t('incidents.noRecordsFound')}</p>
+              <p className="text-sm text-gray-500 mt-1">{t('incidents.cleanRecord')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -205,13 +207,13 @@ export const IncidentRecordsModal: React.FC<IncidentRecordsModalProps> = ({
                       <div className="px-4 pb-4 border-t border-gray-100 animate-fade-in">
                         {record.cause && (
                           <div className="mt-3">
-                            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Probable Cause</p>
+                            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">{t('incidents.probableCause')}</p>
                             <p className="text-sm text-gray-700 leading-relaxed">{record.cause}</p>
                           </div>
                         )}
                         {record.description && (
                           <div className="mt-3">
-                            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Description</p>
+                            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1">{t('incidents.description')}</p>
                             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{record.description}</p>
                           </div>
                         )}
@@ -228,7 +230,7 @@ export const IncidentRecordsModal: React.FC<IncidentRecordsModalProps> = ({
         {data && data.total_pages > 1 && (
           <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
             <p className="text-xs text-gray-500">
-              Showing {(data.page - 1) * data.per_page + 1}–{Math.min(data.page * data.per_page, data.total)} of {data.total} records
+              {t('incidents.showing', { from: (data.page - 1) * data.per_page + 1, to: Math.min(data.page * data.per_page, data.total), total: data.total })}
             </p>
             <div className="flex items-center gap-1">
               <button

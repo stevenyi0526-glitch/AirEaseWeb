@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
   Loader2,
@@ -20,6 +21,7 @@ import { cn } from '../../utils/cn';
 
 /** Amenities display bar */
 const AmenitiesBar: React.FC<{ amenities: CabinAmenities }> = ({ amenities }) => {
+  const { t } = useTranslation();
   if (!amenities || Object.keys(amenities).length === 0) return null;
 
   const items: { icon: React.ReactNode; label: string; detail?: string }[] = [];
@@ -27,16 +29,16 @@ const AmenitiesBar: React.FC<{ amenities: CabinAmenities }> = ({ amenities }) =>
   if (amenities.seat?.legSpace) {
     items.push({
       icon: <Maximize2 className="w-4 h-4" />,
-      label: 'Legroom',
+      label: t('seatMap.legroom'),
       detail: `${amenities.seat.legSpace}${amenities.seat.legSpaceUnit || '"'}`,
     });
   }
 
   if (amenities.seat?.tilt) {
     const tiltLabels: Record<string, string> = {
-      FULL_FLAT: 'Lie-flat seat',
-      ANGLE_FLAT: 'Angled flat',
-      NORMAL: 'Standard recline',
+      FULL_FLAT: t('seatMap.lieFlatSeat'),
+      ANGLE_FLAT: t('seatMap.angledFlat'),
+      NORMAL: t('seatMap.standardRecline'),
     };
     items.push({
       icon: <Armchair className="w-4 h-4" />,
@@ -47,15 +49,15 @@ const AmenitiesBar: React.FC<{ amenities: CabinAmenities }> = ({ amenities }) =>
   if (amenities.wifi) {
     items.push({
       icon: <Wifi className="w-4 h-4" />,
-      label: 'Wi-Fi',
-      detail: amenities.wifi.isChargeable ? 'Paid' : 'Free',
+      label: t('seatMap.wifiLabel'),
+      detail: amenities.wifi.isChargeable ? t('seatMap.paid') : t('seatMap.free'),
     });
   }
 
   if (amenities.power) {
     items.push({
       icon: <Zap className="w-4 h-4" />,
-      label: 'Power',
+      label: t('seatMap.power'),
       detail: [amenities.power.powerType, amenities.power.usbType].filter(Boolean).join(', '),
     });
   }
@@ -63,14 +65,14 @@ const AmenitiesBar: React.FC<{ amenities: CabinAmenities }> = ({ amenities }) =>
   if (amenities.entertainment && Array.isArray(amenities.entertainment) && amenities.entertainment.length > 0) {
     items.push({
       icon: <Tv className="w-4 h-4" />,
-      label: 'Entertainment',
+      label: t('seatMap.entertainmentLabel'),
     });
   }
 
   if (amenities.food && Object.keys(amenities.food).length > 0) {
     items.push({
       icon: <UtensilsCrossed className="w-4 h-4" />,
-      label: 'Meal service',
+      label: t('seatMap.mealService'),
     });
   }
 
@@ -93,30 +95,33 @@ const AmenitiesBar: React.FC<{ amenities: CabinAmenities }> = ({ amenities }) =>
 };
 
 /** Legend for seat availability colors */
-const SeatLegend: React.FC = () => (
-  <div className="flex flex-wrap gap-4 text-xs text-text-secondary mb-4">
-    <div className="flex items-center gap-1.5">
-      <div className="w-4 h-4 rounded-sm bg-emerald-500/20 border border-emerald-500" />
-      <span>Available</span>
+const SeatLegend: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-wrap gap-4 text-xs text-text-secondary mb-4">
+      <div className="flex items-center gap-1.5">
+        <div className="w-4 h-4 rounded-sm bg-emerald-500/20 border border-emerald-500" />
+        <span>{t('seatMap.available')}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="w-4 h-4 rounded-sm bg-blue-500/20 border border-blue-500" />
+        <span>{t('seatMap.extraLegroom')}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="w-4 h-4 rounded-sm bg-gray-300/40 border border-gray-400" />
+        <span>{t('seatMap.occupied')}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="w-4 h-4 rounded-sm bg-yellow-500/20 border border-yellow-500" />
+        <span>{t('seatMap.blocked')}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <div className="w-4 h-4 rounded-sm bg-orange-500/20 border border-orange-500" />
+        <span>{t('seatMap.exitRow')}</span>
+      </div>
     </div>
-    <div className="flex items-center gap-1.5">
-      <div className="w-4 h-4 rounded-sm bg-blue-500/20 border border-blue-500" />
-      <span>Extra legroom</span>
-    </div>
-    <div className="flex items-center gap-1.5">
-      <div className="w-4 h-4 rounded-sm bg-gray-300/40 border border-gray-400" />
-      <span>Occupied</span>
-    </div>
-    <div className="flex items-center gap-1.5">
-      <div className="w-4 h-4 rounded-sm bg-yellow-500/20 border border-yellow-500" />
-      <span>Blocked</span>
-    </div>
-    <div className="flex items-center gap-1.5">
-      <div className="w-4 h-4 rounded-sm bg-orange-500/20 border border-orange-500" />
-      <span>Exit row</span>
-    </div>
-  </div>
-);
+  );
+};
 
 /** Individual seat cell */
 const SeatCell: React.FC<{ seat: Seat; onSelect: (s: Seat) => void; isSelected: boolean }> = ({
@@ -124,6 +129,7 @@ const SeatCell: React.FC<{ seat: Seat; onSelect: (s: Seat) => void; isSelected: 
   onSelect,
   isSelected,
 }) => {
+  const { t } = useTranslation();
   const isAvailable = seat.availability === 'AVAILABLE';
   const isOccupied = seat.availability === 'OCCUPIED';
   const isBlocked = seat.availability === 'BLOCKED';
@@ -160,10 +166,10 @@ const SeatCell: React.FC<{ seat: Seat; onSelect: (s: Seat) => void; isSelected: 
       title={[
         seat.number,
         seat.availability,
-        seat.hasExtraLegroom ? '✦ Extra legroom' : '',
-        seat.isExitRow ? '🚪 Exit row' : '',
-        seat.isWindow ? '🪟 Window' : '',
-        seat.isAisle ? 'Aisle' : '',
+        seat.hasExtraLegroom ? t('seatMap.extraLegroomTag') : '',
+        seat.isExitRow ? t('seatMap.exitRowTag') : '',
+        seat.isWindow ? t('seatMap.window') : '',
+        seat.isAisle ? t('seatMap.aisle') : '',
         seat.price ? `$${seat.price}` : '',
       ]
         .filter(Boolean)
@@ -183,6 +189,7 @@ const SeatGrid: React.FC<{ deck: Deck; onSelect: (s: Seat) => void; selectedSeat
   onSelect,
   selectedSeat,
 }) => {
+  const { t } = useTranslation();
   // Group seats by row number
   const seatsByRow = useMemo(() => {
     const map = new Map<number, Seat[]>();
@@ -223,7 +230,7 @@ const SeatGrid: React.FC<{ deck: Deck; onSelect: (s: Seat) => void; selectedSeat
     return (
       <div className="text-center text-text-muted py-8">
         <AlertCircle className="w-6 h-6 mx-auto mb-2" />
-        <p className="text-sm">No seat data available for this deck.</p>
+        <p className="text-sm">{t('seatMap.noSeatData')}</p>
       </div>
     );
   }
@@ -301,7 +308,7 @@ const SeatGrid: React.FC<{ deck: Deck; onSelect: (s: Seat) => void; selectedSeat
 
               {/* Exit indicator */}
               {isExit && (
-                <span className="ml-2 text-[9px] text-orange-500 font-medium">EXIT</span>
+                <span className="ml-2 text-[9px] text-orange-500 font-medium">{t('seatMap.exit')}</span>
               )}
             </div>
           );
@@ -315,42 +322,45 @@ const SeatGrid: React.FC<{ deck: Deck; onSelect: (s: Seat) => void; selectedSeat
 // Selected Seat Details Panel
 // ============================================================
 
-const SeatDetails: React.FC<{ seat: Seat }> = ({ seat }) => (
-  <div className="bg-surface-alt rounded-xl p-4 border border-border">
-    <div className="flex items-center justify-between mb-3">
-      <h4 className="font-semibold text-text-primary">Seat {seat.number}</h4>
-      {seat.price && (
-        <span className="text-primary font-semibold">
-          {seat.currency || '$'}{seat.price}
-        </span>
-      )}
-    </div>
-    <div className="flex flex-wrap gap-2">
-      {seat.isWindow && (
-        <span className="text-xs bg-sky-500/10 text-sky-600 px-2 py-1 rounded-full">🪟 Window</span>
-      )}
-      {seat.isAisle && (
-        <span className="text-xs bg-indigo-500/10 text-indigo-600 px-2 py-1 rounded-full">Aisle</span>
-      )}
-      {seat.isMiddle && (
-        <span className="text-xs bg-gray-500/10 text-gray-600 px-2 py-1 rounded-full">Middle</span>
-      )}
-      {seat.hasExtraLegroom && (
-        <span className="text-xs bg-blue-500/10 text-blue-600 px-2 py-1 rounded-full">✦ Extra legroom</span>
-      )}
-      {seat.isExitRow && (
-        <span className="text-xs bg-orange-500/10 text-orange-600 px-2 py-1 rounded-full">🚪 Exit row</span>
-      )}
-      {seat.characteristics
-        .filter((c) => !['A', 'W', 'M', 'E', 'L'].includes(c.code))
-        .map((c) => (
-          <span key={c.code} className="text-xs bg-gray-500/10 text-gray-600 px-2 py-1 rounded-full">
-            {c.description || c.code}
+const SeatDetails: React.FC<{ seat: Seat }> = ({ seat }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="bg-surface-alt rounded-xl p-4 border border-border">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="font-semibold text-text-primary">{t('seatMap.seat', { number: seat.number })}</h4>
+        {seat.price && (
+          <span className="text-primary font-semibold">
+            {seat.currency || '$'}{seat.price}
           </span>
-        ))}
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {seat.isWindow && (
+          <span className="text-xs bg-sky-500/10 text-sky-600 px-2 py-1 rounded-full">{t('seatMap.window')}</span>
+        )}
+        {seat.isAisle && (
+          <span className="text-xs bg-indigo-500/10 text-indigo-600 px-2 py-1 rounded-full">{t('seatMap.aisle')}</span>
+        )}
+        {seat.isMiddle && (
+          <span className="text-xs bg-gray-500/10 text-gray-600 px-2 py-1 rounded-full">{t('seatMap.middle')}</span>
+        )}
+        {seat.hasExtraLegroom && (
+          <span className="text-xs bg-blue-500/10 text-blue-600 px-2 py-1 rounded-full">{t('seatMap.extraLegroomTag')}</span>
+        )}
+        {seat.isExitRow && (
+          <span className="text-xs bg-orange-500/10 text-orange-600 px-2 py-1 rounded-full">{t('seatMap.exitRowTag')}</span>
+        )}
+        {seat.characteristics
+          .filter((c) => !['A', 'W', 'M', 'E', 'L'].includes(c.code))
+          .map((c) => (
+            <span key={c.code} className="text-xs bg-gray-500/10 text-gray-600 px-2 py-1 rounded-full">
+              {c.description || c.code}
+            </span>
+          ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ============================================================
 // Main SeatMap Component
@@ -364,6 +374,7 @@ interface SeatMapViewProps {
 
 const SeatMapView: React.FC<SeatMapViewProps> = ({ flightId, onEnrichment }) => {
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+  const { t } = useTranslation();
 
   const {
     data: seatmapResponse,
@@ -408,11 +419,11 @@ const SeatMapView: React.FC<SeatMapViewProps> = ({ flightId, onEnrichment }) => 
       <div className="bg-surface rounded-2xl p-6 border border-border">
         <div className="flex items-center gap-3 mb-4">
           <Armchair className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-text-primary">Seat Map</h3>
+          <h3 className="text-lg font-semibold text-text-primary">{t('seatMap.title')}</h3>
         </div>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 text-primary animate-spin mr-3" />
-          <span className="text-text-secondary text-sm">Loading seat map from Amadeus...</span>
+          <span className="text-text-secondary text-sm">{t('seatMap.loadingFromAmadeus')}</span>
         </div>
       </div>
     );
@@ -424,11 +435,11 @@ const SeatMapView: React.FC<SeatMapViewProps> = ({ flightId, onEnrichment }) => 
       <div className="bg-surface rounded-2xl p-6 border border-border">
         <div className="flex items-center gap-3 mb-4">
           <Armchair className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-text-primary">Seat Map</h3>
+          <h3 className="text-lg font-semibold text-text-primary">{t('seatMap.title')}</h3>
         </div>
         <div className="flex items-center justify-center py-8 text-text-muted">
           <AlertCircle className="w-5 h-5 mr-2" />
-          <span className="text-sm">Unable to load seat map at this time.</span>
+          <span className="text-sm">{t('seatMap.unableToLoad')}</span>
         </div>
       </div>
     );
@@ -440,12 +451,12 @@ const SeatMapView: React.FC<SeatMapViewProps> = ({ flightId, onEnrichment }) => 
       <div className="bg-surface rounded-2xl p-6 border border-border">
         <div className="flex items-center gap-3 mb-4">
           <Armchair className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-text-primary">Seat Map</h3>
+          <h3 className="text-lg font-semibold text-text-primary">{t('seatMap.title')}</h3>
         </div>
         <div className="flex flex-col items-center justify-center py-8 text-text-muted">
           <Info className="w-8 h-8 mb-3 text-text-muted/60" />
           <p className="text-sm text-center max-w-sm">
-            {seatmapResponse.message || 'Seat map not available for this flight.'}
+            {seatmapResponse.message || t('seatMap.notAvailable')}
           </p>
           <p className="text-xs text-text-muted mt-2">
             Flight: {seatmapResponse.flightInfo?.flightNumber} · {seatmapResponse.flightInfo?.route}
@@ -465,13 +476,13 @@ const SeatMapView: React.FC<SeatMapViewProps> = ({ flightId, onEnrichment }) => 
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <Armchair className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold text-text-primary">Seat Map</h3>
+          <h3 className="text-lg font-semibold text-text-primary">{t('seatMap.title')}</h3>
         </div>
         {stats && (
           <div className="flex gap-3 text-xs text-text-secondary">
-            <span>{stats.available} available</span>
-            <span className="text-blue-500">{stats.extraLegroom} extra legroom</span>
-            <span className="text-orange-500">{stats.exitRow} exit row</span>
+            <span>{t('seatMap.availableCount', { count: stats.available })}</span>
+            <span className="text-blue-500">{t('seatMap.extraLegroomCount', { count: stats.extraLegroom })}</span>
+            <span className="text-orange-500">{t('seatMap.exitRowCount', { count: stats.exitRow })}</span>
           </div>
         )}
       </div>
@@ -481,7 +492,7 @@ const SeatMapView: React.FC<SeatMapViewProps> = ({ flightId, onEnrichment }) => 
         <div key={segIdx} className="mb-6">
           {seatmap.segments.length > 1 && (
             <p className="text-sm font-medium text-text-secondary mb-3">
-              Segment {segIdx + 1}: {segment.carrierCode}{segment.number}
+              {t('seatMap.segment', { index: segIdx + 1, carrier: `${segment.carrierCode}${segment.number}` })}
               {segment.aircraft?.code && ` · ${segment.aircraft.code}`}
             </p>
           )}
@@ -497,7 +508,7 @@ const SeatMapView: React.FC<SeatMapViewProps> = ({ flightId, onEnrichment }) => 
             <div key={deckIdx} className="mb-4">
               {segment.decks.length > 1 && (
                 <p className="text-xs text-text-muted mb-2 uppercase tracking-wider">
-                  {deck.deckType === 'UPPER' ? 'Upper Deck' : 'Main Deck'}
+                  {deck.deckType === 'UPPER' ? t('seatMap.upperDeck') : t('seatMap.mainDeck')}
                 </p>
               )}
               <SeatGrid deck={deck} onSelect={setSelectedSeat} selectedSeat={selectedSeat} />
@@ -518,9 +529,9 @@ const SeatMapView: React.FC<SeatMapViewProps> = ({ flightId, onEnrichment }) => 
         <div className="mt-4 bg-surface-alt rounded-xl p-4 border border-border">
           <div className="flex items-center gap-2 mb-3">
             <Info className="w-4 h-4 text-primary" />
-            <h4 className="text-sm font-semibold text-text-primary">Verified Amenities</h4>
+            <h4 className="text-sm font-semibold text-text-primary">{t('seatMap.verifiedAmenities')}</h4>
             <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-              Amadeus Data
+              {t('seatMap.amadeusData')}
             </span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
@@ -528,53 +539,53 @@ const SeatMapView: React.FC<SeatMapViewProps> = ({ flightId, onEnrichment }) => 
               <div className="flex items-center gap-1.5">
                 <Wifi className={cn("w-3.5 h-3.5", seatmapResponse.updatedFacilities.hasWifi ? "text-emerald-500" : "text-gray-400")} />
                 <span>WiFi: {seatmapResponse.updatedFacilities.hasWifi
-                  ? (seatmapResponse.updatedFacilities.wifiFree ? 'Free' : 'Paid')
-                  : 'Not available'}</span>
+                  ? (seatmapResponse.updatedFacilities.wifiFree ? t('seatMap.wifiStatus.free') : t('seatMap.wifiStatus.paid'))
+                  : t('seatMap.wifiStatus.notAvailable')}</span>
               </div>
             )}
             {seatmapResponse.updatedFacilities.hasPower !== undefined && (
               <div className="flex items-center gap-1.5">
                 <Zap className={cn("w-3.5 h-3.5", seatmapResponse.updatedFacilities.hasPower ? "text-emerald-500" : "text-gray-400")} />
-                <span>Power: {seatmapResponse.updatedFacilities.hasPower
-                  ? (seatmapResponse.updatedFacilities.powerType?.replace(/_/g, ' ').toLowerCase() || 'Yes')
-                  : 'Not available'}</span>
+                <span>{t('seatMap.power')}: {seatmapResponse.updatedFacilities.hasPower
+                  ? (seatmapResponse.updatedFacilities.powerType?.replace(/_/g, ' ').toLowerCase() || t('seatMap.powerStatus.yes'))
+                  : t('seatMap.powerStatus.notAvailable')}</span>
               </div>
             )}
             {seatmapResponse.updatedFacilities.hasIFE !== undefined && (
               <div className="flex items-center gap-1.5">
                 <Tv className={cn("w-3.5 h-3.5", seatmapResponse.updatedFacilities.hasIFE ? "text-emerald-500" : "text-gray-400")} />
-                <span>IFE: {seatmapResponse.updatedFacilities.hasIFE ? 'Yes' : 'Not available'}</span>
+                <span>IFE: {seatmapResponse.updatedFacilities.hasIFE ? t('seatMap.ifeStatus.yes') : t('seatMap.ifeStatus.notAvailable')}</span>
               </div>
             )}
             {seatmapResponse.updatedFacilities.mealIncluded !== undefined && (
               <div className="flex items-center gap-1.5">
                 <UtensilsCrossed className={cn("w-3.5 h-3.5", seatmapResponse.updatedFacilities.mealIncluded ? "text-emerald-500" : "text-gray-400")} />
-                <span>Meal: {seatmapResponse.updatedFacilities.mealIncluded
-                  ? `${seatmapResponse.updatedFacilities.mealType || 'Yes'}${seatmapResponse.updatedFacilities.mealChargeable ? ' (paid)' : ''}`
-                  : 'Not included'}</span>
+                <span>{t('pdfExport.meals')}: {seatmapResponse.updatedFacilities.mealIncluded
+                  ? `${seatmapResponse.updatedFacilities.mealType || t('seatMap.ifeStatus.yes')}${seatmapResponse.updatedFacilities.mealChargeable ? ` ${t('seatMap.mealStatus.paid')}` : ''}`
+                  : t('seatMap.mealStatus.notIncluded')}</span>
               </div>
             )}
             {seatmapResponse.updatedFacilities.hasBeverage && (
               <div className="flex items-center gap-1.5">
                 <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Beverage: {seatmapResponse.updatedFacilities.beverageType || 'Yes'}
-                  {seatmapResponse.updatedFacilities.beverageChargeable ? ' (paid)' : ''}</span>
+                <span>{t('seatMap.beverage')}: {seatmapResponse.updatedFacilities.beverageType || t('seatMap.ifeStatus.yes')}
+                  {seatmapResponse.updatedFacilities.beverageChargeable ? ` ${t('seatMap.mealStatus.paid')}` : ''}</span>
               </div>
             )}
             {seatmapResponse.updatedFacilities.seatTilt && (
               <div className="flex items-center gap-1.5">
                 <Armchair className="w-3.5 h-3.5 text-blue-500" />
-                <span>Recline: {
-                  seatmapResponse.updatedFacilities.seatTilt === 'FULL_FLAT' ? 'Lie-flat' :
-                  seatmapResponse.updatedFacilities.seatTilt === 'ANGLE_FLAT' ? 'Angled flat' :
-                  'Standard'
+                <span>{t('seatMap.recline')}: {
+                  seatmapResponse.updatedFacilities.seatTilt === 'FULL_FLAT' ? t('seatMap.reclineType.lieFLat') :
+                  seatmapResponse.updatedFacilities.seatTilt === 'ANGLE_FLAT' ? t('seatMap.reclineType.angledFlat') :
+                  t('seatMap.reclineType.standard')
                 }</span>
               </div>
             )}
           </div>
           {seatmapResponse.updatedScore && (
             <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-3 text-xs text-text-secondary">
-              <span>Updated comfort score:</span>
+              <span>{t('seatMap.updatedComfort')}</span>
               <span className={cn(
                 "font-semibold",
                 seatmapResponse.updatedScore.dimensions.comfort >= 8 ? "text-emerald-600" :
@@ -583,7 +594,7 @@ const SeatMapView: React.FC<SeatMapViewProps> = ({ flightId, onEnrichment }) => 
                 {seatmapResponse.updatedScore.dimensions.comfort.toFixed(1)}/10
               </span>
               <span>·</span>
-              <span>Overall:</span>
+              <span>{t('seatMap.overallLabel')}</span>
               <span className={cn(
                 "font-semibold",
                 seatmapResponse.updatedScore.overallScore >= 8 ? "text-emerald-600" :
@@ -598,7 +609,7 @@ const SeatMapView: React.FC<SeatMapViewProps> = ({ flightId, onEnrichment }) => 
 
       {/* Source attribution */}
       <p className="text-[10px] text-text-muted mt-4 text-center">
-        Seat map data provided by Amadeus SeatMap Display API
+        {t('seatMap.sourceAttribution')}
       </p>
     </div>
   );

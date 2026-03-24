@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plane, Sparkles, History, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 import { useAuth } from '../contexts/AuthContext';
 import SearchForm from '../components/search/SearchForm';
 import AISearchBar from '../components/search/AISearchBar';
@@ -20,6 +23,8 @@ interface SearchHistoryItem {
 
 const HomePage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const [searchMode, setSearchMode] = useState<'ai' | 'classic'>('ai');
   const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -47,7 +52,8 @@ const HomePage: React.FC = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const locale = i18n.language === 'zh-TW' ? 'zh-TW' : 'en-US';
+    return new Date(dateStr).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   return (
@@ -73,10 +79,10 @@ const HomePage: React.FC = () => {
 </h1>
 
           <p className="text-sm sm:text-base text-slate-400 mb-1 text-center tracking-wide">
-            Your AI Flight Helper
+            {t('home.subtitle')}
           </p>
           <p className="text-base sm:text-lg text-slate-500 mb-8 text-center">
-            {getGreeting()}, {isAuthenticated ? user?.username : 'Traveler'}. Find your perfect flight.
+            {getGreeting()}, {isAuthenticated ? user?.username : t('home.traveler')}. {t('home.findFlight')}
           </p>
 
           {/* Search Mode Toggle */}
@@ -91,7 +97,7 @@ const HomePage: React.FC = () => {
                 }`}
               >
                 <Sparkles className="w-4 h-4" />
-                <span>AI Search</span>
+                <span>{t('home.aiSearch')}</span>
               </button>
               <button
                 onClick={() => setSearchMode('classic')}
@@ -102,7 +108,7 @@ const HomePage: React.FC = () => {
                 }`}
               >
                 <Plane className="w-4 h-4" />
-                <span>Classic</span>
+                <span>{t('home.classic')}</span>
               </button>
             </div>
           </div>
@@ -111,38 +117,63 @@ const HomePage: React.FC = () => {
 
       {/* Search Section */}
       <div className={cn(
-        "relative z-10 mx-auto px-4",
+        "relative z-10 mx-auto px-4 transition-all duration-500 ease-in-out",
         searchMode === 'ai'
           ? "w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl"
-          : "w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl"
+          : "w-full max-w-[340px] sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl"
       )}>
-        {searchMode === 'ai' ? (
+        {/* AI Search */}
+        <div
+          className={cn(
+            "transition-all duration-500 ease-in-out",
+            searchMode === 'ai'
+              ? "opacity-100 max-h-[600px] scale-100"
+              : "opacity-0 max-h-0 scale-95 overflow-hidden pointer-events-none"
+          )}
+        >
           <div className="mb-12">
             <AISearchBar />
             <p className="text-center text-slate-400 text-sm mt-10">
-              Just describe what you're looking for in natural language
+              {t('home.aiSearchHint')}
             </p>
           </div>
-        ) : (
-          <SearchForm />
-        )}
+        </div>
+
+        {/* Classic Search — with boarding-pass rotate animation on mobile */}
+        <div
+          className={cn(
+            "transition-all duration-500 ease-in-out",
+            searchMode === 'classic'
+              ? "opacity-100 max-h-[900px]"
+              : "opacity-0 max-h-0 overflow-hidden pointer-events-none"
+          )}
+        >
+          <div
+            className={cn(
+              "transform transition-transform duration-500 ease-in-out origin-center",
+              searchMode === 'classic' ? "sm:rotate-0" : ""
+            )}
+          >
+            <SearchForm />
+          </div>
+        </div>
       </div>
 
       {/* Flight History Section - Above "Why Airease" */}
       {isAuthenticated && (
-        <div className="relative z-10 pb-4" ref={historyRef}>
+        <div className="relative z-10 pt-8 pb-4" ref={historyRef}>
           <div className="w-full max-w-sm sm:max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto px-4">
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="p-4 border-b border-slate-100 flex items-center gap-2">
                 <History className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold text-slate-800">Recent Searches</h3>
+                <h3 className="font-semibold text-slate-800">{t('home.recentSearches')}</h3>
               </div>
               <div className="max-h-64 overflow-y-auto">
                 {loadingHistory ? (
-                  <div className="p-6 text-center text-slate-400 text-sm">Loading...</div>
+                  <div className="p-6 text-center text-slate-400 text-sm">{t('common.loading')}</div>
                 ) : searchHistory.length === 0 ? (
                   <div className="p-6 text-center text-slate-400 text-sm">
-                    No search history yet. Start searching to see your recent flights here.
+                    {t('home.noSearchHistory')}
                   </div>
                 ) : (
                   searchHistory.map((item) => (
@@ -150,7 +181,23 @@ const HomePage: React.FC = () => {
                       key={item.id}
                       className="p-3 hover:bg-slate-50 border-b border-slate-50 last:border-b-0 cursor-pointer group transition-colors"
                       onClick={() => {
-                        window.location.href = `/flights?from=${encodeURIComponent(item.departure_city)}&to=${encodeURIComponent(item.arrival_city)}&date=${item.departure_date}${item.return_date ? `&returnDate=${item.return_date}` : ''}&adults=${item.passengers}&cabin=${item.cabin_class}`;
+                        // Ensure date is not in the past
+                        const today = new Date().toISOString().split('T')[0];
+                        const searchDate = item.departure_date < today ? today : item.departure_date;
+                        const returnDate = item.return_date
+                          ? (item.return_date < searchDate ? '' : item.return_date)
+                          : '';
+                        const tripType = returnDate ? 'roundtrip' : 'oneway';
+                        const params = new URLSearchParams({
+                          from: item.departure_city,
+                          to: item.arrival_city,
+                          date: searchDate,
+                          adults: String(item.passengers),
+                          cabin: item.cabin_class,
+                          tripType,
+                        });
+                        if (returnDate) params.set('returnDate', returnDate);
+                        navigate(`/flights?${params.toString()}`);
                       }}
                     >
                       <div className="flex items-center justify-between">
@@ -188,7 +235,7 @@ const HomePage: React.FC = () => {
       <div className="relative z-10 mt-6 pb-4">
         <div className="w-full max-w-sm sm:max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto px-4 py-8">
           <h2 className="text-lg sm:text-xl font-semibold text-center text-slate-800 mb-8">
-            Why Choose Airease?
+            {t('home.whyChoose')}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
             {/* Card 1 - Smart Scoring */}
@@ -212,21 +259,16 @@ const HomePage: React.FC = () => {
             >
               <div className="h-36 sm:h-40 overflow-hidden">
                 <img
-                  src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&h=400&q=80"
+                  src="/Smart Score.jpg"
                   alt="Smart flight scoring"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   loading="lazy"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.onerror = null;
-                    target.src = 'https://images.unsplash.com/photo-1556388158-158ea5ccacbd?auto=format&fit=crop&w=600&h=400&q=80';
-                  }}
                 />
               </div>
               <div className="px-5 pt-4" style={{ paddingBottom: '40px' }}>
-                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">Smart Scoring</h3>
+                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">{t('home.features.smartScoring')}</h3>
                 <p className="text-slate-500 text-xs leading-relaxed">
-                  Our Airease Score helps you find flights with the best balance of price, comfort, and service.
+                  {t('home.features.smartScoringDesc')}
                 </p>
               </div>
             </div>
@@ -250,23 +292,24 @@ const HomePage: React.FC = () => {
                 e.currentTarget.style.boxShadow = 'inset 0 4px 12px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06)';
               }}
             >
-              <div className="h-36 sm:h-40 overflow-hidden">
+              <div className="h-36 sm:h-40 overflow-hidden flex">
                 <img
-                  src="https://images.unsplash.com/photo-1556388169-db19adc96088?auto=format&fit=crop&w=600&h=400&q=80"
-                  alt="Compare flights easily"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  src="/compare1.webp"
+                  alt="Compare flights left"
+                  className="w-1/2 h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   loading="lazy"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.onerror = null;
-                    target.src = 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?auto=format&fit=crop&w=600&h=400&q=80';
-                  }}
+                />
+                <img
+                  src="/compare2.png"
+                  alt="Compare flights right"
+                  className="w-1/2 h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
                 />
               </div>
               <div className="px-5 pt-4" style={{ paddingBottom: '40px' }}>
-                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">Compare Easily</h3>
+                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">{t('home.features.compareEasily')}</h3>
                 <p className="text-slate-500 text-xs leading-relaxed">
-                  See all the details that matter - WiFi, seat pitch, meals, and more - at a glance.
+                  {t('home.features.compareEasilyDesc')}
                 </p>
               </div>
             </div>
@@ -292,21 +335,16 @@ const HomePage: React.FC = () => {
             >
               <div className="h-36 sm:h-40 overflow-hidden">
                 <img
-                  src="https://images.unsplash.com/photo-1483450389192-3d2a08510e8e?auto=format&fit=crop&w=600&h=400&q=80"
+                  src="/bestvalue.webp"
                   alt="Best value flights"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   loading="lazy"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.onerror = null;
-                    target.src = 'https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?auto=format&fit=crop&w=600&h=400&q=80';
-                  }}
                 />
               </div>
               <div className="px-5 pt-4" style={{ paddingBottom: '40px' }}>
-                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">Best Value</h3>
+                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">{t('home.features.perfectValue')}</h3>
                 <p className="text-slate-500 text-xs leading-relaxed">
-                  AI-powered analysis to ensure you're getting a great deal on every flight.
+                  {t('home.features.perfectValueDesc')}
                 </p>
               </div>
             </div>
@@ -332,21 +370,16 @@ const HomePage: React.FC = () => {
             >
               <div className="h-36 sm:h-40 overflow-hidden">
                 <img
-                  src="https://images.unsplash.com/photo-1540962351504-03099e0a754b?auto=format&fit=crop&w=600&h=400&q=80"
+                  src="/butterlanding.jpg"
                   alt="Safety incident records"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   loading="lazy"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.onerror = null;
-                    target.src = 'https://images.unsplash.com/photo-1474302770737-173ee21bab63?auto=format&fit=crop&w=600&h=400&q=80';
-                  }}
                 />
               </div>
               <div className="px-5 pt-4" style={{ paddingBottom: '40px' }}>
-                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">Safety Records</h3>
+                <h3 className="font-semibold text-slate-800 mb-1.5 text-sm">{t('home.features.safetyRecords')}</h3>
                 <p className="text-slate-500 text-xs leading-relaxed">
-                  Browse NTSB incident records for any airline and aircraft model — full transparency, all verified.
+                  {t('home.features.safetyRecordsDesc')}
                 </p>
               </div>
             </div>

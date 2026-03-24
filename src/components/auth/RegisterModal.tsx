@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Mail, Lock, User, Loader2, Briefcase, Users, GraduationCap, ArrowLeft, RefreshCw } from 'lucide-react';
+import { X, Mail, Lock, User, Loader2, Briefcase, Users, GraduationCap, ArrowLeft, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import type { UserLabel } from '../../api/types';
 import { cn } from '../../utils/cn';
@@ -10,19 +11,21 @@ interface RegisterModalProps {
   onSwitchToLogin: () => void;
 }
 
-const labels: { value: UserLabel; label: string; icon: typeof Briefcase; description: string }[] = [
-  { value: 'business', label: 'Business', icon: Briefcase, description: 'Prioritize comfort & time' },
-  { value: 'family', label: 'Family', icon: Users, description: 'Focus on safety & value' },
-  { value: 'student', label: 'Student', icon: GraduationCap, description: 'Budget-friendly options' },
+const labels: { value: UserLabel; labelKey: string; icon: typeof Briefcase; descKey: string }[] = [
+  { value: 'business', labelKey: 'auth.businessLabel', icon: Briefcase, descKey: 'auth.businessDesc' },
+  { value: 'family', labelKey: 'auth.familyLabel', icon: Users, descKey: 'auth.familyDesc' },
+  { value: 'student', labelKey: 'auth.studentLabel', icon: GraduationCap, descKey: 'auth.studentDesc' },
 ];
 
 type Step = 'form' | 'verify';
 
 const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitchToLogin }) => {
+  const { t } = useTranslation();
   const { register, verifyEmail, resendVerification } = useAuth();
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState<UserLabel>('business');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -208,8 +211,8 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
           <>
             {/* Header */}
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Create Account</h2>
-              <p className="text-gray-500 mt-1">Sign up to unlock all flight results</p>
+              <h2 className="text-2xl font-bold text-gray-900">{t('auth.createAccount')}</h2>
+              <p className="text-gray-500 mt-1">{t('auth.signUpSubtitle')}</p>
             </div>
 
             {/* Registration Form */}
@@ -222,7 +225,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Username
+                  {t('auth.username')}
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -231,7 +234,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="input-field pl-10"
-                    placeholder="Choose a username"
+                    placeholder={t('auth.usernamePlaceholder')}
                     minLength={3}
                     required
                   />
@@ -240,7 +243,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
+                  {t('auth.email')}
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -249,7 +252,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="input-field pl-10"
-                    placeholder="Enter your email"
+                    placeholder={t('auth.emailPlaceholder')}
                     required
                   />
                 </div>
@@ -257,30 +260,39 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
+                  {t('auth.password')}
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="input-field pl-10"
-                    placeholder="Create a password"
+                    className="input-field pl-10 pr-10"
+                    placeholder={t('auth.createPassword')}
                     minLength={6}
                     required
                   />
+                  {password.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  )}
                 </div>
-                <p className="mt-1 text-xs text-gray-500">At least 6 characters</p>
+                <p className="mt-1 text-xs text-gray-500">{t('auth.passwordHint')}</p>
               </div>
 
               {/* Travel Profile Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  I travel as...
+                  {t('auth.travelAs')}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  {labels.map(({ value, label, icon: Icon, description }) => (
+                  {labels.map(({ value, labelKey, icon: Icon, descKey }) => (
                     <button
                       key={value}
                       type="button"
@@ -293,9 +305,9 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
                       )}
                     >
                       <Icon className="w-6 h-6 mb-1" />
-                      <span className="text-sm font-medium">{label}</span>
+                      <span className="text-sm font-medium">{t(labelKey)}</span>
                       <span className="text-xs text-gray-500 text-center mt-0.5 hidden sm:block">
-                        {description}
+                        {t(descKey)}
                       </span>
                     </button>
                   ))}
@@ -310,22 +322,22 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
                 {isLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Sending verification code...
+                    {t('auth.sendingCode')}
                   </>
                 ) : (
-                  'Create Account'
+                  t('auth.createAccount')
                 )}
               </button>
             </form>
 
             {/* Footer */}
             <div className="mt-6 text-center text-sm text-gray-500">
-              Already have an account?{' '}
+              {t('auth.alreadyHaveAccount')}{' '}
               <button
                 onClick={onSwitchToLogin}
                 className="text-airease-blue font-medium hover:underline"
               >
-                Sign in
+                {t('auth.signInLink')}
               </button>
             </div>
           </>
@@ -345,13 +357,13 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
               <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Mail className="w-8 h-8 text-blue-500" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Verify Your Email</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{t('auth.verifyEmail')}</h2>
               <p className="text-gray-500 mt-2 text-sm">
-                We sent a 6-digit code to<br />
+                {t('auth.verifySubtitle')}<br />
                 <span className="font-medium text-gray-700">{email}</span>
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                Code expires in {expiresIn} minutes
+                {t('auth.codeExpires', { minutes: expiresIn })}
               </p>
             </div>
 
@@ -393,16 +405,16 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Verifying...
+                  {t('auth.verifying')}
                 </>
               ) : (
-                'Verify & Create Account'
+                t('auth.verifyAndCreate')
               )}
             </button>
 
             {/* Resend Code */}
             <div className="text-center text-sm text-gray-500">
-              Didn't receive the code?{' '}
+              {t('auth.didntReceive')}{' '}
               <button
                 onClick={handleResend}
                 disabled={resendCooldown > 0 || isLoading}
@@ -414,7 +426,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
                 )}
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
+                {resendCooldown > 0 ? t('auth.resendIn', { seconds: resendCooldown }) : t('auth.resendCode')}
               </button>
             </div>
           </>

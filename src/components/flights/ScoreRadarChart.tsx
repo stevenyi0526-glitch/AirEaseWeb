@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { Clock, Zap, Sofa, HeartHandshake, Gem, DollarSign, Info, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -136,6 +137,7 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
   showCabinToggle = false,
   flightData,
 }) => {
+  const { t } = useTranslation();
   // State for cabin class selection
   const [cabinView, setCabinView] = useState<CabinClassView>('overall');
   // State for expanded calculation reference cards
@@ -265,7 +267,32 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
     if (subject === 'Service') {
       return getServiceExplanation(score);
     }
+    // Use translated explanations
+    if (subject === 'Safety') {
+      return score >= 9 ? t('scoreRadar.explanation.safetyExcellent') : score >= 7 ? t('scoreRadar.explanation.safetyGood') : score >= 5 ? t('scoreRadar.explanation.safetyModerate') : t('scoreRadar.explanation.safetyConcerns');
+    }
+    if (subject === 'Reliability') {
+      return score >= 8 ? t('scoreRadar.explanation.reliabilityExcellent') : score >= 6 ? t('scoreRadar.explanation.reliabilityGood') : t('scoreRadar.explanation.reliabilityFair');
+    }
+    if (subject === 'Comfort') {
+      return score >= 8 ? t('scoreRadar.explanation.comfortExcellent') : score >= 5 ? t('scoreRadar.explanation.comfortGood') : t('scoreRadar.explanation.comfortFair');
+    }
+    if (subject === 'Value') {
+      return score >= 8 ? t('scoreRadar.explanation.valueExcellent') : score >= 6 ? t('scoreRadar.explanation.valueGood') : score >= 4 ? t('scoreRadar.explanation.valueFair') : t('scoreRadar.explanation.valuePoor');
+    }
+    if (subject === 'Amenities') {
+      return score >= 8 ? t('scoreRadar.explanation.amenitiesFull') : score >= 5 ? t('scoreRadar.explanation.amenitiesPartial') : t('scoreRadar.explanation.amenitiesLimited');
+    }
+    if (subject === 'Efficiency') {
+      return score >= 9 ? t('scoreRadar.explanation.efficiencyExcellent') : score >= 7 ? t('scoreRadar.explanation.efficiencyGood') : score >= 5 ? t('scoreRadar.explanation.efficiencyFair') : t('scoreRadar.explanation.efficiencyPoor');
+    }
     return DIMENSION_EXPLANATIONS[subject]?.getExplanation(score) || '';
+  };
+
+  // Translate dimension subject name for display
+  const getDimensionLabel = (subject: string): string => {
+    const key = subject.toLowerCase() as keyof typeof DIMENSION_STYLES;
+    return t(`scoreRadar.dim.${key}`) || subject;
   };
 
   // Keep scores in 0-10 scale for display
@@ -342,6 +369,7 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
               dataKey="subject"
               tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 500 }}
               tickLine={false}
+              tickFormatter={(value) => getDimensionLabel(value)}
             />
             <Radar
               name="Airline"
@@ -371,7 +399,7 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            Overall
+            {t('scoreRadar.overall')}
           </button>
           {economyDimensions && (
             <button
@@ -382,7 +410,7 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              Economy Class
+              {t('scoreRadar.economyClass')}
             </button>
           )}
           {businessDimensions && (
@@ -394,7 +422,7 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              Business Class
+              {t('scoreRadar.businessClass')}
             </button>
           )}
         </div>
@@ -452,7 +480,7 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
                   <div className={`p-2 rounded-lg ${style.bg}`}>
                     <Icon size={18} className={style.color} />
                   </div>
-                  <span className="font-bold text-gray-700">{item.subject}</span>
+                  <span className="font-bold text-gray-700">{getDimensionLabel(item.subject)}</span>
                 </div>
                 <span className={`text-lg font-bold ${style.color}`}>
                   {item.A.toFixed(1)}<span className="text-gray-400 text-sm">/10</span>
@@ -468,14 +496,14 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
                 className="flex items-center gap-1 text-xs text-[#034891] hover:text-[#023670] font-medium mt-1"
               >
                 <Info size={12} />
-                {isExpanded ? 'Hide calculation' : 'How it\'s calculated'}
+                {isExpanded ? t('scoreRadar.hideCalculation') : t('scoreRadar.howItsCalculated')}
                 {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
               
               {/* Expandable calculation reference */}
               {isExpanded && calcRef && (
                 <div className="mt-3 pt-3 border-t border-gray-100">
-                  <p className="text-xs font-semibold text-gray-600 mb-2">Scoring Formula:</p>
+                  <p className="text-xs font-semibold text-gray-600 mb-2">{t('scoreRadar.scoringFormula')}</p>
                   <ul className="space-y-1">
                     {calcRef.map((line, i) => (
                       <li key={i} className="text-xs text-gray-500 leading-relaxed">
