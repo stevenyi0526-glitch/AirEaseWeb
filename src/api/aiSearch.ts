@@ -105,12 +105,10 @@ function formatDate(date: Date): string {
 }
 
 /**
- * Get tomorrow's date formatted
+ * Get today's date formatted
  */
-function getTomorrow(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return formatDate(d);
+function getToday(): string {
+  return formatDate(new Date());
 }
 
 // ============================================================
@@ -233,10 +231,10 @@ export async function parseNaturalLanguageSearch(
       }
     }
 
-    // Step 4: Get date (default to tomorrow)
+    // Step 4: Get date (default to today for nearest flights)
     let date = parsed.date;
     if (!date) {
-      date = getTomorrow();
+      date = getToday();
     }
 
     // Step 5: Get time preference (default to all-day / no time filter)

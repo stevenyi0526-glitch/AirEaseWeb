@@ -24,6 +24,7 @@ interface FilterBottomSheetProps {
   onResetFilters: () => void;
   availableAirlines: Array<{ code: string; name: string; count?: number }>;
   priceRange: { min: number; max: number };
+  currencySymbol?: string;
 }
 
 /**
@@ -37,6 +38,7 @@ const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
   onUpdateFilters,
   onResetFilters,
   priceRange,
+  currencySymbol = '$',
 }) => {
   const { t } = useTranslation();
   // Draft state
@@ -432,7 +434,7 @@ const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
 
                 {/* Price Range */}
                 <div>
-                  <h4 className="text-sm font-semibold text-text-primary mb-3">{t('filters.priceRange')}</h4>
+                  <h4 className="text-sm font-semibold text-text-primary mb-3">{t('filters.priceRange')} ({currencySymbol})</h4>
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
                       <label className="text-xs text-text-muted mb-1 block">{t('filters.min')}</label>
@@ -441,7 +443,7 @@ const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
                         value={draftMinPrice ?? priceRange.min}
                         onChange={(e) => {
                           const val = parseInt(e.target.value);
-                          setDraftMinPrice(val === priceRange.min ? undefined : val);
+                          setDraftMinPrice(isNaN(val) ? undefined : val);
                         }}
                         className="input-field py-2.5"
                       />
@@ -454,7 +456,7 @@ const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
                         value={draftMaxPrice ?? priceRange.max}
                         onChange={(e) => {
                           const val = parseInt(e.target.value);
-                          setDraftMaxPrice(val === priceRange.max ? undefined : val);
+                          setDraftMaxPrice(isNaN(val) ? undefined : val);
                         }}
                         className="input-field py-2.5"
                       />

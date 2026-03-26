@@ -33,6 +33,7 @@ const en = {
     header: {
       signIn: 'Sign In',
       signUp: 'Sign Up',
+      languageDeveloping: 'This language is under development, stay tuned!',
     },
 
     // ─── Home Page ───
@@ -90,7 +91,7 @@ const en = {
       addFlight: 'Add flight',
       addAnotherFlight: 'Add another flight',
       flight: 'Flight {{number}}',
-      placeholder: 'Give me the cheapest single-person business direct flight to Tokyo tomorrow.',
+      placeholder: 'Give me the cheapest single-person business flight to Tokyo tomorrow.',
       flyingFrom: 'Flying from {{airport}}',
       detectingLocation: 'Detecting your location...',
     },
@@ -443,6 +444,9 @@ const en = {
       prioritizeReliability: 'Prioritize reliability & service',
       prioritizeComfort: 'Prioritize comfort & service',
       prioritizePrice: 'Prioritize price & value',
+      businessLabel: 'Business',
+      familyLabel: 'Family',
+      studentLabel: 'Student',
       travelerLabel: '{{label}} Traveler',
     },
 
@@ -607,6 +611,22 @@ const en = {
       findingPerfectFlight: 'Finding your perfect flight...',
       topPick: 'Top Pick',
       forYou: '#1 For You',
+      directFlight: 'Direct flight ✓',
+      shortDuration: 'Short duration',
+      greatValue: 'Great value',
+      goodPrice: 'Good price',
+      highComfort: 'High comfort',
+      comfortable: 'Comfortable',
+      efficient: 'Efficient',
+      reliablePremium: 'Reliable & premium service',
+      highlyReliable: 'Highly reliable',
+      premiumService: 'Premium service',
+      familyFriendly: 'Family-friendly amenities',
+      budgetFriendly: 'Budget-friendly',
+      departsTimeRange: 'Departs {{start}}–{{end}} ✓',
+      excellentScore: 'Excellent score: {{score}}',
+      greatScore: 'Great score: {{score}}',
+      yourAirline: 'Your airline: {{airline}}',
     },
 
     // ─── Why This Flight ───

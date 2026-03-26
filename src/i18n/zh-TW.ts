@@ -33,6 +33,7 @@ const zhTW = {
     header: {
       signIn: '登入',
       signUp: '註冊',
+      languageDeveloping: '該語言正在開發中，敬請期待！',
     },
 
     // ─── 首頁 ───
@@ -90,7 +91,7 @@ const zhTW = {
       addFlight: '新增航班',
       addAnotherFlight: '新增另一段航班',
       flight: '航段 {{number}}',
-      placeholder: '幫我找明天飛東京最便宜的商務艙直飛單人機票。',
+      placeholder: '幫我找明天飛東京最便宜的商務艙單人機票。',
       flyingFrom: '從 {{airport}} 出發',
       detectingLocation: '正在偵測您的位置...',
     },
@@ -443,6 +444,9 @@ const zhTW = {
       prioritizeReliability: '優先考慮可靠性與服務',
       prioritizeComfort: '優先考慮舒適度與服務',
       prioritizePrice: '優先考慮價格與性價比',
+      businessLabel: '商務',
+      familyLabel: '家庭',
+      studentLabel: '學生',
       travelerLabel: '{{label}} 旅客',
     },
 
@@ -607,6 +611,22 @@ const zhTW = {
       findingPerfectFlight: '正在為您尋找最佳航班...',
       topPick: '首選',
       forYou: '最適合您',
+      directFlight: '直飛航班 ✓',
+      shortDuration: '飛行時間短',
+      greatValue: '性價比高',
+      goodPrice: '價格優惠',
+      highComfort: '高舒適度',
+      comfortable: '舒適',
+      efficient: '高效率',
+      reliablePremium: '可靠且優質服務',
+      highlyReliable: '非常可靠',
+      premiumService: '優質服務',
+      familyFriendly: '親子友善設施',
+      budgetFriendly: '經濟實惠',
+      departsTimeRange: '出發 {{start}}–{{end}} ✓',
+      excellentScore: '優秀評分：{{score}}',
+      greatScore: '高評分：{{score}}',
+      yourAirline: '您的航空：{{airline}}',
     },
 
     // ─── 為何推薦此航班 ───
