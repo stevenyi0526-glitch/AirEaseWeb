@@ -11,7 +11,6 @@ import { Sparkles, Search, MapPin, Loader2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { parseNaturalLanguageSearch, paramsToSearchURL, getUserLocation } from '../../api/aiSearch';
 import { findNearestAirport } from '../../api/airports';
-import { addSearchHistory } from '../../api/searchHistory';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../utils/cn';
 
@@ -21,7 +20,7 @@ interface AISearchBarProps {
   onSearchComplete?: () => void;
 }
 
-const FIXED_PLACEHOLDER = 'Give me the cheapest single-person business flight to Tokyo tomorrow.';
+const FIXED_PLACEHOLDER = 'Give me the cheapest single-person business direct flight to Tokyo tomorrow.';
 
 const AISearchBar: React.FC<AISearchBarProps> = ({
   className = '',
@@ -96,7 +95,7 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
 
     if (looksLikeBareCityOrMinimal(searchQuery) && searchQuery !== FIXED_PLACEHOLDER) {
       const departure = nearestAirport || 'my nearest airport';
-      searchQuery = `Give me the top rated economy flight from ${departure} to ${searchQuery} for 1 person`;
+      searchQuery = `Give me the top rated economy direct flight from ${departure} to ${searchQuery} tomorrow for 1 person`;
     }
 
     setIsLoading(true);
@@ -110,15 +109,6 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
       );
 
       if (result.success && result.params) {
-        // Save to search history
-        addSearchHistory({
-          departure_city: result.params.departure_city_code,
-          arrival_city: result.params.arrival_city_code,
-          departure_date: result.params.date,
-          passengers: result.params.passengers,
-          cabin_class: result.params.cabin_class,
-        }).catch(() => {}); // fire-and-forget
-
         // Navigate to flights page with parsed params + original query for AI recommendations
         const searchParams = paramsToSearchURL(result.params, searchQuery);
         navigate(`/flights?${searchParams}`);

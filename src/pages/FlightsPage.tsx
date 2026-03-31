@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Plane, SlidersHorizontal, Search, ChevronDown, CloudSun, X, Snowflake } from 'lucide-react';
+import { ArrowLeft, Plane, SlidersHorizontal, Search, ChevronDown, CloudSun, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import EnglishDateInput from '../components/common/EnglishDateInput';
@@ -21,7 +21,7 @@ import FlightCardSkeleton from '../components/flights/FlightCardSkeleton';
 import FloatingSelectedBar from '../components/flights/FloatingSelectedBar';
 import FilterBottomSheet from '../components/filters/FilterBottomSheet';
 import SearchLoading from '../components/common/SearchLoading';
-import CurrencySelector, { CURRENCIES, type CurrencyCode, formatPriceWithCurrency, setLiveExchangeRates, convertPrice } from '../components/common/CurrencySelector';
+import CurrencySelector, { CURRENCIES, type CurrencyCode, formatPriceWithCurrency, setLiveExchangeRates } from '../components/common/CurrencySelector';
 import AIRecommendations from '../components/flights/AIRecommendations';
 import WeatherForecast from '../components/weather/WeatherForecast';
 import { fetchExchangeRates } from '../api/exchangeRates';
@@ -334,27 +334,6 @@ const FlightsPage: React.FC = () => {
     gcTime: 15 * 60 * 1000,
   });
 
-  // AI Search: auto-retry with tomorrow if today returns 0 flights
-  const isAISearchFlag = searchParams.get('aiSearch') === '1';
-  const [aiDateRetried, setAiDateRetried] = useState(false);
-  useEffect(() => {
-    if (!isAISearchFlag || aiDateRetried || isLoading || isFetching) return;
-    const today = new Date().toISOString().split('T')[0];
-    if (filters.date !== today) return; // only retry when searching today
-    if (rawData && rawData.flights.length === 0) {
-      // No flights today — auto-switch to tomorrow
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = tomorrow.toISOString().split('T')[0];
-      setAiDateRetried(true);
-      updateFilters({ date: tomorrowStr });
-    }
-  }, [isAISearchFlag, rawData, isLoading, isFetching, filters.date, aiDateRetried, updateFilters]);
-  // Reset retry flag when search params change
-  useEffect(() => {
-    setAiDateRetried(false);
-  }, [searchParams.toString()]);
-
   // Round trip query - uses separate one-way searches for individual pricing
   const { 
     data: roundTripData, 
@@ -656,10 +635,10 @@ const FlightsPage: React.FC = () => {
     
     // Filter by price range
     if (filters.minPrice !== undefined) {
-      flights = flights.filter(f => convertPrice(f.flight.price, currency) >= filters.minPrice!);
+      flights = flights.filter(f => f.flight.price >= filters.minPrice!);
     }
     if (filters.maxPrice !== undefined) {
-      flights = flights.filter(f => convertPrice(f.flight.price, currency) <= filters.maxPrice!);
+      flights = flights.filter(f => f.flight.price <= filters.maxPrice!);
     }
     
     // Filter by airlines
@@ -738,10 +717,10 @@ const FlightsPage: React.FC = () => {
     
     // Filter by price range
     if (filters.minPrice !== undefined) {
-      result = result.filter(f => convertPrice(f.flight.price, currency) >= filters.minPrice!);
+      result = result.filter(f => f.flight.price >= filters.minPrice!);
     }
     if (filters.maxPrice !== undefined) {
-      result = result.filter(f => convertPrice(f.flight.price, currency) <= filters.maxPrice!);
+      result = result.filter(f => f.flight.price <= filters.maxPrice!);
     }
     
     // Filter by airlines
@@ -1200,25 +1179,17 @@ const FlightsPage: React.FC = () => {
       .sort((a, b) => b.count - a.count); // Most flights first
   }, [rawData?.flights, roundTripData, multiCityData]);
 
-  // Calculate price range in the selected display currency
+  // Calculate price range
   const priceRange = useMemo(() => {
-    const allFlights = [
-      ...(rawData?.flights || []),
-      ...(roundTripData?.departureFlights || []),
-      ...(roundTripData?.returnFlights || []),
-    ];
-    if (allFlights.length === 0) {
-      return { min: convertPrice(100, currency), max: convertPrice(2000, currency) };
+    if (!rawData?.flights || rawData.flights.length === 0) {
+      return { min: 100, max: 2000 };
     }
-    const prices = allFlights.map((f: { flight: { price: number } }) => convertPrice(f.flight.price, currency));
-    const step = currency === 'JPY' || currency === 'KRW' ? 500 : 50;
+    const prices = rawData.flights.map((f: { flight: { price: number } }) => f.flight.price);
     return {
-      min: Math.floor(Math.min(...prices) / step) * step,
-      max: Math.ceil(Math.max(...prices) / step) * step,
+      min: Math.floor(Math.min(...prices) / 50) * 50,
+      max: Math.ceil(Math.max(...prices) / 50) * 50,
     };
-  }, [rawData?.flights, roundTripData, currency]);
-
-  const currencySymbol = CURRENCIES.find(c => c.code === currency)?.symbol || '$';
+  }, [rawData?.flights]);
 
   // ============================================================================
   // BOOKING REDIRECT FOR ROUND TRIP & MULTI-CITY
@@ -1421,17 +1392,6 @@ const FlightsPage: React.FC = () => {
 
             {/* Search Info + Actions */}
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0">
-              {/* Ski Finder Button */}
-              <button
-                onClick={() => alert(t('flights.skiFinderComingSoon'))}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                style={{ backgroundColor: '#0ABAB5', color: '#fff' }}
-                title={t('flights.skiFinder')}
-              >
-                <Snowflake className="w-4 h-4" />
-                <span>{t('flights.skiFinder')}</span>
-              </button>
-
               {/* Date Pickers - hidden on mobile */}
               <div className="hidden md:flex items-center gap-2 bg-surface-alt rounded-lg px-3 py-1.5">
                 <EnglishDateInput
@@ -1491,7 +1451,6 @@ const FlightsPage: React.FC = () => {
                 priceRange={priceRange}
                 hasActiveFilters={hasActiveFilters}
                 trackPreferences={isAuthenticated}
-                currencySymbol={currencySymbol}
               />
 
               {/* Mobile filter button */}
@@ -1781,34 +1740,15 @@ const FlightsPage: React.FC = () => {
                     <div className="text-center py-12">
                       <Plane className="w-16 h-16 text-text-muted mx-auto mb-4" />
                       <p className="text-text-primary font-medium mb-2">
-                        {t('flights.noFlightsForDate', { date: filters.date })}
+                        {t('flights.noFlightsFound')}
                       </p>
                       <p className="text-text-secondary mb-4">
                         {t('flights.noFlightsDesc')}
                       </p>
-                      {/* Try next day button */}
-                      {(() => {
-                        const nextDay = new Date(filters.date);
-                        nextDay.setDate(nextDay.getDate() + 1);
-                        const nextDayStr = nextDay.toISOString().split('T')[0];
-                        return (
-                          <button
-                            onClick={() => {
-                              setEditDepartDate(nextDayStr);
-                              updateFilters({ date: nextDayStr });
-                            }}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors mb-3"
-                          >
-                            {t('flights.tryNextDay', { date: nextDayStr })} →
-                          </button>
-                        );
-                      })()}
                       {hasActiveFilters && (
-                        <div>
-                          <button onClick={resetFilters} className="btn-secondary">
-                            {t('flights.resetFilters')}
-                          </button>
-                        </div>
+                        <button onClick={resetFilters} className="btn-secondary">
+                          {t('flights.resetFilters')}
+                        </button>
                       )}
                     </div>
                   );
@@ -1929,7 +1869,6 @@ const FlightsPage: React.FC = () => {
         onResetFilters={resetFilters}
         availableAirlines={availableAirlines}
         priceRange={priceRange}
-        currencySymbol={currencySymbol}
       />
 
       {/* Floating Selected Flight Bar */}

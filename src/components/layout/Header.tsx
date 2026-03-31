@@ -9,14 +9,8 @@ import ForgotPasswordModal from '../auth/ForgotPasswordModal';
 import UserProfileDropdown from '../auth/UserProfileDropdown';
 
 const LANGUAGES = [
-  { code: 'zh-TW', label: '繁體中文', available: true },
-  { code: 'en', label: 'English', available: true },
-  { code: 'ja', label: '日本語', available: false },
-  { code: 'ko', label: '한국어', available: false },
-  { code: 'es', label: 'Español', available: false },
-  { code: 'fr', label: 'Français', available: false },
-  { code: 'de', label: 'Deutsch', available: false },
-  { code: 'th', label: 'ไทย', available: false },
+  { code: 'zh-TW', label: '繁體中文' },
+  { code: 'en', label: 'English' },
 ] as const;
 
 const Header: React.FC = () => {
@@ -28,11 +22,7 @@ const Header: React.FC = () => {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const langMenuRef = useRef<HTMLDivElement>(null);
 
-  const switchLanguage = (code: string, available: boolean) => {
-    if (!available) {
-      alert(t('header.languageDeveloping'));
-      return;
-    }
+  const switchLanguage = (code: string) => {
     i18n.changeLanguage(code);
     document.documentElement.lang = code;
     setShowLangMenu(false);
@@ -84,23 +74,18 @@ const Header: React.FC = () => {
                   <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 {showLangMenu && (
-                  <div className="absolute right-0 mt-1 w-44 bg-white rounded-lg shadow-lg ring-1 ring-black/5 py-1 z-50 max-h-72 overflow-y-auto">
+                  <div className="absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-lg ring-1 ring-black/5 py-1 z-50">
                     {LANGUAGES.map((lang) => (
                       <button
                         key={lang.code}
-                        onClick={() => switchLanguage(lang.code, lang.available)}
-                        className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between ${
+                        onClick={() => switchLanguage(lang.code)}
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
                           i18n.language === lang.code
                             ? 'text-primary font-semibold bg-primary/5'
-                            : lang.available
-                              ? 'text-gray-700 hover:bg-gray-50'
-                              : 'text-gray-400 hover:bg-gray-50'
+                            : 'text-gray-700 hover:bg-gray-50'
                         }`}
                       >
-                        <span>{lang.label}</span>
-                        {!lang.available && (
-                          <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Soon</span>
-                        )}
+                        {lang.label}
                       </button>
                     ))}
                   </div>

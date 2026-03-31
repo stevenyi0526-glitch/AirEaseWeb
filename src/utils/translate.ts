@@ -381,7 +381,6 @@ const MISC: Record<string, string> = {
   'Nonstop': '直飛',
   'WiFi available': 'WiFi 可用',
   'In-flight entertainment': '機上娛樂',
-  'Comfortable seating': '舒適座椅',
   'Less emissions': '排放量較少',
   'Low emission flight': '低排放航班',
   'Carbon emissions': '碳排放量',

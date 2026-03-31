@@ -11,10 +11,10 @@ interface UserProfileDropdownProps {
   isHomePage?: boolean;
 }
 
-const labelConfig: Record<UserLabel, { icon: typeof Briefcase; labelKey: string; color: string; bgColor: string }> = {
-  business: { icon: Briefcase, labelKey: 'profile.businessLabel', color: 'text-[#034891] bg-[#E6F0FA]', bgColor: 'bg-[#034891]' },
-  family: { icon: Users, labelKey: 'profile.familyLabel', color: 'text-green-600 bg-green-100', bgColor: 'bg-emerald-500' },
-  student: { icon: GraduationCap, labelKey: 'profile.studentLabel', color: 'text-purple-600 bg-purple-100', bgColor: 'bg-purple-500' },
+const labelConfig: Record<UserLabel, { icon: typeof Briefcase; label: string; color: string; bgColor: string }> = {
+  business: { icon: Briefcase, label: 'Business', color: 'text-[#034891] bg-[#E6F0FA]', bgColor: 'bg-[#034891]' },
+  family: { icon: Users, label: 'Family', color: 'text-green-600 bg-green-100', bgColor: 'bg-emerald-500' },
+  student: { icon: GraduationCap, label: 'Student', color: 'text-purple-600 bg-purple-100', bgColor: 'bg-purple-500' },
 };
 
 const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = false }) => {
@@ -172,7 +172,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                       </div>
                       <div className="flex-1 text-left">
                         <span className={cn('text-sm block', isSelected ? 'font-semibold text-gray-900' : 'font-medium text-gray-700')}>
-                          {t(config.labelKey)}
+                          {config.label}
                         </span>
                         <span className="text-xs text-gray-500">
                           {label === 'business' && t('profile.prioritizeReliability')}
@@ -274,12 +274,8 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                       setConfirmPassword('');
                       setTimeout(() => { setPwSuccess(''); setShowChangePassword(false); }, 2000);
                     } catch (err: unknown) {
-                      const error = err as { response?: { status?: number; data?: { detail?: string } } };
-                      const msg = error.response?.data?.detail || 'Failed to change password';
-                      if (error.response?.status === 401) {
-                        alert('Current password is incorrect. Please try again.');
-                      }
-                      setPwError(msg);
+                      const error = err as { response?: { data?: { detail?: string } } };
+                      setPwError(error.response?.data?.detail || 'Failed to change password');
                     } finally {
                       setPwLoading(false);
                     }
