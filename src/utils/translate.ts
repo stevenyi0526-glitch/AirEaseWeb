@@ -384,6 +384,7 @@ const MISC: Record<string, string> = {
   'Less emissions': '排放量較少',
   'Low emission flight': '低排放航班',
   'Carbon emissions': '碳排放量',
+  'Comfortable seating': '舒適座椅',
 };
 
 // Combined lookup — merged into one map for fast searching

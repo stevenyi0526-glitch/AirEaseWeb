@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Mail, Lock, Loader2, ArrowLeft, RefreshCw, KeyRound, CheckCircle } from 'lucide-react';
+import { X, Mail, Lock, Loader2, ArrowLeft, RefreshCw, KeyRound, CheckCircle, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { authApi } from '../../api/auth';
 
@@ -46,6 +46,14 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
 
   if (!isOpen) return null;
 
+  const requirements = [
+    { key: 'pwReqLength', met: newPassword.length > 8 },
+    { key: 'pwReqUpper', met: /[A-Z]/.test(newPassword) },
+    { key: 'pwReqLower', met: /[a-z]/.test(newPassword) },
+    { key: 'pwReqNumber', met: /[0-9]/.test(newPassword) },
+  ];
+  const allMet = requirements.every(r => r.met);
+
   // Step 1: Submit email to get reset code
   const handleSubmitEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,7 +68,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || 'Failed to send reset code. Please try again.');
+      setError(error.response?.data?.detail || t('auth.failedSendResetCode'));
     } finally {
       setIsLoading(false);
     }
@@ -70,15 +78,14 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
   const handleResetPassword = async () => {
     const code = verificationCode.join('');
     if (code.length !== 6) {
-      setError('Please enter the full 6-digit code');
+      setError(t('auth.enterFullCodeBeforeReset'));
       return;
     }
-    if (!newPassword || newPassword.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!allMet) {
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth.passwordsDoNotMatch'));
       return;
     }
 
@@ -90,7 +97,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
       setStep('success');
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || 'Invalid or expired code. Please try again.');
+      setError(error.response?.data?.detail || t('auth.invalidOrExpiredCode'));
       setVerificationCode(['', '', '', '', '', '']);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } finally {
@@ -112,7 +119,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || 'Failed to resend code.');
+      setError(error.response?.data?.detail || t('auth.failedResendCode'));
     } finally {
       setIsLoading(false);
     }
@@ -270,10 +277,25 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="input-field pl-10"
                     placeholder={t('auth.newPasswordPlaceholder')}
-                    minLength={6}
                   />
                 </div>
               </div>
+
+              {/* Password requirements checklist */}
+              {newPassword.length > 0 && (
+                <div className="p-3 bg-gray-50 rounded-lg text-xs">
+                  <p className="font-semibold mb-1 text-gray-700">{t('auth.passwordRequirements')}</p>
+                  <ul className="space-y-0.5">
+                    {requirements.map((req) => (
+                      <li key={req.key} className={`flex items-center gap-1.5 ${req.met ? 'text-green-600' : 'text-gray-500'}`}>
+                        {req.met ? <Check className="w-3.5 h-3.5 flex-shrink-0" /> : <span className="w-3.5 h-3.5 flex-shrink-0 inline-flex items-center justify-center">•</span>}
+                        {t(`auth.${req.key}`)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.confirmPassword')}</label>
                 <div className="relative">
@@ -284,7 +306,6 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="input-field pl-10"
                     placeholder={t('auth.confirmPasswordPlaceholder')}
-                    minLength={6}
                   />
                 </div>
               </div>
@@ -292,7 +313,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
 
             <button
               onClick={handleResetPassword}
-              disabled={isLoading}
+              disabled={isLoading || !allMet}
               className="w-full btn-primary flex items-center justify-center gap-2"
             >
               {isLoading ? (

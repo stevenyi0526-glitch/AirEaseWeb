@@ -1,5 +1,5 @@
-import React from 'react';
-import { CheckCircle, Clock, Armchair, Wifi, Zap, Award } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle, Clock, Armchair, Wifi, Zap, Award, Sofa } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
 import { translateText } from '../../utils/translate';
@@ -70,6 +70,20 @@ const HIGHLIGHT_MAP: Record<string, HighlightTag> = {
     color: 'text-indigo-600', 
     bgColor: 'bg-indigo-50' 
   },
+  'Comfortable seating': { 
+    id: 'comfortable_seating', 
+    labelKey: 'highlights.comfortableSeating', 
+    icon: Sofa, 
+    color: 'text-[#034891]', 
+    bgColor: 'bg-[#E6F0FA]' 
+  },
+  'Direct flight': { 
+    id: 'direct', 
+    labelKey: 'highlights.directFlight', 
+    icon: CheckCircle, 
+    color: 'text-green-600', 
+    bgColor: 'bg-green-50' 
+  },
 };
 
 // Default tag for unknown highlights
@@ -98,9 +112,10 @@ const FlightHighlightTags: React.FC<FlightHighlightTagsProps> = ({
   className,
 }) => {
   const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
   if (!highlights || highlights.length === 0) return null;
 
-  const displayTags = highlights.slice(0, maxTags);
+  const displayTags = expanded ? highlights : highlights.slice(0, maxTags);
   const remainingCount = highlights.length - maxTags;
 
   return (
@@ -128,13 +143,17 @@ const FlightHighlightTags: React.FC<FlightHighlightTagsProps> = ({
         );
       })}
       
-      {remainingCount > 0 && (
-        <span className={cn(
-          'inline-flex items-center rounded-full bg-gray-100 text-gray-600 font-medium',
-          size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm'
-        )}>
+      {!expanded && remainingCount > 0 && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+          className={cn(
+            'inline-flex items-center rounded-full bg-gray-100 text-gray-600 font-medium cursor-pointer hover:bg-gray-200 transition-colors',
+            size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm'
+          )}
+        >
           +{remainingCount} {t('flights.showMore').toLowerCase()}
-        </span>
+        </button>
       )}
     </div>
   );

@@ -233,6 +233,7 @@ const FlightCard: React.FC<FlightCardProps> = ({
             ) : (
               <>
                 <p className="text-lg sm:text-2xl font-bold text-primary">{formatPriceWithCurrency(flight.price, displayCurrency)}</p>
+                <p className="text-[10px] sm:text-xs text-text-muted">{t('common.perPerson')}</p>
               </>
             )}
 
@@ -394,7 +395,17 @@ const FlightCard: React.FC<FlightCardProps> = ({
                         {safetyProfile.technical_specs?.engine && (
                           <div className="flex items-center gap-1.5 p-2 bg-gray-50 rounded-lg">
                             <span className="text-gray-400">⚙️</span>
-                            <span className="text-gray-700 truncate">{safetyProfile.technical_specs.engine}</span>
+                            <span className="text-gray-700 truncate">{(() => {
+                              const numEng = safetyProfile.technical_specs.num_engines;
+                              const engineLabel = numEng === 1 ? t('detail.singleEngine')
+                                : numEng === 2 ? t('detail.twinEngine')
+                                : numEng === 3 ? t('detail.triEngine')
+                                : numEng === 4 ? t('detail.quadEngine')
+                                : null;
+                              const raw = safetyProfile.technical_specs.engine!;
+                              const clean = raw.replace(/^\d+\s*[x×]\s*/i, '').trim();
+                              return engineLabel ? `${engineLabel} (${clean})` : raw;
+                            })()}</span>
                           </div>
                         )}
                         {safetyProfile.flight_info?.age_years != null && (

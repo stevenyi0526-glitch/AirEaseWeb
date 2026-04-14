@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Mail, Lock, User, Loader2, Briefcase, Users, GraduationCap, ArrowLeft, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { validatePasswordStrength } from '../../utils/crypto';
 import type { UserLabel } from '../../api/types';
 import { cn } from '../../utils/cn';
 
@@ -60,6 +61,14 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Validate password strength before hashing
+    const passwordError = validatePasswordStrength(password);
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -71,7 +80,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || 'Registration failed. Please try again.');
+      setError(error.response?.data?.detail || t('auth.registrationFailed'));
     } finally {
       setIsLoading(false);
     }

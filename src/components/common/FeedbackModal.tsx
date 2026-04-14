@@ -31,7 +31,7 @@ export function FeedbackModal({
   flightInfo,
   userEmail: initialEmail = '',
 }: FeedbackModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [email, setEmail] = useState(initialEmail);
   const [category, setCategory] = useState<ReportCategory>('other');
   const [content, setContent] = useState('');
@@ -444,7 +444,7 @@ export function FeedbackModal({
             >
               {REPORT_CATEGORIES.map((cat) => (
                 <option key={cat.value} value={cat.value}>
-                  {cat.labelEn}
+                  {i18n.language === 'zh-TW' ? cat.label : cat.labelEn}
                 </option>
               ))}
             </select>

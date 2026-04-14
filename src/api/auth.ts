@@ -1,10 +1,16 @@
 import { apiClient } from './client';
+import { sha256 } from '../utils/crypto';
 import type { AuthToken, LoginCredentials, RegisterData, User, UpdateUserData, CitySearchResult, Favorite, CreateFavorite, Traveler, CreateTraveler, UpdateTraveler, VerificationResponse } from './types';
 
 export const authApi = {
   /** Step 1: Initiate registration — sends verification code to email */
   register: async (data: RegisterData): Promise<VerificationResponse> => {
-    const response = await apiClient.post('/v1/auth/register', data);
+    const hashed = await sha256(data.password);
+    const response = await apiClient.post('/v1/auth/register', {
+      ...data,
+      password: hashed,
+      enc: 'sha256',
+    });
     return response.data;
   },
 
@@ -21,7 +27,12 @@ export const authApi = {
   },
 
   login: async (credentials: LoginCredentials): Promise<AuthToken> => {
-    const response = await apiClient.post('/v1/auth/login', credentials);
+    const hashed = await sha256(credentials.password);
+    const response = await apiClient.post('/v1/auth/login', {
+      ...credentials,
+      password: hashed,
+      enc: 'sha256',
+    });
     return response.data;
   },
 
@@ -45,12 +56,15 @@ export const authApi = {
   },
 
   resetPassword: async (email: string, code: string, newPassword: string): Promise<{ message: string }> => {
-    const response = await apiClient.post('/v1/auth/reset-password', { email, code, new_password: newPassword });
+    const hashed = await sha256(newPassword);
+    const response = await apiClient.post('/v1/auth/reset-password', { email, code, new_password: hashed, enc: 'sha256' });
     return response.data;
   },
 
   changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
-    const response = await apiClient.post('/v1/auth/change-password', { current_password: currentPassword, new_password: newPassword });
+    const hashedCurrent = await sha256(currentPassword);
+    const hashedNew = await sha256(newPassword);
+    const response = await apiClient.post('/v1/auth/change-password', { current_password: hashedCurrent, new_password: hashedNew, enc: 'sha256' });
     return response.data;
   },
 

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Plane, SlidersHorizontal, Search, ChevronDown, CloudSun, X } from 'lucide-react';
+import { ArrowLeft, Plane, SlidersHorizontal, Search, ChevronDown, CloudSun, X, Snowflake } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import EnglishDateInput from '../components/common/EnglishDateInput';
@@ -21,7 +21,7 @@ import FlightCardSkeleton from '../components/flights/FlightCardSkeleton';
 import FloatingSelectedBar from '../components/flights/FloatingSelectedBar';
 import FilterBottomSheet from '../components/filters/FilterBottomSheet';
 import SearchLoading from '../components/common/SearchLoading';
-import CurrencySelector, { CURRENCIES, type CurrencyCode, formatPriceWithCurrency, setLiveExchangeRates } from '../components/common/CurrencySelector';
+import CurrencySelector, { CURRENCIES, type CurrencyCode, formatPriceWithCurrency, setLiveExchangeRates, convertPrice } from '../components/common/CurrencySelector';
 import AIRecommendations from '../components/flights/AIRecommendations';
 import WeatherForecast from '../components/weather/WeatherForecast';
 import { fetchExchangeRates } from '../api/exchangeRates';
@@ -635,10 +635,10 @@ const FlightsPage: React.FC = () => {
     
     // Filter by price range
     if (filters.minPrice !== undefined) {
-      flights = flights.filter(f => f.flight.price >= filters.minPrice!);
+      flights = flights.filter(f => convertPrice(f.flight.price, currency) >= filters.minPrice!);
     }
     if (filters.maxPrice !== undefined) {
-      flights = flights.filter(f => f.flight.price <= filters.maxPrice!);
+      flights = flights.filter(f => convertPrice(f.flight.price, currency) <= filters.maxPrice!);
     }
     
     // Filter by airlines
@@ -717,10 +717,10 @@ const FlightsPage: React.FC = () => {
     
     // Filter by price range
     if (filters.minPrice !== undefined) {
-      result = result.filter(f => f.flight.price >= filters.minPrice!);
+      result = result.filter(f => convertPrice(f.flight.price, currency) >= filters.minPrice!);
     }
     if (filters.maxPrice !== undefined) {
-      result = result.filter(f => f.flight.price <= filters.maxPrice!);
+      result = result.filter(f => convertPrice(f.flight.price, currency) <= filters.maxPrice!);
     }
     
     // Filter by airlines
@@ -1179,17 +1179,25 @@ const FlightsPage: React.FC = () => {
       .sort((a, b) => b.count - a.count); // Most flights first
   }, [rawData?.flights, roundTripData, multiCityData]);
 
-  // Calculate price range
+  // Calculate price range in the selected display currency
   const priceRange = useMemo(() => {
-    if (!rawData?.flights || rawData.flights.length === 0) {
-      return { min: 100, max: 2000 };
+    const allFlights = [
+      ...(rawData?.flights || []),
+      ...(roundTripData?.departureFlights || []),
+      ...(roundTripData?.returnFlights || []),
+    ];
+    if (allFlights.length === 0) {
+      return { min: convertPrice(100, currency), max: convertPrice(2000, currency) };
     }
-    const prices = rawData.flights.map((f: { flight: { price: number } }) => f.flight.price);
+    const prices = allFlights.map((f: { flight: { price: number } }) => convertPrice(f.flight.price, currency));
+    const step = currency === 'JPY' || currency === 'KRW' ? 500 : 50;
     return {
-      min: Math.floor(Math.min(...prices) / 50) * 50,
-      max: Math.ceil(Math.max(...prices) / 50) * 50,
+      min: 0,
+      max: Math.ceil(Math.max(...prices) / step) * step,
     };
-  }, [rawData?.flights]);
+  }, [rawData?.flights, roundTripData, currency]);
+
+  const currencySymbol = CURRENCIES.find(c => c.code === currency)?.symbol || '$';
 
   // ============================================================================
   // BOOKING REDIRECT FOR ROUND TRIP & MULTI-CITY
@@ -1437,6 +1445,17 @@ const FlightsPage: React.FC = () => {
                 />
               </div>
 
+              {/* Ski Finder Button */}
+              <button
+                onClick={() => alert(t('flights.skiFinderComingSoon'))}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                style={{ backgroundColor: '#0ABAB5', color: '#fff' }}
+                title={t('flights.skiFinder')}
+              >
+                <Snowflake className="w-4 h-4" />
+                <span>{t('flights.skiFinder')}</span>
+              </button>
+
               <SortDropdown
                 value={filters.sortBy}
                 onChange={handleSortChange}
@@ -1451,6 +1470,7 @@ const FlightsPage: React.FC = () => {
                 priceRange={priceRange}
                 hasActiveFilters={hasActiveFilters}
                 trackPreferences={isAuthenticated}
+                currencySymbol={currencySymbol}
               />
 
               {/* Mobile filter button */}
@@ -1740,15 +1760,34 @@ const FlightsPage: React.FC = () => {
                     <div className="text-center py-12">
                       <Plane className="w-16 h-16 text-text-muted mx-auto mb-4" />
                       <p className="text-text-primary font-medium mb-2">
-                        {t('flights.noFlightsFound')}
+                        {t('flights.noFlightsForDate', { date: filters.date })}
                       </p>
                       <p className="text-text-secondary mb-4">
                         {t('flights.noFlightsDesc')}
                       </p>
+                      {/* Try next day button */}
+                      {(() => {
+                        const nextDay = new Date(filters.date);
+                        nextDay.setDate(nextDay.getDate() + 1);
+                        const nextDayStr = nextDay.toISOString().split('T')[0];
+                        return (
+                          <button
+                            onClick={() => {
+                              setEditDepartDate(nextDayStr);
+                              updateFilters({ date: nextDayStr });
+                            }}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors mb-3"
+                          >
+                            {t('flights.tryNextDay', { date: nextDayStr })} →
+                          </button>
+                        );
+                      })()}
                       {hasActiveFilters && (
-                        <button onClick={resetFilters} className="btn-secondary">
-                          {t('flights.resetFilters')}
-                        </button>
+                        <div>
+                          <button onClick={resetFilters} className="btn-secondary">
+                            {t('flights.resetFilters')}
+                          </button>
+                        </div>
                       )}
                     </div>
                   );
@@ -1869,6 +1908,7 @@ const FlightsPage: React.FC = () => {
         onResetFilters={resetFilters}
         availableAirlines={availableAirlines}
         priceRange={priceRange}
+        currencySymbol={currencySymbol}
       />
 
       {/* Floating Selected Flight Bar */}

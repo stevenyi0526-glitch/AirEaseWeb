@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/auth';
+import { validatePasswordStrength } from '../utils/crypto';
 import type { User, LoginCredentials, RegisterData, UpdateUserData, VerificationResponse } from '../api/types';
 
 interface AuthContextType {
@@ -8,6 +9,10 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isLoading: boolean;
+  passwordUpdateRequired: boolean;
+  justLoggedIn: boolean;
+  clearPasswordUpdateRequired: () => void;
+  clearJustLoggedIn: () => void;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<VerificationResponse>;
   verifyEmail: (email: string, code: string) => Promise<void>;
@@ -24,11 +29,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.getItem('airease_token')
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [passwordUpdateRequired, setPasswordUpdateRequired] = useState(false);
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
+    setPasswordUpdateRequired(false);
+    setJustLoggedIn(false);
     localStorage.removeItem('airease_token');
+  }, []);
+
+  const clearPasswordUpdateRequired = useCallback(() => {
+    setPasswordUpdateRequired(false);
+  }, []);
+
+  const clearJustLoggedIn = useCallback(() => {
+    setJustLoggedIn(false);
   }, []);
 
   // Validate token on mount
@@ -65,6 +82,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(response.accessToken);
     setUser(response.user);
     localStorage.setItem('airease_token', response.accessToken);
+
+    // Check if password needs updating: server flag OR client-side strength check
+    const weakPassword = validatePasswordStrength(credentials.password) !== null;
+    if (response.passwordUpdateRequired || weakPassword) {
+      setPasswordUpdateRequired(true);
+    }
   };
 
   const register = async (data: RegisterData): Promise<VerificationResponse> => {
@@ -98,6 +121,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!token && !!user,
         isAdmin: !!user && (user.isAdmin === true || user.email === 'steven.yi@airease.ai'),
         isLoading,
+        passwordUpdateRequired,
+        justLoggedIn,
+        clearPasswordUpdateRequired,
+        clearJustLoggedIn,
         login,
         register,
         verifyEmail,

@@ -6,7 +6,6 @@ import i18n from 'i18next';
 import { useAuth } from '../contexts/AuthContext';
 import SearchForm from '../components/search/SearchForm';
 import AISearchBar from '../components/search/AISearchBar';
-import { getGreeting } from '../utils/formatters';
 import { apiClient } from '../api/client';
 import { cn } from '../utils/cn';
 
@@ -22,7 +21,7 @@ interface SearchHistoryItem {
 }
 
 const HomePage: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [searchMode, setSearchMode] = useState<'ai' | 'classic'>('ai');
@@ -78,11 +77,8 @@ const HomePage: React.FC = () => {
   AirEase
 </h1>
 
-          <p className="text-sm sm:text-base text-slate-400 mb-1 text-center tracking-wide">
+          <p className="text-lg sm:text-xl text-slate-400 mb-8 text-center tracking-wide">
             {t('home.subtitle')}
-          </p>
-          <p className="text-base sm:text-lg text-slate-500 mb-8 text-center">
-            {getGreeting()}, {isAuthenticated ? user?.username : t('home.traveler')}. {t('home.findFlight')}
           </p>
 
           {/* Search Mode Toggle */}

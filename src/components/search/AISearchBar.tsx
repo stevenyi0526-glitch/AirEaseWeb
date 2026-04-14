@@ -11,6 +11,7 @@ import { Sparkles, Search, MapPin, Loader2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { parseNaturalLanguageSearch, paramsToSearchURL, getUserLocation } from '../../api/aiSearch';
 import { findNearestAirport } from '../../api/airports';
+import { addSearchHistory } from '../../api/searchHistory';
 import { useAuth } from '../../contexts/AuthContext';
 import { cn } from '../../utils/cn';
 
@@ -20,7 +21,7 @@ interface AISearchBarProps {
   onSearchComplete?: () => void;
 }
 
-const FIXED_PLACEHOLDER = 'Give me the cheapest single-person business direct flight to Tokyo tomorrow.';
+
 
 const AISearchBar: React.FC<AISearchBarProps> = ({
   className = '',
@@ -38,11 +39,6 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [nearestAirport, setNearestAirport] = useState<string | null>(null);
-  const [isFocused, setIsFocused] = useState(false);
-  const marqueeContainerRef = useRef<HTMLDivElement>(null);
-
-  // Show moving text when: empty query + not focused
-  const showMarquee = !query && !isFocused && !isLoading;
 
   // Try to get user location on mount
   useEffect(() => {
@@ -78,8 +74,10 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
       return;
     }
     
-    // If the user hasn't typed anything, use the placeholder as the query
-    let searchQuery = query.trim() || FIXED_PLACEHOLDER;
+    // Require user input
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    let searchQuery = trimmed;
 
     // If the query is very short / looks like just a city name (no verbs, prepositions, etc.),
     // enrich it into a full sentence using defaults so the AI parser always has enough context.
@@ -93,9 +91,9 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
       return words.length <= 3;
     };
 
-    if (looksLikeBareCityOrMinimal(searchQuery) && searchQuery !== FIXED_PLACEHOLDER) {
+    if (looksLikeBareCityOrMinimal(searchQuery)) {
       const departure = nearestAirport || 'my nearest airport';
-      searchQuery = `Give me the top rated economy direct flight from ${departure} to ${searchQuery} tomorrow for 1 person`;
+      searchQuery = `Give me the top rated economy flight from ${departure} to ${searchQuery} for 1 person`;
     }
 
     setIsLoading(true);
@@ -109,6 +107,15 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
       );
 
       if (result.success && result.params) {
+        // Save to search history
+        addSearchHistory({
+          departure_city: result.params.departure_city_code,
+          arrival_city: result.params.arrival_city_code,
+          departure_date: result.params.date,
+          passengers: result.params.passengers,
+          cabin_class: result.params.cabin_class,
+        }).catch(() => {}); // fire-and-forget
+
         // Navigate to flights page with parsed params + original query for AI recommendations
         const searchParams = paramsToSearchURL(result.params, searchQuery);
         navigate(`/flights?${searchParams}`);
@@ -163,7 +170,7 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
           {/* Middle — Input Area */}
           <div className="relative flex-1 flex items-center px-5 py-3">
             {/* Top label */}
-            <span className="absolute top-2 left-5 text-[10px] font-semibold tracking-widest text-gray-400 uppercase select-none">
+            <span className="absolute top-2 left-0 right-0 text-[12px] font-semibold tracking-widest text-gray-400 uppercase select-none text-center">
               {t('search.flightQuery')}
             </span>
 
@@ -175,30 +182,10 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
                 setQuery(e.target.value);
                 setError(null);
               }}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
               placeholder=""
               className="w-full pt-4 pb-1 pr-8 text-base sm:text-lg bg-transparent outline-none text-gray-700 placeholder-gray-400"
               disabled={isLoading}
             />
-
-            {/* Mobile marquee scrolling placeholder */}
-            {showMarquee && (
-              <div
-                ref={marqueeContainerRef}
-                className="absolute left-5 right-8 top-1/2 translate-y-[2px] overflow-hidden pointer-events-none"
-              >
-                <div
-                  className="inline-flex whitespace-nowrap text-base sm:text-lg text-gray-400"
-                  style={{
-                    animation: 'marquee-scroll 14s linear infinite',
-                  }}
-                >
-                  <span className="pr-12">{t('search.placeholder')}</span>
-                  <span className="pr-12">{t('search.placeholder')}</span>
-                </div>
-              </div>
-            )}
 
             {/* Clear Button */}
             {query && !isLoading && (

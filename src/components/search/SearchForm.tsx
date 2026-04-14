@@ -207,7 +207,7 @@ const SearchForm: React.FC<SearchFormProps> = ({
 
           {/* Right content area */}
           <div className="flex-1 py-4 px-3 min-w-0 overflow-visible">
-            <span className="block text-[10px] font-semibold tracking-widest text-gray-400 uppercase select-none mb-3">
+            <span className="block text-[12px] font-semibold tracking-widest text-gray-400 uppercase select-none mb-3 text-center">
               {t('search.flightSearch')}
             </span>
 
@@ -339,8 +339,8 @@ const SearchForm: React.FC<SearchFormProps> = ({
         {/* Right Content Area */}
         <div className="flex-1 py-5 px-6 min-w-0">
           {/* Header row: label + trip type */}
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-semibold tracking-widest text-gray-400 uppercase select-none">
+          <div className="flex items-center mb-4">
+            <span className="flex-1 text-[12px] font-semibold tracking-widest text-gray-400 uppercase select-none text-center">
               {t('search.flightSearch')}
             </span>
             <div className="flex gap-1.5">

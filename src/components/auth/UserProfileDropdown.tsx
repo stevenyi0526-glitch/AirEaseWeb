@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User, LogOut, Settings, Heart, Users, Briefcase, GraduationCap, ChevronDown, Check, KeyRound, Trash2, Loader2 } from 'lucide-react';
+import { User, LogOut, Settings, Heart, Users, Briefcase, GraduationCap, ChevronDown, Check, Trash2, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { authApi } from '../../api/auth';
@@ -23,14 +23,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
   const [isOpen, setIsOpen] = useState(false);
   const [showLabelPicker, setShowLabelPicker] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [pwError, setPwError] = useState('');
-  const [pwSuccess, setPwSuccess] = useState('');
-  const [pwLoading, setPwLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -172,7 +165,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                       </div>
                       <div className="flex-1 text-left">
                         <span className={cn('text-sm block', isSelected ? 'font-semibold text-gray-900' : 'font-medium text-gray-700')}>
-                          {config.label}
+                          {t(`auth.${label}Label`)}
                         </span>
                         <span className="text-xs text-gray-500">
                           {label === 'business' && t('profile.prioritizeReliability')}
@@ -212,81 +205,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
               <span className="text-sm">{t('profile.savedTravelers')}</span>
             </Link>
 
-            {/* Change Password */}
-            <button
-              onClick={() => setShowChangePassword(!showChangePassword)}
-              className="w-full px-4 py-2.5 flex items-center gap-3 text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <KeyRound className="w-4 h-4 text-gray-400" />
-              <span className="flex-1 text-left text-sm">{t('profile.changePassword')}</span>
-              <ChevronDown className={cn(
-                'w-4 h-4 text-gray-400 transition-transform',
-                showChangePassword && 'rotate-180'
-              )} />
-            </button>
 
-            {showChangePassword && (
-              <div className="px-3 py-3 bg-gray-50 mx-2 rounded-lg mb-2 space-y-2">
-                {pwError && (
-                  <div className="p-2 bg-red-50 border border-red-200 rounded text-red-600 text-xs">
-                    {pwError}
-                  </div>
-                )}
-                {pwSuccess && (
-                  <div className="p-2 bg-green-50 border border-green-200 rounded text-green-600 text-xs">
-                    {pwSuccess}
-                  </div>
-                )}
-                <input
-                  type="password"
-                  placeholder={t('profile.currentPassword')}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-[#034891] focus:ring-1 focus:ring-[#034891]/20 outline-none text-gray-900"
-                />
-                <input
-                  type="password"
-                  placeholder={t('profile.newPasswordMin')}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-[#034891] focus:ring-1 focus:ring-[#034891]/20 outline-none text-gray-900"
-                />
-                <input
-                  type="password"
-                  placeholder={t('profile.confirmNewPassword')}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-[#034891] focus:ring-1 focus:ring-[#034891]/20 outline-none text-gray-900"
-                />
-                <button
-                  onClick={async () => {
-                    setPwError('');
-                    setPwSuccess('');
-                    if (!currentPassword) { setPwError('Enter current password'); return; }
-                    if (newPassword.length < 6) { setPwError('New password must be at least 6 characters'); return; }
-                    if (newPassword !== confirmPassword) { setPwError('Passwords do not match'); return; }
-                    setPwLoading(true);
-                    try {
-                      await authApi.changePassword(currentPassword, newPassword);
-                      setPwSuccess('Password changed successfully!');
-                      setCurrentPassword('');
-                      setNewPassword('');
-                      setConfirmPassword('');
-                      setTimeout(() => { setPwSuccess(''); setShowChangePassword(false); }, 2000);
-                    } catch (err: unknown) {
-                      const error = err as { response?: { data?: { detail?: string } } };
-                      setPwError(error.response?.data?.detail || 'Failed to change password');
-                    } finally {
-                      setPwLoading(false);
-                    }
-                  }}
-                  disabled={pwLoading}
-                  className="w-full py-2 bg-[#034891] text-white text-sm font-medium rounded-lg hover:bg-[#023670] disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {pwLoading ? <><Loader2 className="w-4 h-4 animate-spin" />{t('profile.changingPassword')}</> : t('profile.updatePassword')}
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Logout & Delete Account */}

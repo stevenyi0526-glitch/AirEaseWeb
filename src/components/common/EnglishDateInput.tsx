@@ -23,6 +23,7 @@ import {
   isSameMonth,
   isBefore,
 } from 'date-fns';
+import { zhTW } from 'date-fns/locale/zh-TW';
 import { cn } from '../../utils/cn';
 
 interface EnglishDateInputProps {
@@ -44,11 +45,14 @@ const EnglishDateInput: React.FC<EnglishDateInputProps> = ({
   showIcon = true,
   iconClassName,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+
+  const isZh = i18n.language === 'zh-TW';
+  const dateFnsLocale = isZh ? { locale: zhTW } : undefined;
 
   const selectedDate = value ? new Date(value + 'T00:00:00') : null;
   const minDate = min ? new Date(min + 'T00:00:00') : undefined;
@@ -116,7 +120,9 @@ const EnglishDateInput: React.FC<EnglishDateInputProps> = ({
   }
 
   const displayValue = selectedDate
-    ? format(selectedDate, 'MMM d, yyyy') // Always English via date-fns
+    ? isZh
+      ? format(selectedDate, 'yyyy年M月d日', dateFnsLocale)
+      : format(selectedDate, 'MMM d, yyyy')
     : '';
 
   return (
@@ -155,7 +161,9 @@ const EnglishDateInput: React.FC<EnglishDateInputProps> = ({
               <ChevronLeft className="w-4 h-4 text-gray-600" />
             </button>
             <span className="text-sm font-semibold text-gray-800">
-              {format(viewMonth, 'MMMM yyyy')}
+              {isZh
+                ? format(viewMonth, 'yyyy年 M月', dateFnsLocale)
+                : format(viewMonth, 'MMMM yyyy')}
             </span>
             <button
               type="button"

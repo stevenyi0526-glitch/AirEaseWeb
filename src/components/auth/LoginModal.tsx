@@ -32,8 +32,19 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
       setEmail('');
       setPassword('');
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || 'Login failed. Please try again.');
+      const error = err as { response?: { status?: number; data?: { detail?: string } } };
+      const status = error.response?.status;
+      const detail = error.response?.data?.detail;
+
+      if (status === 409 && detail === 'PASSWORD_MIGRATION_REQUIRED') {
+        setError(t('auth.passwordMigrationRequired'));
+      } else if (status === 401) {
+        setError(t('auth.invalidCredentials'));
+      } else if (status && status >= 500) {
+        setError(t('auth.serverError'));
+      } else {
+        setError(detail || t('auth.loginFailed'));
+      }
     } finally {
       setIsLoading(false);
     }

@@ -58,6 +58,7 @@ interface FilterDropdownProps {
   priceRange: { min: number; max: number };
   hasActiveFilters: boolean;
   trackPreferences?: boolean;
+  currencySymbol?: string;
   className?: string;
 }
 
@@ -68,6 +69,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   priceRange,
   hasActiveFilters,
   trackPreferences = false,
+  currencySymbol = '$',
   className,
 }) => {
   const { t } = useTranslation();
@@ -609,7 +611,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
 
             {/* Price Range */}
             <div>
-              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">{t('filters.priceRange')}</h4>
+              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">{t('filters.priceRange')} ({currencySymbol})</h4>
               <div className="flex items-center gap-2">
                 <div className="flex-1">
                   <input
@@ -617,7 +619,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                     value={draftMinPrice ?? priceRange.min}
                     onChange={(e) => {
                       const val = parseInt(e.target.value);
-                      setDraftMinPrice(val === priceRange.min ? undefined : val);
+                      setDraftMinPrice(isNaN(val) ? undefined : val);
                     }}
                     min={priceRange.min}
                     max={priceRange.max}
@@ -628,16 +630,15 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                 <span className="text-text-muted text-xs">-</span>
                 <div className="flex-1">
                   <input
-                    type="number"
-                    value={draftMaxPrice ?? priceRange.max}
+                    type="text"
+                    inputMode="numeric"
+                    value={draftMaxPrice ?? ''}
                     onChange={(e) => {
                       const val = parseInt(e.target.value);
-                      setDraftMaxPrice(val === priceRange.max ? undefined : val);
+                      setDraftMaxPrice(isNaN(val) ? undefined : val);
                     }}
-                    min={priceRange.min}
-                    max={priceRange.max}
                     className="w-full px-2 py-1.5 text-xs border border-border rounded-lg focus:ring-1 focus:ring-primary"
-                    placeholder={t('filters.max')}
+                    placeholder="∞"
                   />
                 </div>
               </div>

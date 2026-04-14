@@ -323,6 +323,7 @@ const FlightDetailPage: React.FC = () => {
                 <p className="text-2xl sm:text-3xl font-bold text-primary">
                   {formatPriceWithCurrency(flight.price, displayCurrency)}
                 </p>
+                <p className="text-xs sm:text-sm text-text-muted">{t('detail.perPerson')}</p>
               </div>
               <div className="flex items-center gap-2">
                 <FavoriteButton flightWithScore={flightData} size="md" />
@@ -365,12 +366,26 @@ const FlightDetailPage: React.FC = () => {
               </div>
             )}
 
-            {/* Row 2: Engine + Engine Type */}
+            {/* Row 2: Engine (with count label + model) + Engine Type */}
             <div className="p-3 bg-surface-alt rounded-lg">
               <p className="text-xs text-text-muted mb-0.5">{t('detail.engine')}</p>
-              {safetyProfile?.technical_specs?.engine ? (
-                <p className="text-base font-semibold text-text-primary">⚙️ {translateText(safetyProfile.technical_specs.engine)}</p>
-              ) : isSafetyLoading ? (
+              {safetyProfile?.technical_specs?.engine ? (() => {
+                const numEng = safetyProfile.technical_specs.num_engines;
+                const engineLabel = numEng === 1 ? t('detail.singleEngine')
+                  : numEng === 2 ? t('detail.twinEngine')
+                  : numEng === 3 ? t('detail.triEngine')
+                  : numEng === 4 ? t('detail.quadEngine')
+                  : numEng ? t('detail.engineCount', { count: numEng })
+                  : null;
+                // Extract just the engine model name (strip leading "2x" or "2×" prefix)
+                const rawEngine = safetyProfile.technical_specs.engine;
+                const cleanEngine = rawEngine.replace(/^\d+\s*[x×]\s*/i, '').trim();
+                return (
+                  <p className="text-base font-semibold text-text-primary">
+                    ⚙️ {engineLabel ? `${engineLabel} (${cleanEngine})` : translateText(rawEngine)}
+                  </p>
+                );
+              })() : isSafetyLoading ? (
                 <div className="flex items-center gap-2 mt-1">
                   <Loader2 className="w-4 h-4 text-primary animate-spin" />
                   <span className="text-sm text-text-muted">{t('detail.loading')}</span>
@@ -419,14 +434,54 @@ const FlightDetailPage: React.FC = () => {
 
             <div className="p-3 bg-surface-alt rounded-lg">
               <p className="text-xs text-text-muted mb-0.5">{t('detail.legroom')}</p>
-              {facilities.legroom ? (
-                <p className="text-base font-semibold text-text-primary">🦵 {translateText(facilities.legroom)}</p>
-              ) : facilities.seatPitchInches ? (
-                <p className="text-base font-semibold text-text-primary">🦵 {facilities.seatPitchInches}" ({translateText(facilities.seatPitchCategory ?? '')})</p>
-              ) : (() => {
-                // For business/first class, detect seat type from flightExtensions
+              {(() => {
+                // Determine seat pitch in inches from any available source
+                const pitchInches = facilities.seatPitchInches
+                  || (facilities.legroom ? parseInt(facilities.legroom) || null : null);
                 const cabinLower = (flight.cabin || '').toLowerCase();
                 const isBizFirst = cabinLower.includes('business') || cabinLower.includes('first');
+
+                if (pitchInches && !isBizFirst) {
+                  // Economy class legroom curve classification
+                  const category = pitchInches < 31 ? 'compact' : pitchInches <= 32 ? 'normal' : 'spacious';
+                  const categoryLabel = category === 'compact' ? t('detail.legroomCompact')
+                    : category === 'normal' ? t('detail.legroomNormal')
+                    : t('detail.legroomSpacious');
+                  const categoryColor = category === 'compact' ? 'text-amber-600'
+                    : category === 'normal' ? 'text-text-primary'
+                    : 'text-green-600';
+                  return (
+                    <div>
+                      <p className={cn('text-base font-semibold', categoryColor)}>
+                        🦵 {categoryLabel} ({pitchInches}")
+                      </p>
+                      {/* Visual bar indicator */}
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <span className={cn('text-[10px]', category === 'compact' ? 'font-bold text-amber-600' : 'text-text-muted')}>{t('detail.legroomCompact')}</span>
+                        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              'h-full rounded-full transition-all',
+                              category === 'compact' ? 'bg-amber-500' : category === 'normal' ? 'bg-blue-500' : 'bg-green-500'
+                            )}
+                            style={{ width: `${Math.min(Math.max(((pitchInches - 28) / (36 - 28)) * 100, 8), 100)}%` }}
+                          />
+                        </div>
+                        <span className={cn('text-[10px]', category === 'spacious' ? 'font-bold text-green-600' : 'text-text-muted')}>{t('detail.legroomSpacious')}</span>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Business/first class or raw legroom string
+                if (facilities.legroom) {
+                  return <p className="text-base font-semibold text-text-primary">🦵 {translateText(facilities.legroom)}</p>;
+                }
+                if (facilities.seatPitchInches) {
+                  return <p className="text-base font-semibold text-text-primary">🦵 {facilities.seatPitchInches}" ({translateText(facilities.seatPitchCategory ?? '')})</p>;
+                }
+
+                // Business/first class seat type detection
                 if (isBizFirst) {
                   const exts = (flight.flightExtensions || []).map(e => e.toLowerCase());
                   const lieFlatExt = exts.find(e => e.includes('lie-flat') || e.includes('lie flat'));

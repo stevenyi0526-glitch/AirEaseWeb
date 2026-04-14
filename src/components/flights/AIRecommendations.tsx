@@ -4,6 +4,30 @@ import { Sparkles, Star, Check, X } from 'lucide-react';
 import type { FlightWithScore } from '../../api/types';
 import FlightCard from './FlightCard';
 
+// Map of backend English reason strings → i18n keys
+const REASON_TRANSLATIONS: Record<string, string> = {
+  'Direct flight ✓': 'aiRecommendations.directFlight',
+  'Short duration': 'aiRecommendations.shortDuration',
+  'Great value': 'aiRecommendations.greatValue',
+  'Good price': 'aiRecommendations.goodPrice',
+  'High comfort': 'aiRecommendations.highComfort',
+  'Comfortable': 'aiRecommendations.comfortable',
+  'Efficient': 'aiRecommendations.efficient',
+  'Reliable & premium service': 'aiRecommendations.reliablePremium',
+  'Highly reliable': 'aiRecommendations.highlyReliable',
+  'Premium service': 'aiRecommendations.premiumService',
+  'Family-friendly amenities': 'aiRecommendations.familyFriendly',
+  'Budget-friendly': 'aiRecommendations.budgetFriendly',
+};
+
+// Regex patterns for dynamic reason strings
+const DYNAMIC_REASON_PATTERNS: Array<{ pattern: RegExp; key: string; extract?: (m: RegExpMatchArray) => Record<string, string> }> = [
+  { pattern: /^Departs (\d+:\d+)–(\d+:\d+)/, key: 'aiRecommendations.departsTimeRange', extract: (m) => ({ start: m[1], end: m[2] }) },
+  { pattern: /^Excellent score: (\d+)/, key: 'aiRecommendations.excellentScore', extract: (m) => ({ score: m[1] }) },
+  { pattern: /^Great score: (\d+)/, key: 'aiRecommendations.greatScore', extract: (m) => ({ score: m[1] }) },
+  { pattern: /^Your airline: (.+)/, key: 'aiRecommendations.yourAirline', extract: (m) => ({ airline: m[1] }) },
+];
+
 /** A single requirement check for the AI recommendation checklist */
 interface AIRequirementCheck {
   label: string;
@@ -144,7 +168,17 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
               className="text-[10px] sm:text-xs bg-white/80 backdrop-blur-sm text-blue-700 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-blue-200 font-medium flex items-center gap-1"
             >
               <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-blue-500" />
-              {reason}
+              {(() => {
+                // Try exact match first
+                const exactKey = REASON_TRANSLATIONS[reason];
+                if (exactKey) return t(exactKey);
+                // Try dynamic patterns
+                for (const { pattern, key, extract } of DYNAMIC_REASON_PATTERNS) {
+                  const m = reason.match(pattern);
+                  if (m) return t(key, extract?.(m));
+                }
+                return reason;
+              })()}
             </span>
           ))}
         </div>
