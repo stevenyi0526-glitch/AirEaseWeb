@@ -5,8 +5,16 @@
  * Uses the booking_token from SerpAPI to redirect users to the airline's booking page.
  */
 
+import i18n from '../i18n';
+
 // Use relative URL so Vite proxy handles routing (works on localhost & ngrok)
 const API_URL = import.meta.env.VITE_API_URL || '';
+
+/** Get the SerpAPI hl (language) value from i18n. */
+function _getHl(): string {
+  const lang = i18n.language; // 'en' | 'zh-TW'
+  return lang || 'en';
+}
 
 export interface BookingRedirectParams {
   bookingToken: string;
@@ -19,6 +27,11 @@ export interface BookingRedirectParams {
   arrivalId?: string;
   outboundDate?: string;  // YYYY-MM-DD format
   returnDate?: string;    // YYYY-MM-DD format (for round trips)
+  // Cabin, passengers & currency
+  cabinClass?: string;    // economy, premium_economy, business, first
+  adults?: number;
+  children?: number;
+  currency?: string;      // e.g. HKD, USD, EUR
 }
 
 /** A single booking platform link returned by the backend */
@@ -45,6 +58,10 @@ export async function fetchBookingLinks(params: {
   returnDate?: string;
   airlineName?: string;
   airlineCode?: string;
+  cabinClass?: string;
+  adults?: number;
+  children?: number;
+  currency?: string;
 }): Promise<BookingLink[]> {
   const baseUrl = API_URL || window.location.origin;
 
@@ -62,6 +79,14 @@ export async function fetchBookingLinks(params: {
       if (params.returnDate) url.searchParams.set('return_date', params.returnDate);
       if (params.airlineName) url.searchParams.set('airline_name', params.airlineName);
       if (params.airlineCode) url.searchParams.set('airline_code', params.airlineCode);
+      if (params.cabinClass) url.searchParams.set('cabin_class', params.cabinClass);
+      if (params.adults != null) url.searchParams.set('adults', String(params.adults));
+      if (params.children != null) url.searchParams.set('children', String(params.children));
+      if (params.currency) url.searchParams.set('currency', params.currency);
+
+      // Pass language so airline redirect matches user's locale
+      const hl = _getHl();
+      if (hl && hl !== 'en') url.searchParams.set('hl', hl);
 
       try {
         const response = await fetch(url.toString());
@@ -131,6 +156,24 @@ export function getBookingRedirectUrl(params: BookingRedirectParams): string {
   }
   if (params.preferExpedia) {
     url.searchParams.set('prefer_expedia', 'true');
+  }
+  if (params.cabinClass) {
+    url.searchParams.set('cabin_class', params.cabinClass);
+  }
+  if (params.adults != null && params.adults !== 1) {
+    url.searchParams.set('adults', String(params.adults));
+  }
+  if (params.children != null && params.children > 0) {
+    url.searchParams.set('children', String(params.children));
+  }
+  if (params.currency) {
+    url.searchParams.set('currency', params.currency);
+  }
+
+  // Pass language so airline redirect matches user's locale
+  const hl = _getHl();
+  if (hl && hl !== 'en') {
+    url.searchParams.set('hl', hl);
   }
   
   return url.toString();

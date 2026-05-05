@@ -191,8 +191,23 @@ export async function parseNaturalLanguageSearch(
     // Step 3: Get departure city
     let departureCity = parsed.departure_city;
     let departureCode = parsed.departure_code;
-    
+
+    // Did the user explicitly type a "from <X>" / "從 <X>" departure clause?
+    // If so and the AI didn't resolve it to an airport code, the user's intent
+    // was a specific city — don't silently overwrite it with their current
+    // location. Ask them to clarify instead.
+    const explicitFromMatch = query.match(
+      /\b(?:from|departing\s+from|leaving\s+from|出發於|从|從)\s+([\p{L}\p{N}\s'.\-]{2,40}?)(?=\s+(?:to|going\s+to|去|到|至|往|→|->)\b|$)/iu
+    );
+
     if (!departureCode) {
+      if (explicitFromMatch) {
+        const userTyped = explicitFromMatch[1].trim();
+        return {
+          success: false,
+          error: `Could not recognize departure city "${userTyped}". Please use the city name or its 3-letter IATA code (e.g. "from San Francisco to ${parsed.destination_city || parsed.destination_code}" or "SFO to ${parsed.destination_code}").`
+        };
+      }
       // Try to get from user's location
       if (userLocation) {
         try {

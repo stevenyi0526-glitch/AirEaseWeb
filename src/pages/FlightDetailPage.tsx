@@ -931,6 +931,8 @@ const FlightDetailPage: React.FC = () => {
                       departureId: depFlight.departureAirportCode || depFlight.departureCityCode,
                       arrivalId: depFlight.arrivalAirportCode || depFlight.arrivalCityCode,
                       outboundDate,
+                      cabinClass: flight.cabin || undefined,
+                      currency: displayCurrency,
                     };
 
                     // Track booking click for return-visit popup
@@ -985,6 +987,8 @@ const FlightDetailPage: React.FC = () => {
                       departureId: depFlight.departureAirportCode || depFlight.departureCityCode,
                       arrivalId: depFlight.arrivalAirportCode || depFlight.arrivalCityCode,
                       outboundDate,
+                      cabinClass: flight.cabin || undefined,
+                      currency: displayCurrency,
                     });
                   } else {
                     const from = depFlight.departureAirportCode || depFlight.departureCityCode;

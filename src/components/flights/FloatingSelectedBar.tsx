@@ -26,6 +26,9 @@ interface FloatingSelectedBarProps {
     from?: string;
     to?: string;
     date?: string;
+    cabin?: string;
+    adults?: number;
+    children?: number;
   };
   // Handlers
   onBookNow: (flights: FlightWithScore[]) => void;
@@ -79,12 +82,17 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
       selectedDepartureFlight.flight.airlineCode === selectedReturnFlight.flight.airlineCode;
 
     // Price computation
+    // In "combined pricing" mode (Google Flights round-trip search), individual
+    // leg prices already represent the total round-trip fare, so we label them
+    // explicitly as round trip to avoid confusion.
     const priceText = bothSelected
       ? usingCombinedPricing
-        ? `${t('search.roundTrip')}: ${formatPrice(selectedReturnFlight.flight.price, currency)}`
+        ? `${t('search.roundTrip')} (${t('flights.total')}): ${formatPrice(selectedReturnFlight.flight.price, currency)}`
         : `${t('flights.total')}: ${formatPrice(selectedDepartureFlight.flight.price + selectedReturnFlight.flight.price, currency)}`
       : selectedDepartureFlight
-        ? `${t('flights.outbound')}: ${formatPrice(selectedDepartureFlight.flight.price, currency)}${usingCombinedPricing ? '' : ''}`
+        ? usingCombinedPricing
+          ? `${t('search.roundTrip')}: ${formatPrice(selectedDepartureFlight.flight.price, currency)}`
+          : `${t('flights.outbound')}: ${formatPrice(selectedDepartureFlight.flight.price, currency)}`
         : `${t('flights.returnLabel')}: ${formatPrice(selectedReturnFlight!.flight.price, currency)}`;
 
     // Book now button logic — always show all booking options
@@ -111,6 +119,10 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
           outboundDate={filters.date || selectedDepartureFlight.flight.departureTime.slice(0, 10)}
           airlineName={selectedDepartureFlight.flight.airline}
           airlineCode={selectedDepartureFlight.flight.airlineCode}
+          cabinClass={filters.cabin}
+          adults={filters.adults}
+          children={filters.children}
+          currency={currency}
           onFallback={() => onBookNow([selectedDepartureFlight, selectedReturnFlight])}
         />
       );
@@ -307,6 +319,10 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
             outboundDate={filters.date || validFlights[0].flight.departureTime.slice(0, 10)}
             airlineName={validFlights[0].flight.airline}
             airlineCode={validFlights[0].flight.airlineCode}
+            cabinClass={filters.cabin}
+            adults={filters.adults}
+            children={filters.children}
+            currency={currency}
             onFallback={() => onBookNow(validFlights)}
           />
         );

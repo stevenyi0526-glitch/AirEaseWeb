@@ -103,6 +103,7 @@ const en = {
       noFlightsFound: 'No flights found',
       noFlightsForDate: 'There are no flights remaining on {{date}}',
       tryNextDay: 'Try {{date}}',
+      tryNearbyAirports: '{{code}} may not have public flights — try a nearby airport:',
       noFlightsDesc: 'Try adjusting your search criteria or dates.',
       noFlightsFilterDesc: 'Try adjusting your filters or search criteria.',
       newSearch: 'New Search',
@@ -601,6 +602,9 @@ const en = {
       noPlatformsFound: 'No booking platforms found',
       airlineOfficial: 'Airline Official',
       travelAgency: 'Travel Agency',
+      googleFlightsDisclaimer: 'Booking options provided by Google Flights. Prices and availability are verified at checkout.',
+      refreshPrices: 'Refresh prices',
+      refreshHint: 'Booking links may expire after a few minutes. Refresh if a link does not open the correct page.',
     },
 
     // ─── Weather ───

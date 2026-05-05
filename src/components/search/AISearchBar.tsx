@@ -84,8 +84,10 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
     const looksLikeBareCityOrMinimal = (q: string): boolean => {
       const lower = q.toLowerCase();
       // If it contains flight-related keywords, it's already a proper query
-      const flightKeywords = /\b(fly|flight|cheap|direct|morning|afternoon|evening|business|first class|economy|from|到|去|飞|便宜|最|航班|机票|直飞|商务|头等)\b/i;
+      const flightKeywords = /\b(to|fly|flight|cheap|direct|morning|afternoon|evening|business|first class|economy|from|到|去|飞|便宜|最|航班|机票|直飞|商务|头等|至)\b/i;
       if (flightKeywords.test(q)) return false;
+      // Origin-destination separator (e.g. "PAO-HKG", "PAO->HKG", "PAO→HKG")
+      if (/[A-Za-z]{3}\s*(?:-|->|→|\/)\s*[A-Za-z]{3}/.test(q)) return false;
       // Short queries (1-3 words) without keywords are likely just city names
       const words = lower.split(/\s+/).filter(Boolean);
       return words.length <= 3;

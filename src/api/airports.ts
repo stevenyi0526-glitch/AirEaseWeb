@@ -70,3 +70,18 @@ export async function findNearestAirport(
   );
   return response.data;
 }
+
+/**
+ * Find a list of public airports near a given IATA code (excluding itself).
+ * Used to suggest alternatives when a search returns no flights
+ * (e.g. when the user's nearest airport is a private one like PAO).
+ */
+export async function findNearbyAirportsByCode(
+  iataCode: string,
+  limit = 5
+): Promise<AirportCoordinates[]> {
+  const response = await apiClient.get(
+    `/v1/airports/nearby/${encodeURIComponent(iataCode)}?limit=${limit}`
+  );
+  return response.data;
+}

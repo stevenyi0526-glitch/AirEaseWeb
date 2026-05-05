@@ -13,7 +13,7 @@ import { AIRLINES } from '../lib/mockApi';
 import { useFlightSearchParams, filtersToApiParams, type SortBy } from '../hooks/useFlightSearchParams';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserLocation } from '../api/aiSearch';
-import { findNearestAirport } from '../api/airports';
+import { findNearestAirport, findNearbyAirportsByCode } from '../api/airports';
 import FilterDropdown from '../components/filters/FilterDropdown';
 import SortDropdown from '../components/filters/SortDropdown';
 import FlightCard from '../components/flights/FlightCard';
@@ -511,7 +511,7 @@ const FlightsPage: React.FC = () => {
     enabled: !!firstReturnFlight?.departureCityCode && !!firstReturnFlight?.arrivalCityCode && !!filters.returnDate,
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
-    retry: 1,
+    retry: 2,
   });
 
   // --- Multi-city: one availability query per leg ---
@@ -921,6 +921,24 @@ const FlightsPage: React.FC = () => {
     isFetchingMultiCity
   ]);
 
+  // ============================================================================
+  // Nearby airport suggestions for the empty-results state.
+  // When the current leg returns 0 flights, fetch a few public airports near
+  // the searched origin so the user can re-search from a viable airport.
+  // (Common case: user's geo-located nearest airport is private/closed,
+  //  e.g. PAO → no flights.)
+  // ============================================================================
+  const shouldSuggestNearby =
+    !isLoadingCurrentLeg && !!currentLegRoute.from && currentLegFlights.length === 0;
+  const { data: nearbyAirportSuggestions } = useQuery({
+    queryKey: ['nearby-airports', currentLegRoute.from],
+    queryFn: () => findNearbyAirportsByCode(currentLegRoute.from, 5),
+    enabled: shouldSuggestNearby,
+    staleTime: 60 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 1,
+  });
+
   // Handle date change and search
   const handleNewSearch = () => {
     updateFilters({ 
@@ -1260,6 +1278,11 @@ const FlightsPage: React.FC = () => {
         // Different airlines → prefer Expedia/third-party aggregator
         // Same airline → prefer airline's official site (default behavior)
         preferExpedia: !allSameAirline,
+        // Pass cabin class, passengers & currency for correct booking
+        cabinClass: filters.cabin,
+        adults: filters.adults || 1,
+        children: filters.children || 0,
+        currency: currency,
       };
       
       // For round-trip bookings with combined tokens (encoding both legs),
@@ -1400,6 +1423,18 @@ const FlightsPage: React.FC = () => {
 
             {/* Search Info + Actions */}
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 flex-shrink-0">
+
+              {/* Ski Finder Button */}
+              <button
+                onClick={() => alert(t('flights.skiFinderComingSoon'))}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                style={{ backgroundColor: '#0ABAB5', color: '#fff' }}
+                title={t('flights.skiFinder')}
+              >
+                <Snowflake className="w-4 h-4" />
+                <span>{t('flights.skiFinder')}</span>
+              </button>
+
               {/* Date Pickers - hidden on mobile */}
               <div className="hidden md:flex items-center gap-2 bg-surface-alt rounded-lg px-3 py-1.5">
                 <EnglishDateInput
@@ -1444,17 +1479,6 @@ const FlightsPage: React.FC = () => {
                   compact
                 />
               </div>
-
-              {/* Ski Finder Button */}
-              <button
-                onClick={() => alert(t('flights.skiFinderComingSoon'))}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                style={{ backgroundColor: '#0ABAB5', color: '#fff' }}
-                title={t('flights.skiFinder')}
-              >
-                <Snowflake className="w-4 h-4" />
-                <span>{t('flights.skiFinder')}</span>
-              </button>
 
               <SortDropdown
                 value={filters.sortBy}
@@ -1782,6 +1806,46 @@ const FlightsPage: React.FC = () => {
                           </button>
                         );
                       })()}
+                      {/* Suggest nearby airports — helps when the searched origin
+                          is a private/closed airport with no flights (e.g. PAO). */}
+                      {nearbyAirportSuggestions && nearbyAirportSuggestions.length > 0 && (
+                        <div className="mt-6 max-w-md mx-auto text-left">
+                          <p className="text-sm font-semibold text-text-primary mb-2 text-center">
+                            {t('flights.tryNearbyAirports', { code: currentLegRoute.from })}
+                          </p>
+                          <div className="flex flex-wrap gap-2 justify-center">
+                            {nearbyAirportSuggestions.map((ap) => (
+                              <button
+                                key={ap.iataCode}
+                                onClick={() => {
+                                  // Update the correct field for the active leg
+                                  if (filters.tripType === 'multicity') {
+                                    const newLegs = [...filters.multiCityLegs];
+                                    newLegs[activeMultiCityLeg] = {
+                                      ...newLegs[activeMultiCityLeg],
+                                      from: ap.iataCode,
+                                    };
+                                    updateFilters({ multiCityLegs: newLegs });
+                                  } else if (
+                                    filters.tripType === 'roundtrip' &&
+                                    filters.returnDate &&
+                                    activeFlightTab === 'return'
+                                  ) {
+                                    // Return leg origin = filters.to
+                                    setSelectedDepartureFlight(null);
+                                    updateFilters({ to: ap.iataCode });
+                                  } else {
+                                    updateFilters({ from: ap.iataCode });
+                                  }
+                                }}
+                                className="px-3 py-2 bg-white border border-primary/30 text-primary text-sm font-medium rounded-lg hover:bg-primary hover:text-white transition-colors"
+                              >
+                                {ap.iataCode} · {ap.municipality || ap.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {hasActiveFilters && (
                         <div>
                           <button onClick={resetFilters} className="btn-secondary">
@@ -1927,6 +1991,9 @@ const FlightsPage: React.FC = () => {
           from: filters.from,
           to: filters.to,
           date: filters.date,
+          cabin: filters.cabin,
+          adults: filters.adults,
+          children: filters.children,
         }}
         onBookNow={handleMultiFlightBooking}
         onClearDeparture={() => setSelectedDepartureFlight(null)}

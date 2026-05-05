@@ -103,6 +103,7 @@ const zhTW = {
       noFlightsFound: '未找到航班',
       noFlightsForDate: '{{date}} 已無剩餘航班',
       tryNextDay: '試試 {{date}}',
+      tryNearbyAirports: '{{code}} 可能沒有公共航班，請試試附近的機場：',
       noFlightsDesc: '請嘗試調整搜尋條件或日期。',
       noFlightsFilterDesc: '請嘗試調整篩選條件或搜尋條件。',
       newSearch: '重新搜尋',
@@ -601,6 +602,9 @@ const zhTW = {
       noPlatformsFound: '未找到預訂平台',
       airlineOfficial: '航空公司官方',
       travelAgency: '旅遊代理',
+      googleFlightsDisclaimer: '預訂選項由 Google Flights 提供，最終價格與可用性以結帳時為準。',
+      refreshPrices: '重新整理價格',
+      refreshHint: '預訂連結可能會在數分鐘後失效。如果連結未能開啟正確頁面，請點此重新整理。',
     },
 
     // ─── 天氣 ───

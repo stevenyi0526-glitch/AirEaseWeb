@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
-import { StepForward, Loader2, ExternalLink } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { StepForward, Loader2, ExternalLink, RefreshCw } from 'lucide-react';
 import { fetchBookingLinks, type BookingLink } from '../../api/booking';
 import { cn } from '../../utils/cn';
 
@@ -14,6 +15,10 @@ interface MixedAirlineBookButtonProps {
   returnDate?: string;
   airlineName?: string;
   airlineCode?: string;
+  cabinClass?: string;
+  adults?: number;
+  children?: number;
+  currency?: string;
   /** Fallback action if no links available */
   onFallback: () => void;
 }
@@ -30,9 +35,14 @@ const MixedAirlineBookButton: React.FC<MixedAirlineBookButtonProps> = ({
   returnDate,
   airlineName,
   airlineCode,
+  cabinClass,
+  adults,
+  children,
+  currency,
   onFallback: _onFallback,
 }) => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [links, setLinks] = useState<BookingLink[]>([]);
   const [loading, setLoading] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -68,6 +78,10 @@ const MixedAirlineBookButton: React.FC<MixedAirlineBookButtonProps> = ({
         returnDate,
         airlineName,
         airlineCode,
+        cabinClass,
+        adults,
+        children,
+        currency,
       });
       console.log('[MixedAirlineBookButton] fetchLinks result', {
         linkCount: result.length,
@@ -81,7 +95,7 @@ const MixedAirlineBookButton: React.FC<MixedAirlineBookButtonProps> = ({
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [tokensKey, bookingTokens, departureId, arrivalId, outboundDate, returnDate, airlineName]);
+  }, [tokensKey, bookingTokens, departureId, arrivalId, outboundDate, returnDate, airlineName, cabinClass, adults, children, currency]);
 
   // Reset cache when tokens change
   useEffect(() => {
@@ -125,6 +139,24 @@ const MixedAirlineBookButton: React.FC<MixedAirlineBookButtonProps> = ({
   const handlePlatformClick = (link: BookingLink) => {
     window.open(link.url, '_blank', 'noopener,noreferrer');
     setShowMenu(false);
+  };
+
+  /**
+   * Refresh booking links — invalidates upstream flight queries (so booking
+   * tokens are regenerated from a fresh SerpAPI call) and re-fetches the
+   * platform list. This is the user-facing "quick patch" for expired tokens.
+   */
+  const handleRefresh = async () => {
+    if (fetchingRef.current) return;
+    // Invalidate flight-related queries so the next render uses fresh tokens
+    await queryClient.invalidateQueries({ queryKey: ['flights'] });
+    await queryClient.invalidateQueries({ queryKey: ['roundtrip-flights'] });
+    await queryClient.invalidateQueries({ queryKey: ['combined-return-flights'] });
+    await queryClient.invalidateQueries({ queryKey: ['multicity-flights'] });
+    // Reset local cache so fetchLinks re-runs with the (potentially new) tokens
+    lastTokensRef.current = '';
+    setLinks([]);
+    fetchLinks();
   };
 
   // Compute portal menu position: anchored above the button, right-aligned
@@ -214,8 +246,21 @@ const MixedAirlineBookButton: React.FC<MixedAirlineBookButtonProps> = ({
               <span>{t('booking.loadingPlatforms')}</span>
             </div>
           ) : links.length === 0 ? (
-            <div className="px-4 py-5 text-sm text-gray-400 text-center">
-              {t('booking.noPlatformsFound')}
+            <div className="px-4 py-5 text-sm text-gray-400 text-center space-y-3">
+              <div>{t('booking.noPlatformsFound')}</div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefresh();
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#034891] bg-[#034891]/10 hover:bg-[#034891]/20 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                {t('booking.refreshPrices')}
+              </button>
+              <div className="text-[10px] text-gray-400 leading-snug px-2">
+                {t('booking.refreshHint')}
+              </div>
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
@@ -251,6 +296,25 @@ const MixedAirlineBookButton: React.FC<MixedAirlineBookButtonProps> = ({
                   <ExternalLink className="w-4 h-4 text-gray-300 flex-shrink-0" />
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Footer: Google Flights disclaimer + refresh button (always visible when there are links) */}
+          {!loading && links.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-gray-100 px-3 space-y-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefresh();
+                }}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium text-gray-500 hover:text-[#034891] hover:bg-[#034891]/5 transition-colors"
+              >
+                <RefreshCw className="w-3 h-3" />
+                {t('booking.refreshPrices')}
+              </button>
+              <div className="text-[10px] text-gray-400 leading-snug text-center px-1">
+                {t('booking.googleFlightsDisclaimer')}
+              </div>
             </div>
           )}
         </div>,
