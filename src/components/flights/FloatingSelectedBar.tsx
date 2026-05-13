@@ -90,9 +90,12 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
         ? `${t('search.roundTrip')} (${t('flights.total')}): ${formatPrice(selectedReturnFlight.flight.price, currency)}`
         : `${t('flights.total')}: ${formatPrice(selectedDepartureFlight.flight.price + selectedReturnFlight.flight.price, currency)}`
       : selectedDepartureFlight
-        ? usingCombinedPricing
-          ? `${t('search.roundTrip')}: ${formatPrice(selectedDepartureFlight.flight.price, currency)}`
-          : `${t('flights.outbound')}: ${formatPrice(selectedDepartureFlight.flight.price, currency)}`
+        // Bug 2548338: 之前在 combinedPricing 模式下，仅选了去程也把价格标为
+        // 「往返：$X」，但 X 实际是 SerpAPI 返回的去程候选总价（基于该去程
+        // 待生成的回程组合的最小往返价），用户认知错乱。仅选一程时一律按
+        // 单程标签显示，避免误导。等到回程也选上，bothSelected 分支再用
+        // 完整的往返合计。
+        ? `${t('flights.outbound')}: ${formatPrice(selectedDepartureFlight.flight.price, currency)}`
         : `${t('flights.returnLabel')}: ${formatPrice(selectedReturnFlight!.flight.price, currency)}`;
 
     // Book now button logic — always show all booking options
@@ -386,11 +389,17 @@ const FloatingSelectedBar: React.FC<FloatingSelectedBarProps> = ({
             </div>
 
             {/* Price */}
+            {/* Bug 2548374: 多城市选择 3 段及以上时，原本只在 allSelected 时显示
+                结算金额；用户在还没选完所有段时无法看到累计价格，错以为页面
+                没有结算逻辑。改为只要任意一段已选就展示当前合计，全部选完时
+                标签变成 Total，否则展示「合计：$X (n/m selected)」。 */}
             <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
               <span className="text-lg font-bold">
-                {allSelected
-                  ? `${t('flights.total')}: ${formatPrice(totalPrice, currency)}`
-                  : `${validFlights.length}/${selectedMultiCityFlights.length} ${t('common.selected').toLowerCase()}`
+                {validFlights.length === 0
+                  ? `0/${selectedMultiCityFlights.length} ${t('common.selected').toLowerCase()}`
+                  : allSelected
+                    ? `${t('flights.total')}: ${formatPrice(totalPrice, currency)}`
+                    : `${formatPrice(totalPrice, currency)} (${validFlights.length}/${selectedMultiCityFlights.length})`
                 }
               </span>
               {allSelected && (

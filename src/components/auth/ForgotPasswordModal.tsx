@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Mail, Lock, Loader2, ArrowLeft, RefreshCw, KeyRound, CheckCircle, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { authApi } from '../../api/auth';
+import { extractErrorMessage, validateEmailFormat } from '../../utils/authValidation';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -58,6 +59,14 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
   const handleSubmitEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Strict email format check (Bug 2548057 family)
+    const emailErrKey = validateEmailFormat(email);
+    if (emailErrKey) {
+      setError(t(emailErrKey));
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -67,8 +76,14 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
       setResendCooldown(30);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || t('auth.failedSendResetCode'));
+      // Bug 2548048: explicitly tell the user when the email is unregistered
+      // instead of silently pretending we sent them a code.
+      const e = err as { response?: { status?: number; data?: { detail?: string } } };
+      if (e?.response?.status === 404 && e?.response?.data?.detail === 'EMAIL_NOT_REGISTERED') {
+        setError(t('auth.emailNotRegistered'));
+      } else {
+        setError(extractErrorMessage(err, t('auth.failedSendResetCode')));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -97,7 +112,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
       setStep('success');
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || t('auth.invalidOrExpiredCode'));
+      setError(extractErrorMessage(error, t('auth.invalidOrExpiredCode')));
       setVerificationCode(['', '', '', '', '', '']);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } finally {
@@ -119,7 +134,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || t('auth.failedResendCode'));
+      setError(extractErrorMessage(error, t('auth.failedResendCode')));
     } finally {
       setIsLoading(false);
     }

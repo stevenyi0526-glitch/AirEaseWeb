@@ -13,6 +13,7 @@ import FlightHighlightTags from './FlightHighlightTags';
 import FavoriteButton from './FavoriteButton';
 import { cn } from '../../utils/cn';
 import { translateAirline, translateAircraft } from '../../utils/translate';
+import { isUsAirline } from '../../utils/usAirlines';
 
 interface FlightCardProps {
   flightWithScore: FlightWithScore;
@@ -32,6 +33,12 @@ interface FlightCardProps {
    * - undefined: auto-detect based on isRoundTrip prop
    */
   priceLabel?: 'round trip' | 'per person';
+  /**
+   * Total number of passengers (adults + children). Used to derive the
+   * per-person price because SerpAPI returns the cumulative price for the
+   * full party. Defaults to 1 for backwards compatibility. (Bug 2548203)
+   */
+  passengerCount?: number;
 }
 
 /**
@@ -54,13 +61,16 @@ const FlightCard: React.FC<FlightCardProps> = ({
   displayCurrency = 'USD',
   isTicketLoading = false,
   priceLabel,
+  passengerCount = 1,
 }) => {
   const { t } = useTranslation();
   const { flight, score } = flightWithScore;
   const [showSafetyPopup, setShowSafetyPopup] = useState(false);
   const safetyPopupRef = useRef<HTMLDivElement>(null);
   const safetyBadgeRef = useRef<HTMLButtonElement>(null);
-  const [popupPos, setPopupPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  // Bug 2548146: track maxHeight + a flag for whether the popup is opening
+  // upward, so the safety profile is never clipped by the bottom of the viewport.
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number; width: number; maxHeight: number; openUp: boolean } | null>(null);
 
   // Lazily fetch full safety profile only when popup is opened
   const { data: safetyProfile, isFetching: isSafetyLoading } = useQuery({
@@ -75,16 +85,26 @@ const FlightCard: React.FC<FlightCardProps> = ({
     staleTime: 30 * 60 * 1000,
   });
 
-  // Compute popup position anchored below the badge button
+  // Compute popup position anchored to the badge button. Bug 2548146:
+  // when there isn't enough room below the badge (e.g. badge sits near the
+  // viewport bottom for the last flight card in the list), flip the popup
+  // upward so the user can scroll/read the full NTSB record. Always cap the
+  // popup height to the available space and let the body scroll.
   const updatePopupPosition = useCallback(() => {
-    if (safetyBadgeRef.current) {
-      const rect = safetyBadgeRef.current.getBoundingClientRect();
-      setPopupPos({
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width,
-      });
-    }
+    if (!safetyBadgeRef.current) return;
+    const rect = safetyBadgeRef.current.getBoundingClientRect();
+    const margin = 8; // breathing room from the viewport edges
+    const spaceBelow = window.innerHeight - rect.bottom - margin;
+    const spaceAbove = rect.top - margin;
+    const openUp = spaceBelow < 320 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(220, openUp ? spaceAbove - 4 : spaceBelow - 4);
+    setPopupPos({
+      top: openUp ? Math.max(margin, rect.top - 4) : rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+      openUp,
+    });
   }, []);
 
   // Close popup on click outside
@@ -122,6 +142,12 @@ const FlightCard: React.FC<FlightCardProps> = ({
   // Calculate estimated individual leg prices for round trips (only for legacy breakdown display)
   const outboundPrice = isRoundTrip ? Math.round(flight.price * 0.55) : flight.price;
   const returnPrice = isRoundTrip ? Math.round(flight.price * 0.45) : 0;
+
+  // Bug 2548203: SerpAPI returns the cumulative party price; divide by the
+  // passenger count when we label the figure "per person" so the number and
+  // the caption stay consistent (e.g. 2 adults @ $400 each => $800 total in API).
+  const safePassengerCount = Math.max(1, passengerCount);
+  const perPersonPrice = Math.round(flight.price / safePassengerCount);
 
   const getStopsText = () => {
     if (flight.stops === 0) return t('common.direct');
@@ -191,9 +217,13 @@ const FlightCard: React.FC<FlightCardProps> = ({
 
           {/* Duration & Stops */}
           <div className="flex-1 px-1 sm:px-2">
-            <div className="flex items-center justify-center gap-1 text-xs sm:text-sm text-text-secondary mb-1">
+            <div
+              className="flex items-center justify-center gap-1 text-xs sm:text-sm text-text-secondary mb-1"
+              title={t('flights.localTimeHint')}
+            >
               <span>{formatDuration(flight.durationMinutes)}</span>
             </div>
+            <p className="text-[10px] text-text-muted text-center mb-1">{t('flights.localTimeBadge')}</p>
             <div className="relative">
               <div className="h-px bg-border" />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface px-1.5 sm:px-2">
@@ -232,7 +262,7 @@ const FlightCard: React.FC<FlightCardProps> = ({
               </>
             ) : (
               <>
-                <p className="text-lg sm:text-2xl font-bold text-primary">{formatPriceWithCurrency(flight.price, displayCurrency)}</p>
+                <p className="text-lg sm:text-2xl font-bold text-primary">{formatPriceWithCurrency(perPersonPrice, displayCurrency)}</p>
                 <p className="text-[10px] sm:text-xs text-text-muted">{t('common.perPerson')}</p>
               </>
             )}
@@ -320,7 +350,11 @@ const FlightCard: React.FC<FlightCardProps> = ({
             >
               <ShieldCheck className="w-4 h-4 flex-shrink-0" />
               <span className="flex-1">
-                {t('safety.ntsbSafety', { score: score.dimensions.safety })}
+                {/* Bug 2548138: NTSB only covers US carriers; show a generic
+                    safety label otherwise to avoid implying NTSB jurisdiction. */}
+                {isUsAirline(flight.airlineCode)
+                  ? t('safety.ntsbSafety', { score: score.dimensions.safety })
+                  : t('safety.genericSafety', { score: score.dimensions.safety })}
                 {score.dimensions.safety >= 9
                   ? ` — ${t('safety.excellent')}`
                   : score.dimensions.safety >= 7
@@ -339,8 +373,17 @@ const FlightCard: React.FC<FlightCardProps> = ({
             {showSafetyPopup && popupPos && createPortal(
               <div
                 ref={safetyPopupRef}
-                className="fixed z-[9999] bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-fade-in"
-                style={{ top: popupPos.top, left: popupPos.left, width: popupPos.width }}
+                // Bug 2548146: flex column + maxHeight so the inner body becomes
+                // scrollable when the safety record is taller than the available
+                // viewport space. translateY(-100%) flips the anchor when openUp.
+                className="fixed z-[9999] bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-fade-in flex flex-col"
+                style={{
+                  top: popupPos.top,
+                  left: popupPos.left,
+                  width: popupPos.width,
+                  maxHeight: popupPos.maxHeight,
+                  transform: popupPos.openUp ? 'translateY(-100%)' : undefined,
+                }}
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Popup Header */}
@@ -357,8 +400,8 @@ const FlightCard: React.FC<FlightCardProps> = ({
                   </button>
                 </div>
 
-                {/* Popup Content */}
-                <div className="p-4">
+                {/* Popup Content - Bug 2548146: scrolls when content exceeds maxHeight */}
+                <div className="p-4 overflow-y-auto flex-1 min-h-0">
                   {isSafetyLoading ? (
                     <div className="flex flex-col items-center gap-2 py-6">
                       <Loader2 className="w-6 h-6 text-primary animate-spin" />

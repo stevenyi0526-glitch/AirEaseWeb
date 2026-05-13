@@ -8,6 +8,7 @@ import FlightDetailPage from './pages/FlightDetailPage';
 import FavoritesPage from './pages/FavoritesPage';
 import TravelersPage from './pages/TravelersPage';
 import PasswordUpdateModal from './components/auth/PasswordUpdateModal';
+import ServiceBusyToast from './components/common/ServiceBusyToast';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +38,7 @@ function AppContent() {
         isOpen={passwordUpdateRequired}
         onClose={clearPasswordUpdateRequired}
       />
+      <ServiceBusyToast />
     </>
   );
 }

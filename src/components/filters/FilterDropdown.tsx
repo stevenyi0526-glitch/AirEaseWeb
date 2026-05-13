@@ -60,6 +60,12 @@ interface FilterDropdownProps {
   trackPreferences?: boolean;
   currencySymbol?: string;
   className?: string;
+  /**
+   * Bug 2548305: imperative open trigger. Parent increments this value to
+   * pop the dropdown open (e.g. when user clicks the date chip in the tab
+   * header to be guided to the date picker).
+   */
+  openSignal?: number;
 }
 
 const FilterDropdown: React.FC<FilterDropdownProps> = ({
@@ -71,6 +77,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   trackPreferences = false,
   currencySymbol = '$',
   className,
+  openSignal,
 }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -142,6 +149,25 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Bug 2548371: when SortDropdown opens, force this filter panel closed so
+  // the two dropdowns don't visually overlap if the user clicks one then the
+  // other in quick succession.
+  useEffect(() => {
+    const close = () => setIsOpen(false);
+    window.addEventListener('airease:dropdown-open:sort', close);
+    return () => window.removeEventListener('airease:dropdown-open:sort', close);
+  }, []);
+
+  // Bug 2548305: imperative open trigger driven by parent (e.g. clicking the
+  // date chip in the round-trip tab header). Each increment of openSignal
+  // pops the panel open and broadcasts a sort-close event so we don't
+  // collide with the SortDropdown.
+  useEffect(() => {
+    if (openSignal === undefined || openSignal === 0) return;
+    setIsOpen(true);
+    window.dispatchEvent(new CustomEvent('airease:dropdown-open:filter'));
+  }, [openSignal]);
+
   // Multi-city leg handlers
   const updateMultiCityLeg = (index: number, field: keyof MultiCityLeg, value: string) => {
     setDraftMultiCityLegs(prev => prev.map((leg, i) => i === index ? { ...leg, [field]: value } : leg));
@@ -197,6 +223,19 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
     
     // If multi-city, include legs and sync from/to/date from first leg
     if (draftTripType === 'multicity' && draftMultiCityLegs.length >= 2) {
+      // Bug 2548317: refuse to apply when leg dates are out of order, otherwise
+      // the search query silently runs with invalid params and never returns.
+      for (let i = 1; i < draftMultiCityLegs.length; i++) {
+        const prev = draftMultiCityLegs[i - 1]?.date;
+        const cur = draftMultiCityLegs[i]?.date;
+        if (prev && cur && cur < prev) {
+          // Surface a non-blocking inline alert via the validation message that
+          // is already rendered next to each date input; abort the apply.
+          // eslint-disable-next-line no-alert
+          window.alert(t('filters.legDateOrderError', { defaultValue: 'Each multi-city leg must depart on or after the previous leg. Please adjust the dates and try again.' }));
+          return;
+        }
+      }
       updates.multiCityLegs = draftMultiCityLegs;
       updates.from = draftMultiCityLegs[0].from;
       updates.to = draftMultiCityLegs[0].to;
@@ -348,10 +387,21 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                       <EnglishDateInput
                         value={leg.date}
                         onChange={(val) => updateMultiCityLeg(index, 'date', val)}
-                        min={new Date().toISOString().split('T')[0]}
+                        min={(() => {
+                          // Bug 2548317: each leg must depart no earlier than the previous leg.
+                          const today = new Date().toISOString().split('T')[0];
+                          if (index === 0) return today;
+                          const prevDate = draftMultiCityLegs[index - 1]?.date;
+                          return prevDate && prevDate > today ? prevDate : today;
+                        })()}
                         className="h-8 pl-2.5 pr-2 text-xs border border-border rounded-lg bg-white focus-within:ring-1 focus-within:ring-primary focus-within:border-primary"
                         iconClassName="w-3.5 h-3.5"
                       />
+                      {index > 0 && draftMultiCityLegs[index - 1]?.date && leg.date && leg.date < draftMultiCityLegs[index - 1].date && (
+                        <p className="mt-1 text-[10px] text-red-500">
+                          {t('filters.legDateOrderError', { defaultValue: 'Departure must be on or after the previous leg.' })}
+                        </p>
+                      )}
                     </div>
                   ))}
                   {draftMultiCityLegs.length < 5 && (

@@ -1,23 +1,60 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Trash2, ArrowLeft, Plane, Calendar, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useFavoritesStore } from '../stores/favoritesStore';
 import { useAuth } from '../contexts/AuthContext';
 import ScoreBadge from '../components/flights/ScoreBadge';
-import { formatPrice, formatDate, formatTime } from '../utils/formatters';
+import CurrencySelector, {
+  CURRENCIES,
+  type CurrencyCode,
+  formatPriceWithCurrency,
+} from '../components/common/CurrencySelector';
+import { findNearestAirport } from '../api/airports';
+import { getUserLocation } from '../api/aiSearch';
+import { formatDate, formatTime } from '../utils/formatters';
 import { translateAirline } from '../utils/translate';
+
+// Bug 2548273: shared with FlightsPage. Auto-detect display currency from the
+// user's nearest international airport country so the favorites view doesn't
+// stay locked to USD/CNY when the user is browsing in another region.
+const COUNTRY_CURRENCY_MAP: Record<string, CurrencyCode> = {
+  CN: 'CNY', US: 'USD', GB: 'GBP', JP: 'JPY', HK: 'HKD',
+  SG: 'SGD', AU: 'AUD', CA: 'CAD', KR: 'KRW', IN: 'INR', TH: 'THB',
+  DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', NL: 'EUR', PT: 'EUR',
+  BE: 'EUR', AT: 'EUR', IE: 'EUR', FI: 'EUR', GR: 'EUR',
+};
 
 const FavoritesPage: React.FC = () => {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const { favorites, isLoading, fetchFavorites, removeFavorite } = useFavoritesStore();
+  const [currency, setCurrency] = useState<CurrencyCode>('USD');
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchFavorites();
     }
   }, [isAuthenticated, fetchFavorites]);
+
+  // Bug 2548273: auto-detect currency once on mount; user can override via the
+  // CurrencySelector. Mirrors FlightsPage so prices stay consistent across views.
+  useEffect(() => {
+    (async () => {
+      try {
+        const pos = await getUserLocation();
+        const airport = await findNearestAirport(pos.coords.latitude, pos.coords.longitude, 200);
+        if (airport.country) {
+          const mapped = COUNTRY_CURRENCY_MAP[airport.country.toUpperCase()];
+          if (mapped && CURRENCIES.find(c => c.code === mapped)) {
+            setCurrency(mapped);
+          }
+        }
+      } catch {
+        // Geolocation denied — keep default
+      }
+    })();
+  }, []);
 
   const handleRemove = async (flightId: string) => {
     if (confirm(t('favorites.removeConfirm'))) {
@@ -59,6 +96,9 @@ const FavoritesPage: React.FC = () => {
               {t('favorites.savedFlights', { count: favorites.length })}
             </p>
           </div>
+          {/* Bug 2548273: let users pick the display currency on the favorites
+              page (auto-detected on mount, overridable here). */}
+          <CurrencySelector value={currency} onChange={setCurrency} compact />
         </div>
 
         {/* Favorites List */}
@@ -109,6 +149,11 @@ const FavoritesPage: React.FC = () => {
                     <div className="flex-1 border-t border-dashed border-border" />
                     <div className="text-right">
                       <p className="text-lg font-bold text-text-primary">{favorite.arrivalCity}</p>
+                      {/* Bug 2548275: show arrival time alongside the
+                          arrival city, mirroring the search result card. */}
+                      {favorite.arrivalTime && (
+                        <p className="text-sm text-text-secondary">{formatTime(favorite.arrivalTime)}</p>
+                      )}
                     </div>
                   </div>
 
@@ -119,7 +164,10 @@ const FavoritesPage: React.FC = () => {
                       <span>{formatDate(favorite.departureTime)}</span>
                     </div>
                     <p className="text-xl font-bold text-primary">
-                      {formatPrice(favorite.price, 'CNY')}
+                      {/* Bug 2548273: convert + format using the active
+                          display currency instead of hard-coding CNY (which
+                          formatPrice was actually rendering as USD). */}
+                      {formatPriceWithCurrency(favorite.price, currency)}
                     </p>
                   </div>
 
@@ -132,8 +180,12 @@ const FavoritesPage: React.FC = () => {
                       <Trash2 className="w-4 h-4" />
                       <span className="text-sm font-medium">{t('common.remove')}</span>
                     </button>
+                    {/* Bug 2548051: SerpAPI flight ids rotate, so a stored
+                        favorite.flightId can no longer resolve via /flights/:id.
+                        Re-issue the search with the favorite's route + date so
+                        the user lands on a current matching flight list. */}
                     <Link
-                      to={`/flights/${favorite.flightId}`}
+                      to={`/flights?from=${encodeURIComponent(favorite.departureCity)}&to=${encodeURIComponent(favorite.arrivalCity)}&date=${favorite.departureTime.slice(0, 10)}&tripType=oneway&adults=1`}
                       className="flex items-center gap-1 text-primary hover:text-primary-hover transition-colors"
                     >
                       <span className="font-medium">{t('common.viewDetails')}</span>

@@ -49,6 +49,21 @@ interface AIRecommendationsProps {
   isAISearch?: boolean;
   priceLabel?: 'round trip' | 'per person';
   isTicketLoading?: boolean;
+  /** Passenger count for per-person price calc (Bug 2548203). */
+  passengerCount?: number;
+  /**
+   * Bug 2548253: when present, render a small contextual banner above the
+   * top pick clarifying which leg of the round trip the user is currently
+   * viewing and pointing to the other leg in the tab header.
+   */
+  roundTripContext?: {
+    legLabel: string;       // e.g. "Departure"
+    legRoute: string;       // e.g. "PEK → PVG"
+    legDate: string;        // YYYY-MM-DD
+    otherLegLabel: string;  // e.g. "Return"
+    otherLegRoute: string;  // e.g. "PVG → PEK"
+    otherLegDate: string;
+  };
 }
 
 /**
@@ -68,6 +83,8 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
   isAISearch = false,
   priceLabel,
   isTicketLoading,
+  passengerCount,
+  roundTripContext,
 }) => {
   const { t } = useTranslation();
 
@@ -136,6 +153,18 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
         </div>
       </div>
 
+      {/* Bug 2548253: round-trip context banner. Makes it explicit that
+          the AI top pick is just one leg of a round-trip itinerary. */}
+      {roundTripContext && (
+        <div className="mb-2 sm:mb-3 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-blue-100/60 border border-blue-200 text-[11px] sm:text-xs text-blue-900 flex flex-wrap items-center gap-x-2 gap-y-1 relative z-10">
+          <span className="font-semibold">{t('aiRecommendations.roundTripPrefix', 'Round trip')}</span>
+          <span>·</span>
+          <span>{t('aiRecommendations.viewingLeg', { leg: roundTripContext.legLabel, route: roundTripContext.legRoute, date: roundTripContext.legDate, defaultValue: '{{leg}}: {{route}} on {{date}}' })}</span>
+          <span className="opacity-60">·</span>
+          <span className="opacity-80">{t('aiRecommendations.seeOtherLeg', { leg: roundTripContext.otherLegLabel, route: roundTripContext.otherLegRoute, date: roundTripContext.otherLegDate, defaultValue: 'See {{leg}} tab: {{route}} on {{date}}' })}</span>
+        </div>
+      )}
+
       {/* AI Search: Requirement checklist with ticks */}
       {isAISearch && requirementChecks.length > 0 && (
         <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-3 relative z-10">
@@ -194,6 +223,7 @@ const AIRecommendations: React.FC<AIRecommendationsProps> = ({
           isSelected={isSelected ? isSelected(topPick) : false}
           priceLabel={priceLabel}
           isTicketLoading={isTicketLoading}
+          passengerCount={passengerCount}
         />
       </div>
     </div>

@@ -5,6 +5,7 @@ import type { FlightScore, FlightFacilities } from '../../api/types';
 import ScoreBadge from './ScoreBadge';
 import ScoreRadarChart from './ScoreRadarChart';
 import { cn } from '../../utils/cn';
+import { renderScoreExplanation } from '../../utils/scoreExplanation';
 
 interface WhyThisFlightProps {
   score: FlightScore;
@@ -148,15 +149,18 @@ const WhyThisFlight: React.FC<WhyThisFlightProps> = ({
       {reasons.length > 0 && (
         <div className="px-4 md:px-5 py-4 md:py-5 space-y-3">
           <p className="text-sm font-medium text-text-secondary mb-2">{t('whyThisFlight.whyWeRecommend')}</p>
-          {visibleReasons.map((reason, index) => (
-            <ReasonCard
-              key={index}
-              index={index}
-              title={reason.title}
-              detail={reason.detail}
-              isPositive={reason.isPositive}
-            />
-          ))}
+          {visibleReasons.map((reason, index) => {
+            const tx = renderScoreExplanation(reason, t);
+            return (
+              <ReasonCard
+                key={index}
+                index={index}
+                title={tx.title}
+                detail={tx.detail}
+                isPositive={reason.isPositive}
+              />
+            );
+          })}
 
           {/* Show remaining count when collapsed */}
           {!isExpanded && reasons.length > 2 && (

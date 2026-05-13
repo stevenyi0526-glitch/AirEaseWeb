@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { extractErrorMessage, validateEmailFormat } from '../../utils/authValidation';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -24,6 +25,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Strict email format check before hitting the API. Bug 2548057:
+    // values like "user@com" used to slip past the HTML5 email widget,
+    // hit a 422 with array-shaped `detail`, and crashed the modal.
+    const emailErrKey = validateEmailFormat(email);
+    if (emailErrKey) {
+      setError(t(emailErrKey));
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -43,7 +54,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToRegi
       } else if (status && status >= 500) {
         setError(t('auth.serverError'));
       } else {
-        setError(detail || t('auth.loginFailed'));
+        // Use the safe extractor so Pydantic's array-shaped detail can never
+        // reach React state (Bug 2548057 root cause: blank page on 422).
+        setError(extractErrorMessage(err, t('auth.loginFailed')));
       }
     } finally {
       setIsLoading(false);

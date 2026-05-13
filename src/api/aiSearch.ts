@@ -18,8 +18,14 @@ export interface ParsedSearchParams {
   arrival_city: string;
   arrival_city_code: string;
   date: string;
+  // Bug 2548104: Round-trip support — null/empty when one-way.
+  return_date?: string | null;
   time_preference: 'morning' | 'afternoon' | 'evening' | 'night' | 'any';
-  passengers: number;
+  passengers: {
+    adults: number;
+    children: number;
+    infants: number;
+  };
   cabin_class: 'economy' | 'premium_economy' | 'business' | 'first';
   sort_by: 'score' | 'price' | 'duration' | 'comfort';
   stops: 'any' | '0' | '1' | '2+';
@@ -33,6 +39,8 @@ export interface AISearchResult {
   success: boolean;
   params?: ParsedSearchParams;
   error?: string;
+  /** Stable backend error code that the UI can translate via i18n. */
+  errorCode?: string;
   message?: string;
 }
 
@@ -41,39 +49,71 @@ export interface AISearchResult {
 // ============================================================
 
 /**
- * Get user's current location using the browser's Geolocation API
+ * Get user's current location using the browser's Geolocation API.
+ *
+ * macOS / Safari can transiently return `kCLErrorLocationUnknown`
+ * (POSITION_UNAVAILABLE) when CoreLocation hasn't warmed up yet — for example
+ * on the first call after a sleep / wake or in a fresh tab. We retry up to
+ * two more times with progressive backoff before giving up so we don't
+ * surface a noisy error for what is almost always a temporary failure.
  */
 export function getUserLocation(): Promise<GeolocationPosition> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by this browser'));
-      return;
-    }
+  const baseOpts: PositionOptions = {
+    enableHighAccuracy: false, // city-level accuracy is plenty
+    timeout: 10000,
+    maximumAge: 600000, // accept up to 10 min cached fix
+  };
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => resolve(position),
-      (error) => {
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            reject(new Error('Location permission denied. Please allow location access to auto-detect your departure city.'));
-            break;
-          case error.POSITION_UNAVAILABLE:
-            reject(new Error('Location information is unavailable.'));
-            break;
-          case error.TIMEOUT:
-            reject(new Error('Location request timed out.'));
-            break;
-          default:
-            reject(new Error('An unknown error occurred while getting location.'));
-        }
-      },
-      {
-        enableHighAccuracy: false, // We don't need high accuracy for city-level
-        timeout: 10000,
-        maximumAge: 300000 // Cache for 5 minutes
+  const tryOnce = (opts: PositionOptions): Promise<GeolocationPosition> =>
+    new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation is not supported by this browser'));
+        return;
       }
-    );
-  });
+      navigator.geolocation.getCurrentPosition(resolve, reject, opts);
+    });
+
+  // attempt 0: cached fix OK, no high accuracy
+  // attempt 1: still cached, longer timeout
+  // attempt 2: force fresh fix with high accuracy
+  const attempts: PositionOptions[] = [
+    baseOpts,
+    { ...baseOpts, timeout: 15000 },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+  ];
+  const delays = [0, 1000, 2500];
+
+  const run = async (i: number): Promise<GeolocationPosition> => {
+    if (i > 0) await new Promise(r => setTimeout(r, delays[i]));
+    try {
+      return await tryOnce(attempts[i]);
+    } catch (err) {
+      const error = err as GeolocationPositionError;
+      // Permission denied is final — no point retrying.
+      if (error && error.code === error.PERMISSION_DENIED) {
+        throw _translateGeoError(error);
+      }
+      if (i + 1 < attempts.length) {
+        return run(i + 1);
+      }
+      throw _translateGeoError(error);
+    }
+  };
+
+  return run(0);
+}
+
+function _translateGeoError(error: GeolocationPositionError): Error {
+  switch (error?.code) {
+    case error?.PERMISSION_DENIED:
+      return new Error('Location permission denied. Please allow location access to auto-detect your departure city.');
+    case error?.POSITION_UNAVAILABLE:
+      return new Error('Location information is unavailable.');
+    case error?.TIMEOUT:
+      return new Error('Location request timed out.');
+    default:
+      return new Error('An unknown error occurred while getting location.');
+  }
 }
 
 /**
@@ -88,7 +128,7 @@ export async function getNearestAirportFromLocation(): Promise<AirportCoordinate
     const airport = await findNearestAirport(latitude, longitude, 150);
     return airport;
   } catch (error) {
-    console.error('Failed to get nearest airport:', error);
+    console.warn('Geolocation unavailable; falling back to manual airport selection:', error);
     return null;
   }
 }
@@ -127,8 +167,10 @@ async function parseQueryWithAI(query: string): Promise<{
   departure_city: string;
   departure_code: string;
   date: string;
+  return_date?: string | null;
   time_preference: 'morning' | 'afternoon' | 'evening' | 'night' | 'any';
-  passengers: number;
+  // Backend now returns structured passengers. Tolerate legacy int responses.
+  passengers: { adults: number; children: number; infants: number } | number;
   cabin_class: 'economy' | 'premium_economy' | 'business' | 'first';
   sort_by: 'score' | 'price' | 'duration' | 'comfort';
   stops: 'any' | '0' | '1' | '2+';
@@ -136,6 +178,10 @@ async function parseQueryWithAI(query: string): Promise<{
   alliance: 'star' | 'oneworld' | 'skyteam' | 'any';
   max_price: number | null;
   preferred_airlines: string[];
+  // Backend may signal an unsupported intent (e.g. flight-number lookup).
+  // The frontend translates `error_code` into a localized message.
+  unsupported_intent?: string;
+  error_code?: string;
 }> {
   const response = await apiClient.post('/v1/ai/parse-query', { query });
   return response.data;
@@ -179,7 +225,19 @@ export async function parseNaturalLanguageSearch(
     if (!parsed) {
       throw lastError || new Error('Failed to parse query after retries');
     }
-    
+
+    // Step 1.5: Short-circuit on unsupported intents (e.g. flight-number
+    // lookup like "American AA 1313"). The backend tags these with a stable
+    // error_code that the UI maps to a localized message.
+    if (parsed.error_code === 'FLIGHT_NUMBER_LOOKUP_NOT_SUPPORTED' ||
+        parsed.unsupported_intent === 'flight_number_lookup') {
+      return {
+        success: false,
+        errorCode: 'FLIGHT_NUMBER_LOOKUP_NOT_SUPPORTED',
+        error: 'Direct flight-number lookup is not supported. Please describe your trip with origin, destination, and date.',
+      };
+    }
+
     // Step 2: Validate destination (required)
     if (!parsed.has_destination || !parsed.destination_code) {
       return {
@@ -252,20 +310,57 @@ export async function parseNaturalLanguageSearch(
       date = getToday();
     }
 
+    // Bug 2548193: 用户用 AI 搜索查询过去日期时(例如 "上周一去东京")，应直接
+    // 提示无法搜索历史航班，而不是把日期落到 today 让结果页误以为这是今天的查询。
+    const today = getToday();
+    if (date < today) {
+      return {
+        success: false,
+        error: `Cannot search flights for a past date (${date}). Please specify a future date.`,
+      };
+    }
+    // Bug 2548212/2548272: 当 AI 把出发城市解析成跟到达城市完全一样的代码
+    // (常见于 "我想去当前定位城市"/"今天/后天" 这类没有真正目的地的指令)，
+    // 服务端会返回空结果且 UI 看起来像是搜索成功，要在这里拦截。
+    if (
+      departureCode &&
+      parsed.destination_code &&
+      departureCode.toUpperCase() === parsed.destination_code.toUpperCase()
+    ) {
+      return {
+        success: false,
+        error: 'Departure and destination cannot be the same city. Please specify a different destination.',
+      };
+    }
+
     // Step 5: Get time preference (default to all-day / no time filter)
     const timePreference = parsed.time_preference;
     // Keep 'any' as-is — the URL builder will simply not add depMin/depMax filters
 
     // Step 6: Build final params
     // Defaults: all flights (no stops filter), sort by latest model
+    // Bug: "1 adult 1 child" was being parsed as 2 adults because the backend
+    // used to return passengers as a single int. Backend now returns
+    // {adults, children, infants}; we still tolerate int for back-compat.
+    const rawPax = parsed.passengers;
+    const passengers = (typeof rawPax === 'object' && rawPax !== null)
+      ? {
+          adults: Math.max(1, Number(rawPax.adults || 0)),
+          children: Math.max(0, Number(rawPax.children || 0)),
+          infants: Math.max(0, Number(rawPax.infants || 0)),
+        }
+      : { adults: Math.max(1, Number(rawPax) || 1), children: 0, infants: 0 };
+
     const params: ParsedSearchParams = {
       departure_city: departureCity,
       departure_city_code: departureCode,
       arrival_city: parsed.destination_city,
       arrival_city_code: parsed.destination_code,
       date: date,
+      // Bug 2548104: forward AI-detected return date so the URL marks the trip as round-trip.
+      return_date: parsed.return_date || null,
       time_preference: timePreference,
-      passengers: parsed.passengers || 1,
+      passengers,
       cabin_class: parsed.cabin_class || 'economy',
       sort_by: parsed.sort_by || 'score',
       stops: parsed.stops && parsed.stops !== 'any' ? parsed.stops : 'any',
@@ -306,16 +401,24 @@ export async function parseNaturalLanguageSearch(
  * Convert parsed params to URL search params for navigation
  */
 export function paramsToSearchURL(params: ParsedSearchParams, originalQuery?: string): string {
+  // Bug 2548104: respect AI-detected return date and switch trip type to round-trip.
+  const isRoundTrip = !!(params.return_date && params.return_date.length > 0);
   const urlParams = new URLSearchParams({
     from: params.departure_city_code,
     to: params.arrival_city_code,
     date: params.date,
     cabin: params.cabin_class,
-    adults: params.passengers.toString(),
-    children: '0',
-    tripType: 'oneway',
+    adults: String(params.passengers.adults),
+    children: String(params.passengers.children),
+    tripType: isRoundTrip ? 'roundtrip' : 'oneway',
     sortBy: 'model',
   });
+  if (params.passengers.infants > 0) {
+    urlParams.set('infants', String(params.passengers.infants));
+  }
+  if (isRoundTrip && params.return_date) {
+    urlParams.set('returnDate', params.return_date);
+  }
 
   // Mark this as an AI search so FlightsPage can use query-based recommendations
   urlParams.set('aiSearch', '1');

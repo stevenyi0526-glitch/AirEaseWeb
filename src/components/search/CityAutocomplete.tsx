@@ -29,13 +29,20 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<LocationSuggestion[]>([]);
   const [useLocalFallback, setUseLocalFallback] = useState(false);
+  // Bug 2548304: 防止在 debounce 等待期间先闪出 "no results" 又跳成有结果。
+  // 只有真正发起过一次搜索且收到响应后，才允许显示空结果提示。
+  const [hasSearched, setHasSearched] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Update query when value changes externally
+  // Bug 2548116: 当父组件外部修改 value (例如对调出发/到达城市) 时，本地的
+  // results 仍然是上一次输入的搜索结果。必须同时清空 results，否则用户再次
+  // 聚焦时会先看到旧城市的列表。
   useEffect(() => {
     setQuery(value);
+    setResults([]);
   }, [value]);
 
   // Close dropdown when clicking outside
@@ -59,6 +66,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   const searchCities = useCallback(async (searchQuery: string) => {
     if (searchQuery.length < 1) {
       setResults([]);
+      setHasSearched(false);
       return;
     }
 
@@ -78,8 +86,32 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
         // Respect original popularity score
         return (b.score ?? 0) - (a.score ?? 0);
       });
-      setResults(sorted);
-      setUseLocalFallback(false);
+      // Bug 2548284: Amadeus 对 CJK 地名（如"华盛顿"）经常返回空数组。
+      // 命中空结果时回退到本地机场搜索（含中文别名映射），保证传统搜寻
+      // 与 AI 搜索行为一致。
+      if (sorted.length === 0) {
+        const localResults = searchAirports(searchQuery, 10);
+        if (localResults.length > 0) {
+          setResults(
+            localResults.map((airport) => ({
+              id: `A${airport.code}`,
+              iataCode: airport.code,
+              name: airport.name,
+              detailedName: `${airport.city}/${airport.country}: ${airport.name}`,
+              subType: 'AIRPORT',
+              cityName: airport.city,
+              countryName: airport.country,
+            }))
+          );
+          setUseLocalFallback(true);
+        } else {
+          setResults([]);
+          setUseLocalFallback(false);
+        }
+      } else {
+        setResults(sorted);
+        setUseLocalFallback(false);
+      }
     } catch (error) {
       // Fallback to local search
       console.log('Amadeus autocomplete failed, using local airport search fallback');
@@ -99,6 +131,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
       setUseLocalFallback(true);
     } finally {
       setIsLoading(false);
+      setHasSearched(true);
     }
   }, []);
 
@@ -106,6 +139,15 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setQuery(newValue);
+    // Bug 2548084: notify the parent on every keystroke so that pressing
+    // "Search" without picking a dropdown suggestion still passes the typed
+    // value upstream. Previously the parent state stayed empty, causing the
+    // form's `if (!from || !to) return;` early-exit and the click felt dead.
+    onChange(newValue);
+    // Bug 2548304: reset the "already searched" flag so the dropdown stays
+    // in a neutral state during the 300ms debounce instead of flashing
+    // "no results" before the network response arrives.
+    setHasSearched(false);
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -191,11 +233,16 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
         )}
       </div>
 
-      {/* Dropdown with Amadeus results */}
+      {/* Dropdown with Amadeus results.
+          Bug 2548158: in narrow inputs (multi-city columns) the dropdown was
+          horizontally clipped and touch scroll was inconsistent. Force a
+          minimum width that fits a typical "International, City, Country"
+          string, cap to viewport width, and enable smooth iOS momentum scroll. */}
       {isOpen && (query.length >= 1 || results.length > 0) && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 max-h-80 overflow-y-auto"
+          className="absolute z-50 mt-1 w-full min-w-[320px] max-w-[calc(100vw-24px)] bg-white rounded-lg shadow-lg border border-gray-200 max-h-80 overflow-y-auto overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
         >
           {isLoading ? (
             <div className="px-4 py-3 text-center text-gray-500">
@@ -228,7 +275,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
                         <Icon className={cn('w-4 h-4', iconColor)} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
+                        <p className="font-medium text-gray-900 break-words">
                           {formatDisplayName(suggestion)}
                         </p>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -245,7 +292,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
                       </div>
                       <span
                         className={cn(
-                          'text-xs px-2 py-0.5 font-semibold rounded',
+                          'flex-shrink-0 text-xs px-2 py-0.5 font-semibold rounded whitespace-nowrap',
                           badgeBg
                         )}
                       >
@@ -256,7 +303,7 @@ const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
                 );
               })}
             </ul>
-          ) : query.length >= 1 ? (
+          ) : query.length >= 1 && hasSearched ? (
             <div className="px-4 py-3 text-center text-gray-500">
               <p className="text-sm">{t('cityAutocomplete.noResults')}</p>
               <p className="text-xs mt-1">{t('cityAutocomplete.tryDifferent')}</p>

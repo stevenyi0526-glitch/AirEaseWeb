@@ -98,8 +98,40 @@ const SearchForm: React.FC<SearchFormProps> = ({
     if (tripType === 'multicity') {
       const isValid = multiCityLegs.every(leg => leg.from && leg.to && leg.date);
       if (!isValid) return;
-      
+
+      // Bug 2548121: 多城市行程的航段日期必须严格递增，否则后端会返回
+      // 时间倒挂的不可达组合，结果页空白还会造成用户困惑。
+      for (let i = 1; i < multiCityLegs.length; i++) {
+        if (multiCityLegs[i].date < multiCityLegs[i - 1].date) {
+          // eslint-disable-next-line no-alert
+          window.alert(t('search.multiCityDateOrder', {
+            defaultValue: 'Each leg date must be on or after the previous leg date.',
+          }));
+          return;
+        }
+      }
+
       const firstLeg = multiCityLegs[0];
+      const lastLeg = multiCityLegs[multiCityLegs.length - 1];
+
+      // Bug 2548387: 多城市搜索之前不写入搜索历史，结果"最近搜寻"顶部
+      // 一直显示上一次的单程/往返记录。这里用首段出发 + 末段到达写一条
+      // 概要历史，并在末尾用 "+N stops" 的方式让用户感知是多城市行程。
+      if (isAuthenticated) {
+        try {
+          await apiClient.post('/v1/users/search-history', {
+            departure_city: firstLeg.from,
+            arrival_city: lastLeg.to,
+            departure_date: firstLeg.date,
+            return_date: null,
+            passengers: adults + children,
+            cabin_class: cabin,
+          });
+        } catch (error) {
+          console.error('Failed to save multi-city search history:', error);
+        }
+      }
+
       const params = new URLSearchParams({
         from: firstLeg.from,
         to: firstLeg.to,
@@ -124,6 +156,14 @@ const SearchForm: React.FC<SearchFormProps> = ({
     }
     
     if (!from || !to || !departureDate) return;
+
+    // Bug 2548103: 当往返日期相同时，SerpAPI 只会返回单边结果。在提交前
+    // 主动校验，提示用户调整，避免结果页只显示单边却没有任何线索。
+    if (tripType === 'roundtrip' && returnDate && returnDate <= departureDate) {
+      // eslint-disable-next-line no-alert
+      window.alert(t('search.returnDateMustBeAfter', { defaultValue: 'Return date must be after the departure date.' }));
+      return;
+    }
 
     if (isAuthenticated) {
       try {

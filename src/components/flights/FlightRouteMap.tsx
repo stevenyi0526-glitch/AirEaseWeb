@@ -151,6 +151,29 @@ function FitBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
   return null;
 }
 
+// Bug 2548196: Leaflet renders grey tiles when its container starts at size 0
+// (e.g. inside a hidden tab or a freshly-mounted lazy-loaded section) because
+// the tile layer was sized before the container had its final dimensions.
+// Observe the container and call invalidateSize() whenever it changes, plus a
+// few times right after mount to cover layout/animation reflows.
+function MapResizeFix() {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    // Initial pokes — covers lazy-mount + CSS transitions.
+    const timers = [50, 250, 600, 1200].map((ms) =>
+      window.setTimeout(() => map.invalidateSize(), ms)
+    );
+    const ro = new ResizeObserver(() => map.invalidateSize());
+    ro.observe(container);
+    return () => {
+      timers.forEach(window.clearTimeout);
+      ro.disconnect();
+    };
+  }, [map]);
+  return null;
+}
+
 interface FlightRouteMapProps {
   departureCode: string;
   arrivalCode: string;
@@ -309,6 +332,7 @@ export function FlightRouteMap({
         />
 
         {bounds && <FitBounds bounds={bounds} />}
+        <MapResizeFix />
 
         {/* Flight path segments */}
         {pathSegments.map((segment, idx) => (

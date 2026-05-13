@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Plane, SlidersHorizontal, Search, ChevronDown, CloudSun, X, Snowflake } from 'lucide-react';
@@ -223,8 +223,26 @@ const FlightsPage: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
   const { filters, updateFilters, resetFilters, isValidSearch, hasActiveFilters } = useFlightSearchParams();
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  // Bug 2548305: counter to imperatively open the FilterDropdown when the
+  // user clicks the date chip in the round-trip tab header.
+  const [filterOpenSignal, setFilterOpenSignal] = useState(0);
   const [showMobileWeather, setShowMobileWeather] = useState(false);
   const [currency, setCurrency] = useState<CurrencyCode>('USD');
+  // Bug 2548204: 切换货币时，URL 上残留的 minPrice/maxPrice 是用旧货币录入的数值，
+  // 与新货币的航班价格进行 numeric 比较会得到完全不符直觉的结果（例如 USD 800 → JPY
+  // 后仍以 800 作为上限，几乎所有航班被过滤）。货币切换后清空价格区间筛选，让用户
+  // 在新单位下重新选择。其他筛选项与货币无关，保留不动。
+  const isInitialCurrencyEffect = useRef(true);
+  useEffect(() => {
+    if (isInitialCurrencyEffect.current) {
+      isInitialCurrencyEffect.current = false;
+      return;
+    }
+    if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+      updateFilters({ minPrice: undefined, maxPrice: undefined });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currency]);
   
   // Auto-detect currency based on user's location (country of nearest airport)
   useEffect(() => {
@@ -258,10 +276,49 @@ const FlightsPage: React.FC = () => {
   
   // Round trip sub-tab state: 'departure' or 'return'
   const [activeFlightTab, setActiveFlightTab] = useState<'departure' | 'return'>('departure');
+
+  // Bug 2548177: pushing a synthetic history entry when entering the 'return'
+  // sub-tab so that the browser/system back button (and the in-page back
+  // button which calls history.back()) returns the user to the departure tab
+  // first instead of jumping all the way back to the home search page.
+  React.useEffect(() => {
+    if (activeFlightTab !== 'return') return;
+    // Mark this state so popstate can identify the synthetic entry.
+    window.history.pushState({ flightsReturnTab: true }, '');
+    const handlePop = () => {
+      // The user navigated away from the 'return' tab via Back. Drop back to
+      // the departure list within the same page.
+      setActiveFlightTab('departure');
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => {
+      window.removeEventListener('popstate', handlePop);
+    };
+  }, [activeFlightTab]);
   
   // Selected flights for round trip (stored to show in detail page)
   const [selectedDepartureFlight, setSelectedDepartureFlight] = useState<FlightWithScore | null>(null);
   const [selectedReturnFlight, setSelectedReturnFlight] = useState<FlightWithScore | null>(null);
+
+  // Bug 2548352 (defensive): when the underlying search criteria change
+  // (route / dates / cabin / pax), any previously selected flight is no longer
+  // valid — drop both selections so we never end up showing a half-trip.
+  React.useEffect(() => {
+    setSelectedDepartureFlight(null);
+    setSelectedReturnFlight(null);
+    setActiveFlightTab('departure');
+    // intentionally omit setters — they are stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    filters.from,
+    filters.to,
+    filters.date,
+    filters.returnDate,
+    filters.cabin,
+    filters.adults,
+    filters.children,
+    filters.tripType,
+  ]);
   
   // Selected flights for multi-city (one per leg)
   const [selectedMultiCityFlights, setSelectedMultiCityFlights] = useState<(FlightWithScore | null)[]>([]);
@@ -340,7 +397,7 @@ const FlightsPage: React.FC = () => {
     isLoading: isLoadingRoundTrip, 
     isFetching: isFetchingRoundTrip 
   } = useQuery({
-    queryKey: ['roundtrip-flights', filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, travelerType],
+    queryKey: ['roundtrip-flights', filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, filters.children, travelerType],
     queryFn: async () => {
       const apiParams = filtersToApiParams(filters);
       // NOTE: Stops filter is applied client-side to avoid extra SerpAPI charges
@@ -352,6 +409,7 @@ const FlightsPage: React.FC = () => {
         returnDate: filters.returnDate!,
         cabin: apiParams.cabin,
         adults: apiParams.adults,
+        children: filters.children, // Bug 2548095
         currency: 'USD',
         travelerType: travelerType as 'student' | 'business' | 'family' | 'default',
       });
@@ -399,7 +457,7 @@ const FlightsPage: React.FC = () => {
     isLoading: isLoadingCombinedReturn,
     isFetching: isFetchingCombinedReturn,
   } = useQuery({
-    queryKey: ['combined-return-flights', selectedDepartureToken, filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, travelerType],
+    queryKey: ['combined-return-flights', selectedDepartureToken, filters.from, filters.to, filters.date, filters.returnDate, filters.cabin, filters.adults, filters.children, travelerType],
     queryFn: async () => {
       if (!selectedDepartureToken || !filters.returnDate) return null;
       console.log('[CombinedReturn] Fetching return flights with departure_token for combined booking tokens');
@@ -411,6 +469,7 @@ const FlightsPage: React.FC = () => {
         returnDate: filters.returnDate,
         cabin: filters.cabin,
         adults: filters.adults,
+        children: filters.children, // Bug 2548095
         currency: 'USD',
         travelerType: travelerType as 'student' | 'business' | 'family' | 'default',
       });
@@ -434,7 +493,7 @@ const FlightsPage: React.FC = () => {
     isLoading: isLoadingMultiCity,
     isFetching: isFetchingMultiCity,
   } = useQuery({
-    queryKey: ['multicity-flights', filters.multiCityLegs, filters.cabin, filters.adults, travelerType],
+    queryKey: ['multicity-flights', filters.multiCityLegs, filters.cabin, filters.adults, filters.children, travelerType],
     queryFn: async () => {
       // NOTE: Stops filter is applied client-side to avoid extra SerpAPI charges
       
@@ -443,6 +502,7 @@ const FlightsPage: React.FC = () => {
         {
           cabin: filters.cabin,
           adults: filters.adults,
+          children: filters.children, // Bug 2548095
           currency: 'USD',
           travelerType: travelerType as 'student' | 'business' | 'family' | 'default',
         }
@@ -566,8 +626,16 @@ const FlightsPage: React.FC = () => {
     gcTime: 60 * 60 * 1000,
     retry: 1,
   });
-  // Collect multi-city availability into an array
-  const multiCityAvailability = [mcAvailability0, mcAvailability1, mcAvailability2];
+  // Collect multi-city availability into an array. Memoized so that the
+  // identity of the array only changes when one of the underlying query
+  // results actually changes — otherwise downstream useMemos
+  // (currentLegFlights) and useEffects (AI recommendations) would rerun on
+  // every render and cause the multi-city results page to flicker / never
+  // settle (Bug 2548365).
+  const multiCityAvailability = useMemo(
+    () => [mcAvailability0, mcAvailability1, mcAvailability2],
+    [mcAvailability0, mcAvailability1, mcAvailability2]
+  );
 
   // Active leg tab for multi-city (0-indexed)
   const [activeMultiCityLeg, setActiveMultiCityLeg] = useState(0);
@@ -938,6 +1006,14 @@ const FlightsPage: React.FC = () => {
     gcTime: 60 * 60 * 1000,
     retry: 1,
   });
+  const { data: nearbyArrivalAirportSuggestions } = useQuery({
+    queryKey: ['nearby-airports', currentLegRoute.to],
+    queryFn: () => findNearbyAirportsByCode(currentLegRoute.to, 5),
+    enabled: shouldSuggestNearby && !!currentLegRoute.to,
+    staleTime: 60 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    retry: 1,
+  });
 
   // Handle date change and search
   const handleNewSearch = () => {
@@ -976,6 +1052,107 @@ const FlightsPage: React.FC = () => {
       setSelectedMultiCityFlights(new Array(filters.multiCityLegs.length).fill(null));
     }
   }, [filters.tripType, filters.multiCityLegs.length]);
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Bug 2548373: persist multi-city selections + active leg + scroll
+  // position across navigation. When the user opens a flight detail view
+  // and returns, FlightsPage remounts and useState resets to empty,
+  // wiping out their hard-won multi-leg selections. We snapshot to
+  // sessionStorage on every change and rehydrate when multiCityData
+  // arrives.
+  // ──────────────────────────────────────────────────────────────────────
+  const multiCityStorageKey = useMemo(() => {
+    if (filters.tripType !== 'multicity') return '';
+    return `airease:mc-sel:${JSON.stringify(filters.multiCityLegs)}:${filters.cabin}:${filters.adults}:${filters.children}`;
+  }, [filters.tripType, filters.multiCityLegs, filters.cabin, filters.adults, filters.children]);
+
+  const [pendingMultiCityIds, setPendingMultiCityIds] = useState<(string | null)[]>([]);
+
+  // On mount / when key changes, try to restore IDs + active leg + scroll
+  React.useEffect(() => {
+    if (!multiCityStorageKey) return;
+    try {
+      const raw = sessionStorage.getItem(multiCityStorageKey);
+      if (!raw) return;
+      const snap = JSON.parse(raw) as {
+        ids?: (string | null)[];
+        activeLeg?: number;
+        scrollY?: number;
+      };
+      if (Array.isArray(snap.ids) && snap.ids.length > 0) {
+        setPendingMultiCityIds(snap.ids);
+      }
+      if (typeof snap.activeLeg === 'number') {
+        setActiveMultiCityLeg(snap.activeLeg);
+      }
+      if (typeof snap.scrollY === 'number') {
+        // Defer until after layout
+        const y = snap.scrollY;
+        requestAnimationFrame(() => window.scrollTo({ top: y, behavior: 'auto' }));
+      }
+    } catch {
+      // ignore corrupt storage
+    }
+    // intentionally only on key change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [multiCityStorageKey]);
+
+  // Hydrate selectedMultiCityFlights from pending IDs once multiCityData loads
+  React.useEffect(() => {
+    if (!multiCityData || pendingMultiCityIds.length === 0) return;
+    setSelectedMultiCityFlights(prev => {
+      const next = [...prev];
+      let touched = false;
+      pendingMultiCityIds.forEach((id, i) => {
+        if (id && !next[i]) {
+          const found = multiCityData[i]?.flights?.find(f => f.flight.id === id);
+          if (found) {
+            next[i] = found;
+            touched = true;
+          }
+        }
+      });
+      return touched ? next : prev;
+    });
+  }, [multiCityData, pendingMultiCityIds]);
+
+  // Persist on change
+  React.useEffect(() => {
+    if (!multiCityStorageKey) return;
+    if (selectedMultiCityFlights.length === 0) return;
+    try {
+      sessionStorage.setItem(multiCityStorageKey, JSON.stringify({
+        ids: selectedMultiCityFlights.map(f => f?.flight.id || null),
+        activeLeg: activeMultiCityLeg,
+        scrollY: window.scrollY,
+      }));
+    } catch {
+      // storage quota errors etc — best effort only
+    }
+  }, [selectedMultiCityFlights, activeMultiCityLeg, multiCityStorageKey]);
+
+  // Save scroll position right before navigating away (e.g. clicking a card)
+  React.useEffect(() => {
+    if (!multiCityStorageKey) return;
+    const handler = () => {
+      try {
+        const raw = sessionStorage.getItem(multiCityStorageKey);
+        const prev = raw ? JSON.parse(raw) : {};
+        sessionStorage.setItem(multiCityStorageKey, JSON.stringify({
+          ...prev,
+          scrollY: window.scrollY,
+        }));
+      } catch {
+        /* noop */
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    window.addEventListener('pagehide', handler);
+    return () => {
+      window.removeEventListener('beforeunload', handler);
+      window.removeEventListener('pagehide', handler);
+    };
+  }, [multiCityStorageKey]);
 
   // Fetch live exchange rates once on mount (no re-fetch on currency change)
   React.useEffect(() => {
@@ -1029,11 +1206,32 @@ const FlightsPage: React.FC = () => {
           setRecommendationExplanation('');
         } else {
           // ============================================================
-          // CLASSIC SEARCH MODE: Use old preference-based recommendations
+          // CLASSIC SEARCH MODE: blend the user's currently-selected sort
+          // criterion (filters.sortBy) into the recommendation pipeline so
+          // toggling “Best”/“Cheapest”/“Latest model” actually refreshes the
+          // AI picks below — Bug 2548129.
           // ============================================================
-          const result = await generateRecommendations(currentLegFlights);
-          setRecommendations(result.recommendations);
-          setRecommendationExplanation(result.explanation);
+          const classicSortBy: 'price' | 'duration' | 'comfort' | 'score' =
+            filters.sortBy === 'price'
+              ? 'price'
+              : filters.sortBy === 'model'
+                ? 'comfort'
+                : 'score';
+          const queryRecommendation = findBestFlightForQuery(
+            currentLegFlights,
+            classicSortBy,
+            'any',
+          );
+          setRecommendations(queryRecommendation.recommendations);
+          // Try to enrich the explanation with the server-side preference
+          // copy, but never block the UI if the request fails.
+          try {
+            const result = await generateRecommendations(currentLegFlights);
+            if (result.explanation) setRecommendationExplanation(result.explanation);
+            else setRecommendationExplanation(queryRecommendation.explanation);
+          } catch {
+            setRecommendationExplanation(queryRecommendation.explanation);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch recommendations:', error);
@@ -1049,7 +1247,7 @@ const FlightsPage: React.FC = () => {
     };
 
     fetchRecommendations();
-  }, [currentLegFlights, isAISearch, aiSortBy, aiTimePreference]);
+  }, [currentLegFlights, isAISearch, aiSortBy, aiTimePreference, filters.sortBy]);
 
   // Track sort preference changes
   const handleSortChange = (sortBy: SortBy) => {
@@ -1063,6 +1261,20 @@ const FlightsPage: React.FC = () => {
 
   // Track flight selection when user clicks to view details
   const handleFlightClick = (flight: FlightWithScore) => {
+    // Bug 2548373: snapshot scroll position right before SPA navigation so
+    // we can restore it when the user returns to the multi-city list.
+    if (multiCityStorageKey) {
+      try {
+        const raw = sessionStorage.getItem(multiCityStorageKey);
+        const prev = raw ? JSON.parse(raw) : {};
+        sessionStorage.setItem(multiCityStorageKey, JSON.stringify({
+          ...prev,
+          scrollY: window.scrollY,
+        }));
+      } catch {
+        /* noop */
+      }
+    }
     if (isAuthenticated) {
       const depTime = flight.flight.departureTime;
       trackFlightSelection({
@@ -1205,7 +1417,10 @@ const FlightsPage: React.FC = () => {
       ...(roundTripData?.returnFlights || []),
     ];
     if (allFlights.length === 0) {
-      return { min: convertPrice(100, currency), max: convertPrice(2000, currency) };
+      // Bug 2548216: 空结果时之前回退到 (100, 2000) 区间，导致筛选最低价显示成 100 而非 0，
+      // 且与有结果时 min:0 的语义不一致。空结果场景下用户也无法点击「-」减小，因为 step
+      // 默认 50/500 时 100 已经是初值。统一为 min:0，避免误导。
+      return { min: 0, max: convertPrice(2000, currency) };
     }
     const prices = allFlights.map((f: { flight: { price: number } }) => convertPrice(f.flight.price, currency));
     const step = currency === 'JPY' || currency === 'KRW' ? 500 : 50;
@@ -1495,6 +1710,7 @@ const FlightsPage: React.FC = () => {
                 hasActiveFilters={hasActiveFilters}
                 trackPreferences={isAuthenticated}
                 currencySymbol={currencySymbol}
+                openSignal={filterOpenSignal}
               />
 
               {/* Mobile filter button */}
@@ -1530,11 +1746,15 @@ const FlightsPage: React.FC = () => {
           {/* Center: Flight Results */}
           <div className="flex-1 min-w-0">
             {/* AI Recommendations Section - Uses currentLegFlights (single-way focus) */}
-            {!isLoadingCurrentLeg && !error && currentLegFlights.length > 0 && (
+            {/* Bug fix (用户反馈): 之前 guard 是 `!isLoadingCurrentLeg && currentLegFlights.length > 0`，
+                筛选刷新时 currentLegFlights 会瞬间清空并使本卡片整个卸载，随后返回重新
+                挂载，表现为「AI 推荐卡片闪烁」。同时保留 isLoadingCurrentLeg 期间及
+                推荐加载中也挂载当前卡片，并把 loading 状态合并交给子组件负责骨架展示。 */}
+            {!error && (currentLegFlights.length > 0 || isLoadingCurrentLeg || isLoadingRecommendations) && (
               <AIRecommendations
                 recommendations={recommendations}
                 explanation={recommendationExplanation}
-                isLoading={isLoadingRecommendations}
+                isLoading={isLoadingCurrentLeg || isLoadingRecommendations}
                 onFlightClick={handleFlightClick}
                 onSelect={handleFlightSelect}
                 isSelected={isFlightSelected}
@@ -1542,6 +1762,28 @@ const FlightsPage: React.FC = () => {
                 isAISearch={isAISearch}
                 priceLabel={cardPriceLabel}
                 isTicketLoading={isTicketAvailabilityLoading}
+                passengerCount={(filters.adults || 1) + (filters.children || 0)}
+                roundTripContext={
+                  filters.tripType === 'roundtrip' && filters.returnDate
+                    ? activeFlightTab === 'return'
+                      ? {
+                          legLabel: t('flights.returnLeg', 'Return'),
+                          legRoute: `${filters.to} → ${filters.from}`,
+                          legDate: filters.returnDate,
+                          otherLegLabel: t('flights.departureLeg', 'Departure'),
+                          otherLegRoute: `${filters.from} → ${filters.to}`,
+                          otherLegDate: filters.date,
+                        }
+                      : {
+                          legLabel: t('flights.departureLeg', 'Departure'),
+                          legRoute: `${filters.from} → ${filters.to}`,
+                          legDate: filters.date,
+                          otherLegLabel: t('flights.returnLeg', 'Return'),
+                          otherLegRoute: `${filters.to} → ${filters.from}`,
+                          otherLegDate: filters.returnDate,
+                        }
+                    : undefined
+                }
               />
             )}
 
@@ -1611,7 +1853,16 @@ const FlightsPage: React.FC = () => {
                       <div className="flex items-center justify-center gap-1 sm:gap-2">
                         <Plane className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         <span className="truncate">{filters.from} → {filters.to}</span>
-                        <span className="hidden sm:inline text-xs bg-gray-100 px-2 py-0.5 rounded-full">
+                        {/* Bug 2548305: clicking the date chip opens the filter
+                            dropdown so the user is guided to the date picker. */}
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); setFilterOpenSignal((s) => s + 1); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setFilterOpenSignal((s) => s + 1); } }}
+                          title={t('flights.clickToChangeDate', 'Click to change dates')}
+                          className="hidden sm:inline text-xs bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded-full cursor-pointer transition-colors"
+                        >
                           {filters.date}
                         </span>
                       </div>
@@ -1634,7 +1885,15 @@ const FlightsPage: React.FC = () => {
                       <div className="flex items-center justify-center gap-1 sm:gap-2">
                         <Plane className="w-3.5 h-3.5 sm:w-4 sm:h-4 rotate-180" />
                         <span className="truncate">{filters.to} → {filters.from}</span>
-                        <span className="hidden sm:inline text-xs bg-gray-100 px-2 py-0.5 rounded-full">
+                        {/* Bug 2548305: clickable date chip — opens filter dropdown */}
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); setFilterOpenSignal((s) => s + 1); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setFilterOpenSignal((s) => s + 1); } }}
+                          title={t('flights.clickToChangeDate', 'Click to change dates')}
+                          className="hidden sm:inline text-xs bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded-full cursor-pointer transition-colors"
+                        >
                           {filters.returnDate}
                         </span>
                       </div>
@@ -1768,7 +2027,10 @@ const FlightsPage: React.FC = () => {
                         </p>
                         <button 
                           onClick={() => {
+                            // Bug 2548352: 之前只清空去程，残留的回程会和新选的去程
+                            // 配对成无效的"半程"行程；同时清掉回程才能重新走完整流程。
                             setSelectedDepartureFlight(null);
+                            setSelectedReturnFlight(null);
                             setActiveFlightTab('departure');
                           }}
                           className="px-6 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors"
@@ -1791,14 +2053,54 @@ const FlightsPage: React.FC = () => {
                       </p>
                       {/* Try next day button */}
                       {(() => {
+                        // Bug 2548214 (round-trip variant): if the user picked a
+                        // return date <= depart date, no combo can ever match.
+                        // In that case the suggestion should push the RETURN date
+                        // forward (depart + 1), not the departure date.
+                        const isRoundTripReturnTooEarly =
+                          filters.tripType === 'roundtrip' &&
+                          !!filters.returnDate &&
+                          filters.returnDate <= filters.date;
+
+                        if (isRoundTripReturnTooEarly) {
+                          const newReturn = new Date(filters.date);
+                          newReturn.setDate(newReturn.getDate() + 1);
+                          const newReturnStr = newReturn.toISOString().split('T')[0];
+                          return (
+                            <button
+                              onClick={() => {
+                                setEditReturnDate(newReturnStr);
+                                updateFilters({ returnDate: newReturnStr });
+                              }}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors mb-3"
+                            >
+                              {t('flights.tryReturnDate', { date: newReturnStr })} →
+                            </button>
+                          );
+                        }
+
                         const nextDay = new Date(filters.date);
                         nextDay.setDate(nextDay.getDate() + 1);
                         const nextDayStr = nextDay.toISOString().split('T')[0];
+                        // Bug 2548214: 仅推迟出发日会导致出发 > 返程，套餐永远查不到。
+                        // 若已选返程且新出发日 >= 返程，则把返程同步顺延 1 天。
+                        const adjustedReturnDate = (() => {
+                          if (!filters.returnDate) return undefined;
+                          if (nextDayStr < filters.returnDate) return filters.returnDate;
+                          const nextReturn = new Date(nextDay);
+                          nextReturn.setDate(nextReturn.getDate() + 1);
+                          return nextReturn.toISOString().split('T')[0];
+                        })();
                         return (
                           <button
                             onClick={() => {
                               setEditDepartDate(nextDayStr);
-                              updateFilters({ date: nextDayStr });
+                              const updates: { date: string; returnDate?: string } = { date: nextDayStr };
+                              if (adjustedReturnDate && adjustedReturnDate !== filters.returnDate) {
+                                updates.returnDate = adjustedReturnDate;
+                                setEditReturnDate(adjustedReturnDate);
+                              }
+                              updateFilters(updates);
                             }}
                             className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark transition-colors mb-3"
                           >
@@ -1811,7 +2113,7 @@ const FlightsPage: React.FC = () => {
                       {nearbyAirportSuggestions && nearbyAirportSuggestions.length > 0 && (
                         <div className="mt-6 max-w-md mx-auto text-left">
                           <p className="text-sm font-semibold text-text-primary mb-2 text-center">
-                            {t('flights.tryNearbyAirports', { code: currentLegRoute.from })}
+                            {t('flights.tryNearbyDepartureAirports', { code: currentLegRoute.from })}
                           </p>
                           <div className="flex flex-wrap gap-2 justify-center">
                             {nearbyAirportSuggestions.map((ap) => (
@@ -1836,6 +2138,45 @@ const FlightsPage: React.FC = () => {
                                     updateFilters({ to: ap.iataCode });
                                   } else {
                                     updateFilters({ from: ap.iataCode });
+                                  }
+                                }}
+                                className="px-3 py-2 bg-white border border-primary/30 text-primary text-sm font-medium rounded-lg hover:bg-primary hover:text-white transition-colors"
+                              >
+                                {ap.iataCode} · {ap.municipality || ap.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* Suggest nearby arrival airports — helps when the
+                          searched destination is a private/closed airport. */}
+                      {nearbyArrivalAirportSuggestions && nearbyArrivalAirportSuggestions.length > 0 && (
+                        <div className="mt-4 max-w-md mx-auto text-left">
+                          <p className="text-sm font-semibold text-text-primary mb-2 text-center">
+                            {t('flights.tryNearbyArrivalAirports', { code: currentLegRoute.to })}
+                          </p>
+                          <div className="flex flex-wrap gap-2 justify-center">
+                            {nearbyArrivalAirportSuggestions.map((ap) => (
+                              <button
+                                key={ap.iataCode}
+                                onClick={() => {
+                                  if (filters.tripType === 'multicity') {
+                                    const newLegs = [...filters.multiCityLegs];
+                                    newLegs[activeMultiCityLeg] = {
+                                      ...newLegs[activeMultiCityLeg],
+                                      to: ap.iataCode,
+                                    };
+                                    updateFilters({ multiCityLegs: newLegs });
+                                  } else if (
+                                    filters.tripType === 'roundtrip' &&
+                                    filters.returnDate &&
+                                    activeFlightTab === 'return'
+                                  ) {
+                                    // Return leg destination = filters.from
+                                    setSelectedDepartureFlight(null);
+                                    updateFilters({ from: ap.iataCode });
+                                  } else {
+                                    updateFilters({ to: ap.iataCode });
                                   }
                                 }}
                                 className="px-3 py-2 bg-white border border-primary/30 text-primary text-sm font-medium rounded-lg hover:bg-primary hover:text-white transition-colors"
@@ -1882,6 +2223,7 @@ const FlightsPage: React.FC = () => {
                             displayCurrency={currency}
                             isTicketLoading={isTicketAvailabilityLoading}
                             priceLabel={cardPriceLabel}
+                            passengerCount={(filters.adults || 1) + (filters.children || 0)}
                           />
                         ))}
                         
@@ -1996,7 +2338,14 @@ const FlightsPage: React.FC = () => {
           children: filters.children,
         }}
         onBookNow={handleMultiFlightBooking}
-        onClearDeparture={() => setSelectedDepartureFlight(null)}
+        // Bug 2548178: clearing the chosen departure also has to switch the
+        // active sub-tab back to "departure". Otherwise the user is left on
+        // the return tab whose query is gated on selectedDepartureToken
+        // (line ~437) — react-query disables the fetch and the list goes blank.
+        onClearDeparture={() => {
+          setSelectedDepartureFlight(null);
+          setActiveFlightTab('departure');
+        }}
         onClearReturn={() => setSelectedReturnFlight(null)}
       />
 

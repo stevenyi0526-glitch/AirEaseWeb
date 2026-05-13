@@ -62,17 +62,22 @@ const EnglishDateInput: React.FC<EnglishDateInputProps> = ({
     return startOfMonth(new Date());
   });
 
-  // Position the dropdown
+  // Position the dropdown.
+  // Bug 2548101: auto-close when the trigger scrolls behind the sticky header
+  // so the calendar never appears to overlay the page top bar.
   const updatePosition = useCallback(() => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const top = spaceBelow < 320 ? rect.top - 310 : rect.bottom + 4;
-      setDropdownPos({
-        top: Math.max(4, top),
-        left: Math.max(4, Math.min(rect.left, window.innerWidth - 290)),
-      });
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    if (rect.bottom < 80 || rect.top > window.innerHeight - 40) {
+      setOpen(false);
+      return;
     }
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow < 320 ? rect.top - 310 : rect.bottom + 4;
+    setDropdownPos({
+      top: Math.max(4, top),
+      left: Math.max(4, Math.min(rect.left, window.innerWidth - 290)),
+    });
   }, []);
 
   useEffect(() => {

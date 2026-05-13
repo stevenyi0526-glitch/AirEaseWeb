@@ -4,20 +4,31 @@ import { Share2, Download, X, Plane, CheckCircle } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { FlightWithScore } from '../../api/types';
 import ScoreRadarChart from './ScoreRadarChart';
-import { formatTime, formatDuration, formatPrice, formatDate } from '../../utils/formatters';
+import { formatTime, formatDuration, formatDate } from '../../utils/formatters';
+import { formatPriceWithCurrency } from '../common/CurrencySelector';
 import { cn } from '../../utils/cn';
 import { translateAirline } from '../../utils/translate';
+
+// Bug 2548215: detail 页用 5 分制 (toFivePointScale)，share 海报必须保持一致。
+function toFivePointScale(score: number): number {
+  if (score == null || isNaN(score)) return 0;
+  return score <= 10 ? score / 2 : score / 20;
+}
 
 interface SharePosterProps {
   flightWithScore: FlightWithScore;
   isOpen: boolean;
   onClose: () => void;
+  // Bug 2548206: detail 使用 displayCurrency (用户选择的货币) 而非 flight.currency (raw API)，
+  // 海报必须接收并复用以保持单位一致。
+  displayCurrency?: string;
 }
 
 const SharePoster: React.FC<SharePosterProps> = ({
   flightWithScore,
   isOpen,
   onClose,
+  displayCurrency = 'USD',
 }) => {
   const posterRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -77,9 +88,10 @@ const SharePoster: React.FC<SharePosterProps> = ({
 
   if (!isOpen) return null;
 
+  // Color thresholds align with 5-point scale used on detail page.
   const getScoreColor = (value: number) => {
-    if (value >= 8) return 'text-success';
-    if (value >= 6) return 'text-warning';
+    if (value >= 4) return 'text-success';
+    if (value >= 3) return 'text-warning';
     return 'text-danger';
   };
 
@@ -149,8 +161,8 @@ const SharePoster: React.FC<SharePosterProps> = ({
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-500">{t('sharePoster.flightScore')}</p>
-                <p className={cn('text-2xl font-bold', getScoreColor(score.overallScore))}>
-                  {score.overallScore.toFixed(1)}
+                <p className={cn('text-2xl font-bold', getScoreColor(toFivePointScale(score.overallScore)))}>
+                  {toFivePointScale(score.overallScore).toFixed(1)}<span className="text-base font-normal text-gray-400"> / 5</span>
                 </p>
               </div>
             </div>
@@ -181,7 +193,13 @@ const SharePoster: React.FC<SharePosterProps> = ({
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary" />
                   </div>
                   <div className="text-center text-xs text-gray-500 mt-1">
-                    {flight.stops === 0 ? t('common.direct') : `${flight.stops} ${flight.stops > 1 ? t('common.stops', { count: flight.stops }) : t('common.stop', { count: flight.stops })}`}
+                    {/* Bug 2548058: avoid the `${flight.stops} ${t(stop)}` template
+                        that double-printed the count via i18n's {{count}}. */}
+                    {flight.stops === 0
+                      ? t('common.direct')
+                      : flight.stops > 1
+                        ? t('common.stops', { count: flight.stops })
+                        : t('common.stop', { count: flight.stops })}
                   </div>
                 </div>
                 <div className="text-center">
@@ -194,7 +212,7 @@ const SharePoster: React.FC<SharePosterProps> = ({
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                 <p className="text-sm text-gray-500">{formatDate(flight.departureTime)}</p>
                 <p className="text-xl font-bold text-primary">
-                  {formatPrice(flight.price, flight.currency)}
+                  {formatPriceWithCurrency(flight.price, displayCurrency)}
                 </p>
               </div>
             </div>
@@ -228,14 +246,17 @@ const SharePoster: React.FC<SharePosterProps> = ({
                   { label: 'Value', value: score.dimensions.value },
                   { label: 'Amenities', value: calculateAmenitiesScore() },
                   { label: 'Efficiency', value: calculateEfficiencyScore() },
-                ].map((dim) => (
-                  <div key={dim.label} className="text-center">
-                    <p className={cn('text-lg font-bold', getScoreColor(dim.value))}>
-                      {dim.value.toFixed(1)}
-                    </p>
-                    <p className="text-xs text-gray-500">{dim.label}</p>
-                  </div>
-                ))}
+                ].map((dim) => {
+                  const fp = toFivePointScale(dim.value);
+                  return (
+                    <div key={dim.label} className="text-center">
+                      <p className={cn('text-lg font-bold', getScoreColor(fp))}>
+                        {fp.toFixed(1)}
+                      </p>
+                      <p className="text-xs text-gray-500">{dim.label}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

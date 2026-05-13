@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { User, ArrowLeft, Plus, Trash2, Edit2, Star, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTravelersStore } from '../stores/travelersStore';
 import { useAuth } from '../contexts/AuthContext';
 import type { CreateTraveler, Traveler } from '../api/types';
 import { cn } from '../utils/cn';
+import { extractErrorMessage } from '../utils/authValidation';
 
 const MONTH_KEYS = [
   'months.january', 'months.february', 'months.march', 'months.april',
@@ -143,7 +144,8 @@ const TravelerForm: React.FC<TravelerFormProps> = ({ traveler, onSave, onCancel,
               : 31;
             const days = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString().padStart(2, '0'));
 
-            const selectClass = "px-3 py-2.5 rounded-xl border border-border focus:ring-2 focus:ring-primary focus:border-transparent bg-surface text-sm";
+            // Match the height/font of sibling text inputs so Last Name and DOB align on the same row
+            const selectClass = "px-3 py-2.5 rounded-xl border border-border focus:ring-2 focus:ring-primary focus:border-transparent bg-surface";
 
             return (
               <div className="grid grid-cols-3 gap-2">
@@ -192,6 +194,7 @@ const TravelerForm: React.FC<TravelerFormProps> = ({ traveler, onSave, onCancel,
             onChange={(e) => setFormData({ ...formData, passportNumber: e.target.value })}
             className="w-full px-4 py-2.5 rounded-xl border border-border focus:ring-2 focus:ring-primary focus:border-transparent"
             placeholder="E12345678"
+            maxLength={20}
           />
           <p className="text-xs text-text-muted mt-1">{t('travelers.encryptedNote')}</p>
         </div>
@@ -206,6 +209,7 @@ const TravelerForm: React.FC<TravelerFormProps> = ({ traveler, onSave, onCancel,
             onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
             className="w-full px-4 py-2.5 rounded-xl border border-border focus:ring-2 focus:ring-primary focus:border-transparent"
             placeholder="China"
+            maxLength={50}
           />
         </div>
 
@@ -264,6 +268,17 @@ const TravelersPage: React.FC = () => {
   const [editingTraveler, setEditingTraveler] = useState<Traveler | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const location = useLocation();
+
+  // Bug 2548220: clicking the “Travelers” nav link while already on the page
+  // should bring the user back to the list. React Router does not unmount the
+  // page when the path is unchanged, so we react to location.key (changes on
+  // every navigation) and clear any open form/edit state.
+  useEffect(() => {
+    setShowForm(false);
+    setEditingTraveler(null);
+    setFormError(null);
+  }, [location.key]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -274,12 +289,29 @@ const TravelersPage: React.FC = () => {
   const handleAdd = async (data: CreateTraveler) => {
     setFormError(null);
 
-    // Duplicate check: same first + last name already exists
-    const duplicate = travelers.find(
-      (t) =>
-        t.firstName.toLowerCase() === data.firstName.toLowerCase() &&
-        t.lastName.toLowerCase() === data.lastName.toLowerCase()
-    );
+    // Bug 2548223: reject birthdays set in the future. The DOB picker only
+    // restricts the year list (past 100 years) but allows any month/day in
+    // the current year, so e.g. today=2025-06-15 + selecting 2025-12-01
+    // would otherwise sail through to the backend.
+    if (data.dob && data.dob > new Date().toISOString().slice(0, 10)) {
+      setFormError(t('travelers.futureDobError'));
+      return;
+    }
+
+    // Duplicate check (Bug 2548227): 之前仅以同名同姓即视为重复，导致家中
+    // 同名亲属（如父子同名）无法分别录入。改为「同名同姓 + DOB 相同」才视为
+    // 真正重复；若 DOB 缺失则进一步比对护照号，避免一棍子打死。
+    const norm = (s: string | undefined | null) => (s ?? '').trim().toLowerCase();
+    const duplicate = travelers.find((t) => {
+      const sameName =
+        norm(t.firstName) === norm(data.firstName) &&
+        norm(t.lastName) === norm(data.lastName);
+      if (!sameName) return false;
+      const sameDob = !!t.dob && !!data.dob && t.dob === data.dob;
+      const samePassport =
+        !!t.passportNumber && !!data.passportNumber && norm(t.passportNumber) === norm(data.passportNumber);
+      return sameDob || samePassport;
+    });
     if (duplicate) {
       setFormError(t('travelers.duplicateError', { name: `${data.firstName} ${data.lastName}` }));
       return;
@@ -292,21 +324,41 @@ const TravelersPage: React.FC = () => {
       setFormError(null);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } }; message?: string };
-      setFormError(error.response?.data?.detail || error.message || 'Failed to add traveler. Please try again.');
+      setFormError(extractErrorMessage(error, error?.message || 'Failed to add traveler. Please try again.'));
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleUpdate = async (data: CreateTraveler) => {
-    if (editingTraveler) {
+    if (!editingTraveler) return;
+    setFormError(null);
+
+    // Bug 2548223: same future-DOB guard on the edit path.
+    if (data.dob && data.dob > new Date().toISOString().slice(0, 10)) {
+      setFormError(t('travelers.futureDobError'));
+      return;
+    }
+
+    try {
       await updateTraveler(editingTraveler.id, data);
       setEditingTraveler(null);
+      setFormError(null);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } }; message?: string };
+      setFormError(extractErrorMessage(error, error?.message || 'Failed to update traveler.'));
     }
   };
 
   const handleRemove = async (id: number) => {
     if (confirm(t('travelers.removeConfirm'))) {
+      // Bug 2548226: if the user deletes the traveler whose edit form is
+      // currently open, close the form so an Update click can’t silently
+      // hit a 404 backend update for a row that no longer exists.
+      if (editingTraveler?.id === id) {
+        setEditingTraveler(null);
+        setFormError(null);
+      }
       await removeTraveler(id);
     }
   };
@@ -361,6 +413,13 @@ const TravelersPage: React.FC = () => {
         {(showForm || editingTraveler) && (
           <div className="mb-6">
             <TravelerForm
+              // Bug 2548221: re-mount the form when the user switches to a
+              // different traveler from the list. Without this `key`, the
+              // form's internal `useState` keeps its initial values from the
+              // first traveler, so clicking "Edit" on a second traveler
+              // appeared to do nothing (and would also POST traveler A's
+              // data into traveler B on save).
+              key={editingTraveler?.id ?? 'new'}
               traveler={editingTraveler || undefined}
               onSave={editingTraveler ? handleUpdate : handleAdd}
               onCancel={() => {
@@ -369,7 +428,7 @@ const TravelersPage: React.FC = () => {
                 setFormError(null);
               }}
               isLoading={editingTraveler ? isLoading : isSaving}
-              error={editingTraveler ? null : formError}
+              error={formError}
             />
           </div>
         )}
@@ -453,15 +512,15 @@ const TravelersPage: React.FC = () => {
                       </div>
                     )}
                     {traveler.passportNumber && (
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-text-muted block text-xs">{t('travelers.passport')}</span>
-                        <span className="text-text-primary font-medium">{traveler.passportNumber}</span>
+                        <span className="text-text-primary font-medium break-all">{traveler.passportNumber}</span>
                       </div>
                     )}
                     {traveler.nationality && (
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-text-muted block text-xs">{t('travelers.nationality')}</span>
-                        <span className="text-text-primary font-medium">{traveler.nationality}</span>
+                        <span className="text-text-primary font-medium break-all">{traveler.nationality}</span>
                       </div>
                     )}
                     {traveler.gender && (

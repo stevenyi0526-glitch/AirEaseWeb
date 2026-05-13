@@ -114,7 +114,7 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
           departure_city: result.params.departure_city_code,
           arrival_city: result.params.arrival_city_code,
           departure_date: result.params.date,
-          passengers: result.params.passengers,
+          passengers: result.params.passengers.adults + result.params.passengers.children + result.params.passengers.infants,
           cabin_class: result.params.cabin_class,
         }).catch(() => {}); // fire-and-forget
 
@@ -122,7 +122,13 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
         const searchParams = paramsToSearchURL(result.params, searchQuery);
         navigate(`/flights?${searchParams}`);
       } else {
-        setError(result.error || 'Failed to parse search query');
+        // Map stable backend error codes to localized messages.
+        const errorCode = (result as { errorCode?: string }).errorCode;
+        if (errorCode === 'FLIGHT_NUMBER_LOOKUP_NOT_SUPPORTED') {
+          setError(t('aiSearchBar.flightNumberNotSupported'));
+        } else {
+          setError(result.error || t('aiSearchBar.parseFailed'));
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

@@ -96,6 +96,7 @@ export const flightsApi = {
     returnDate: string;
     cabin?: string;
     adults?: number;
+    children?: number; // Bug 2548095
     currency?: string;
     travelerType?: string;
   }): Promise<FlightSearchResponse> => {
@@ -107,6 +108,7 @@ export const flightsApi = {
       return_date: params.returnDate,
       cabin: params.cabin || 'economy',
       adults: params.adults || 1,
+      children: params.children || 0,
       currency: params.currency || 'USD',
       traveler_type: params.travelerType || 'default',
     };
@@ -132,6 +134,7 @@ export const flightsApi = {
     returnDate: string;
     cabin?: string;
     adults?: number;
+    children?: number; // Bug 2548095
     currency?: string;
     stops?: number;
     travelerType?: string;
@@ -143,6 +146,7 @@ export const flightsApi = {
       return_date: params.returnDate,
       cabin: params.cabin || 'economy',
       adults: params.adults || 1,
+      children: params.children || 0,
       currency: params.currency || 'USD',
       stops: params.stops,
       traveler_type: params.travelerType || 'default',
@@ -208,6 +212,7 @@ export const flightsApi = {
     options: {
       cabin?: string;
       adults?: number;
+      children?: number; // Bug 2548095
       currency?: string;
       stops?: number;
       travelerType?: string;
@@ -222,6 +227,7 @@ export const flightsApi = {
           date: leg.date,
           cabin: options.cabin || 'economy',
           adults: options.adults || 1,
+          children: options.children || 0,
           currency: options.currency || 'USD',
           stops: options.stops,
           traveler_type: options.travelerType || 'default',

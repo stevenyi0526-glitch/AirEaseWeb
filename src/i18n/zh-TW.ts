@@ -27,6 +27,8 @@ const zhTW = {
       copyright: '© 2025 Airease Inc.',
       feedback: '意見回饋',
       poweredBy: '由 Google Flights 提供支援',
+      serviceBusy: '服務繁忙中',
+      serviceBusyHint: '伺服器需要一點時間回應，請稍後再試。',
     },
 
     // ─── 頁首 / 導航 ───
@@ -34,6 +36,12 @@ const zhTW = {
       signIn: '登入',
       signUp: '註冊',
       languageDeveloping: '該語言正在開發中，敬請期待！',
+    },
+
+    // ─── AI 搜尋列 ───
+    aiSearchBar: {
+      flightNumberNotSupported: 'AirEase 暫不支援以航班號（例如 "AA 1313"）直接查詢航班，請改以路線描述：出發地 → 目的地 + 日期。例如：「下週五從台北飛東京的早班機」。',
+      parseFailed: '無法解析您的搜尋內容，請換個方式描述您的行程。',
     },
 
     // ─── 首頁 ───
@@ -49,6 +57,7 @@ const zhTW = {
       aiSearch: 'AI 搜尋',
       classic: '傳統搜尋',
       aiSearchHint: '用自然語言描述你想搜尋的航班',
+      aiSingleFlightOnly: '提示：AI 搜尋目前僅支援單一航段查詢，多城市行程請使用「傳統」搜尋。',
       recentSearches: '最近搜尋',
       noSearchHistory: '尚無搜尋紀錄。開始搜尋後，您的最近航班會顯示在這裡。',
       whyChoose: '為什麼選擇 Airease？',
@@ -103,7 +112,12 @@ const zhTW = {
       noFlightsFound: '未找到航班',
       noFlightsForDate: '{{date}} 已無剩餘航班',
       tryNextDay: '試試 {{date}}',
-      tryNearbyAirports: '{{code}} 可能沒有公共航班，請試試附近的機場：',
+      tryReturnDate: '試試回程 {{date}}',
+      localTimeBadge: '當地時間',
+      localTimeHint: '起飛與抵達時間均為當地時間顯示，飛行時長為實際耗時。',
+      tryNearbyAirports: '{{code}} 可能沒有航班，請試試附近的機場：',
+      tryNearbyDepartureAirports: '從 {{code}} 出發的航班不可用，請試試附近的出發機場：',
+      tryNearbyArrivalAirports: '前往 {{code}} 的航班不可用，請試試附近的抵達機場：',
       noFlightsDesc: '請嘗試調整搜尋條件或日期。',
       noFlightsFilterDesc: '請嘗試調整篩選條件或搜尋條件。',
       newSearch: '重新搜尋',
@@ -364,6 +378,7 @@ const zhTW = {
       defaultTraveler: '預設旅客',
       setAsDefault: '設為預設',
       duplicateError: '名為「{{name}}」的旅客已存在。',
+      futureDobError: '生日不能設定為未來日期。',
     },
 
     // ─── 登入/註冊 彈窗 ───
@@ -444,6 +459,9 @@ const zhTW = {
       failedResendCode: '重新發送驗證碼失敗。',
       failedChangePassword: '密碼更新失敗，請重試。',
       enterFullCodeBeforeReset: '請輸入完整的 6 位數驗證碼',
+      emailRequired: '請輸入電子郵件地址。',
+      invalidEmailFormat: '請輸入有效的電子郵件地址（例：name@example.com）。',
+      emailNotRegistered: '此電子郵件尚未註冊，請先註冊或確認地址是否正確。',
     },
 
     // ─── 使用者個人選單 ───
@@ -736,6 +754,7 @@ const zhTW = {
     // ─── 安全 ───
     safety: {
       ntsbSafety: 'NTSB 安全評分：{{score}}/10',
+      genericSafety: '安全評分：{{score}}/10',
       excellent: '優秀紀錄',
       good: '良好紀錄',
       moderate: '一般紀錄',
@@ -945,6 +964,65 @@ const zhTW = {
       poor: '較差',
     },
 
+    // ─── 評分說明（後端傳回的解釋）───
+    scoreExplain: {
+      seatPitch: {
+        title: '座位間距（腿部空間）',
+        detail: '{{inches}} 英吋 — {{cabin}}艙{{quality}}',
+      },
+      seatWidth: {
+        title: '座位寬度',
+        detail: '{{inches}} 英吋 — {{quality}}平均',
+      },
+      ifeScreen: {
+        title: '機上娛樂螢幕',
+        detail: '{{inches}} 吋螢幕 — {{quality}}平均',
+      },
+      seatComfortStandard: {
+        title: '座位舒適度',
+        detail: '{{cabin}}艙標準座位',
+      },
+      wideBody: {
+        title: '寬體飛機',
+        detail: '{{aircraft}} 提供更寬敞的客艙與更低的噪音',
+      },
+      foodBeverage: {
+        title: '餐飲',
+        detail: '{{reviewCount}} 位旅客評分 {{rating}}/10',
+      },
+      groundService: {
+        title: '地面服務',
+        detail: '報到與登機評分 {{rating}}/10',
+      },
+      cabinCrewService: {
+        title: '客艙服務',
+        detail: '機上服務評分 {{rating}}/10',
+      },
+      travelerRecommendations: {
+        title: '旅客推薦',
+        detail: '{{percent}}% 的旅客推薦這家航空公司',
+      },
+      serviceQualityStandard: {
+        title: '服務品質',
+        detail: '標準航空服務',
+      },
+      qualifier: {
+        aboveAverage: '高於平均',
+        standard: '標準水準',
+        belowAverage: '低於平均',
+        widerThan: '寬於',
+        narrowerThan: '窄於',
+        largerThan: '大於',
+        smallerThan: '小於',
+      },
+      cabin: {
+        economy: '經濟',
+        premium_economy: '豪華經濟',
+        business: '商務',
+        first: '頭等',
+      },
+    },
+
     // ─── 評分雷達圖 ───
     scoreRadar: {
       overall: '總評',
@@ -996,6 +1074,65 @@ const zhTW = {
         efficiencyGood: '快速航班，轉機少',
         efficiencyFair: '中等旅行時間',
         efficiencyPoor: '旅途長且需轉機',
+      },
+      // Bug 2548128: 評分計算明細需跟隨頁面語系。
+      calc: {
+        safety: [
+          '• 起始分 10.0（完美安全記錄）',
+          '• 航空公司近 10 年事故：每次 -0.3（上限 -3）',
+          '• 同型機事故：每次 -0.15（上限 -2）',
+          '• 該架飛機事故：每次 -1.0（上限 -3）',
+          '• 資料來源：NTSB 安全紀錄',
+        ],
+        reliability: [
+          '• 準點率 ≥90%：高分（8-10）',
+          '• 準點率 75-90%：良好（6-8）',
+          '• 準點率 <75%：一般（3-6）',
+          '• 根據航空公司歷史準點資料',
+        ],
+        comfort: [
+          '• 座位間距 ≥34寸：+2.5（足夠伸腕空間）',
+          '• 座位間距 32-34寸：+1.5（標準以上）',
+          '• 座位間距 <32寸：+0.5（緊湊）',
+          '• 座位寬度 ≥18寸：+1.5',
+          '• 椌背角度 ≥5°：+1.0',
+          '• 較新飛機（<10 年）：+1.0',
+        ],
+        service: [
+          '• 服務評分 ≥4.5/5：+3.0',
+          '• 服務評分 3.5-4.5：+2.0',
+          '• 餐食品質 ≥4.0/5：+2.0',
+          '• 機組友善度 ≥4.0：+1.5',
+          '• 貴賓室（商務舑）：+1.0',
+        ],
+        value: [
+          '• 低於均價 ≥20%：高 (8-10)',
+          '• 均價 ±10%：良好 (6-8)',
+          '• 高於均價 10-30%：一般 (4-6)',
+          '• 高於均價 >30%：偏低 (2-4)',
+          '• 含品質與價格比',
+        ],
+        amenities: [
+          '• 提供 WiFi：+2.5',
+          '• 座位電源：+2.5',
+          '• 機上娛樂：+2.5',
+          '• 含餐食：+2.5',
+          '• 滿分 10（全部設施）',
+        ],
+        efficiency: [
+          '• 飛行時間評分：最短的為 10',
+          '• 每超出最短 30 分鐘扣 1 分',
+          '• 直飛（0 轉）乘以 1.0',
+          '• 1 轉乘以 0.8',
+          '• 2 轉以上乘以 0.6',
+          '• 最終分 = 時間分 × 轉乘係數',
+        ],
+        amenityWifi: '• 提供 WiFi：+2.5',
+        amenityPower: '• 座位電源：+2.5',
+        amenityIFE: '• 機上娛樂：+2.5',
+        amenityMeal: '• 含餐食：+2.5',
+        amenityNone: '• 無設施資料',
+        amenityTotal: '• 總計：{{score}} 分',
       },
     },
 

@@ -78,6 +78,9 @@ export interface ScoreExplanation {
   detail: string;
   isPositive: boolean;
   cabinClass?: string;  // "economy", "business", or undefined for both
+  /** When present, frontend renders translated strings instead of title/detail. */
+  i18nKey?: string;
+  i18nParams?: Record<string, string | number>;
 }
 
 // User review summary for display
@@ -353,6 +356,7 @@ export interface Favorite {
   departureCity: string;
   arrivalCity: string;
   departureTime: string;
+  arrivalTime?: string;
   price: number;
   score: number;
   createdAt: string;
@@ -365,6 +369,7 @@ export interface CreateFavorite {
   departureCity: string;
   arrivalCity: string;
   departureTime: string;
+  arrivalTime?: string;
   price: number;
   score: number;
 }

@@ -295,6 +295,17 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
     return t(`scoreRadar.dim.${key}`) || subject;
   };
 
+  // Bug 2548128: Read locale-aware calculation rows from i18n. Falls back to
+  // English defaults if i18n key is missing (e.g. older builds).
+  const getLocalizedCalcReference = (subject: string): string[] => {
+    const key = subject.toLowerCase();
+    const value = t(`scoreRadar.calc.${key}`, { returnObjects: true }) as unknown;
+    if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
+      return value as string[];
+    }
+    return DIMENSION_CALC_REFERENCE[subject] || [];
+  };
+
   // Keep scores in 0-10 scale for display
   const data = [
     { subject: 'Safety', A: activeDimensions.safety ?? 10, rawValue: activeDimensions.safety ?? 10, fullMark: 10 },
@@ -310,20 +321,20 @@ const ScoreRadarChart: React.FC<ScoreRadarChartProps> = ({
   const getDynamicCalcReference = (subject: string): string[] => {
     if (subject === 'Amenities' && flightData) {
       const lines: string[] = [];
-      if (flightData.hasWifi) lines.push('• WiFi available: +2.5 pts');
-      if (flightData.hasPower) lines.push('• Power outlets: +2.5 pts');
-      if (flightData.hasIFE) lines.push('• In-flight entertainment: +2.5 pts');
-      if (flightData.mealIncluded) lines.push('• Meals included: +2.5 pts');
-      
+      if (flightData.hasWifi) lines.push(t('scoreRadar.calc.amenityWifi'));
+      if (flightData.hasPower) lines.push(t('scoreRadar.calc.amenityPower'));
+      if (flightData.hasIFE) lines.push(t('scoreRadar.calc.amenityIFE'));
+      if (flightData.mealIncluded) lines.push(t('scoreRadar.calc.amenityMeal'));
+
       if (lines.length === 0) {
-        lines.push('• No amenities data available');
+        lines.push(t('scoreRadar.calc.amenityNone'));
       }
-      
+
       const totalScore = calculateAmenitiesScore();
-      lines.push(`• Total: ${totalScore.toFixed(1)} pts`);
+      lines.push(t('scoreRadar.calc.amenityTotal', { score: totalScore.toFixed(1) }));
       return lines;
     }
-    return DIMENSION_CALC_REFERENCE[subject] || [];
+    return getLocalizedCalcReference(subject);
   };
 
   // Size configurations

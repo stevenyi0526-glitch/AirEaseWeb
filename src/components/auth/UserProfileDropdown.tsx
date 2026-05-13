@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { authApi } from '../../api/auth';
 import type { UserLabel } from '../../api/types';
 import { cn } from '../../utils/cn';
+import { extractErrorMessage } from '../../utils/authValidation';
 
 interface UserProfileDropdownProps {
   isHomePage?: boolean;
@@ -257,7 +258,7 @@ const UserProfileDropdown: React.FC<UserProfileDropdownProps> = ({ isHomePage = 
                         setIsOpen(false);
                       } catch (err: unknown) {
                         const error = err as { response?: { data?: { detail?: string } } };
-                        setDeleteError(error.response?.data?.detail || 'Failed to delete account');
+                        setDeleteError(extractErrorMessage(error, 'Failed to delete account'));
                       } finally {
                         setDeleteLoading(false);
                       }

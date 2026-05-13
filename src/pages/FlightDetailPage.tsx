@@ -1,5 +1,5 @@
 import React, { useState, lazy, Suspense } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,6 +28,7 @@ import { fetchSafetyProfile } from '../api/aircraft';
 import type { SafetyProfile } from '../api/aircraft';
 import { formatTime, formatDuration, formatDate } from '../utils/formatters';
 import { translateAirline, translateAirport, translateAircraft, translateCabin, translateText } from '../utils/translate';
+import { renderScoreExplanation } from '../utils/scoreExplanation';
 import { formatPriceWithCurrency } from '../components/common/CurrencySelector';
 import FavoriteButton from '../components/flights/FavoriteButton';
 import SharePoster from '../components/flights/SharePoster';
@@ -37,6 +38,7 @@ import { BookingReviewModal } from '../components/common/BookingReviewModal';
 import { IncidentRecordsModal } from '../components/common/IncidentRecordsModal';
 import { trackBookingClick } from '../components/common/BookingTracker';
 import { cn } from '../utils/cn';
+import { useAuth } from '../contexts/AuthContext';
 import type { FlightWithScore } from '../api/types';
 
 // Lazy load the map component to avoid SSR issues with Leaflet
@@ -74,7 +76,25 @@ const FlightDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const [urlSearchParams] = useSearchParams();
+  // Bug 2548405: pass passenger / cabin counts from the search URL into
+  // the airline redirect so the partner site quotes the same total price
+  // the user saw on AirEase.
+  const bookingAdults = Math.max(1, parseInt(urlSearchParams.get('adults') || '1', 10) || 1);
+  const bookingChildren = Math.max(0, parseInt(urlSearchParams.get('children') || '0', 10) || 0);
   const { t } = useTranslation();
+  const { isAuthenticated } = useAuth();
+
+  // Bug 2548311: 退出登录后仍可查看详情。挂载时若未登录立即重定向至登录页，
+  // 并将原 URL 通过 location.state.from 透传给登录成功后的 redirect。
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login', {
+        replace: true,
+        state: { from: location.pathname + location.search },
+      });
+    }
+  }, [isAuthenticated, navigate, location.pathname, location.search]);
   const [showSharePoster, setShowSharePoster] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showScoreDetails, setShowScoreDetails] = useState(false);
@@ -294,7 +314,15 @@ const FlightDetailPage: React.FC = () => {
                     )}>
                       <Plane className="w-3 h-3" />
                       <span>
-                        {flight.stops === 0 ? t('common.direct') : `${flight.stops} ${flight.stops > 1 ? t('common.stops', { count: flight.stops }) : t('common.stop', { count: flight.stops })}`}
+                        {/* Bug 2548058: i18n keys common.stop/stops already
+                            inject {{count}}; the previous `${flight.stops} ${t(...)}`
+                            template double-counted, so 1 stop rendered as
+                            "1 1 次轉機" → user sees "11 次轉機". */}
+                        {flight.stops === 0
+                          ? t('common.direct')
+                          : flight.stops > 1
+                            ? t('common.stops', { count: flight.stops })
+                            : t('common.stop', { count: flight.stops })}
                       </span>
                     </div>
                   </div>
@@ -690,7 +718,9 @@ const FlightDetailPage: React.FC = () => {
                           <div className="hidden group-hover/dim:block absolute left-0 right-0 bottom-full mb-2 bg-gray-900 text-white text-xs px-3 py-2.5 rounded-lg shadow-xl z-20 min-w-[220px]">
                             {explanations.length > 0 ? (
                               <div className="space-y-1.5">
-                                {explanations.map((exp, i) => (
+                                {explanations.map((exp, i) => {
+                                  const tx = renderScoreExplanation(exp, t);
+                                  return (
                                   <div key={i} className="flex items-start gap-1.5">
                                     <span className={cn(
                                       'mt-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold',
@@ -699,11 +729,12 @@ const FlightDetailPage: React.FC = () => {
                                       {exp.isPositive ? '✓' : '!'}
                                     </span>
                                     <div>
-                                      <p className="font-medium">{exp.title}</p>
-                                      <p className="text-gray-400">{exp.detail}</p>
+                                      <p className="font-medium">{tx.title}</p>
+                                      <p className="text-gray-400">{tx.detail}</p>
                                     </div>
                                   </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             ) : (
                               <p className="text-gray-300">{t('detail.noDataDimension')}</p>
@@ -825,7 +856,7 @@ const FlightDetailPage: React.FC = () => {
                     height="300px"
                     showLabels={true}
                     departureTime={formatTime(flight.departureTime)}
-                    arrivalTime={formatTime(flight.arrivalTime)}
+                    arrivalTime={isNextDay ? `${formatTime(flight.arrivalTime)} +1` : formatTime(flight.arrivalTime)}
                   />
                 </Suspense>
               </div>
@@ -932,6 +963,8 @@ const FlightDetailPage: React.FC = () => {
                       arrivalId: depFlight.arrivalAirportCode || depFlight.arrivalCityCode,
                       outboundDate,
                       cabinClass: flight.cabin || undefined,
+                      adults: bookingAdults,
+                      children: bookingChildren,
                       currency: displayCurrency,
                     };
 
@@ -988,6 +1021,8 @@ const FlightDetailPage: React.FC = () => {
                       arrivalId: depFlight.arrivalAirportCode || depFlight.arrivalCityCode,
                       outboundDate,
                       cabinClass: flight.cabin || undefined,
+                      adults: bookingAdults,
+                      children: bookingChildren,
                       currency: displayCurrency,
                     });
                   } else {
@@ -1015,6 +1050,7 @@ const FlightDetailPage: React.FC = () => {
         flightWithScore={flightData}
         isOpen={showSharePoster}
         onClose={() => setShowSharePoster(false)}
+        displayCurrency={displayCurrency}
       />
 
       {/* Feedback Modal */}

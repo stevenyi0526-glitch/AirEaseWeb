@@ -12,6 +12,7 @@ import i18n from 'i18next';
 import { Cloud, Sun, CloudRain, CloudSnow, Wind, Droplets, Thermometer, Loader2, CloudLightning, PlaneTakeoff, MapPin } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { translateCity } from '../../utils/translate';
+import { getAirportCoordinates } from '../../api/airports';
 
 interface WeatherForecastProps {
   /** Destination city IATA code (e.g. "NRT", "HKG") */
@@ -44,6 +45,37 @@ const AIRPORT_COORDS: Record<string, { lat: number; lng: number; city: string }>
   SHA: { lat: 31.20, lng: 121.34, city: 'Shanghai' },
   PEK: { lat: 40.08, lng: 116.58, city: 'Beijing' },
   PKX: { lat: 39.51, lng: 116.41, city: 'Beijing' },
+  // Bug 2548133: missing major Chinese hubs caused the weather widget to
+  // disappear for routes terminating in Chengdu, Chongqing, Kunming, etc.
+  CTU: { lat: 30.58, lng: 103.95, city: 'Chengdu' },
+  TFU: { lat: 30.31, lng: 104.44, city: 'Chengdu' },
+  CKG: { lat: 29.72, lng: 106.64, city: 'Chongqing' },
+  KMG: { lat: 25.10, lng: 102.93, city: 'Kunming' },
+  CAN: { lat: 23.39, lng: 113.31, city: 'Guangzhou' },
+  SZX: { lat: 22.64, lng: 113.81, city: 'Shenzhen' },
+  HGH: { lat: 30.23, lng: 120.43, city: 'Hangzhou' },
+  XIY: { lat: 34.44, lng: 108.75, city: "Xi'an" },
+  WUH: { lat: 30.78, lng: 114.21, city: 'Wuhan' },
+  CSX: { lat: 28.19, lng: 113.22, city: 'Changsha' },
+  TAO: { lat: 36.27, lng: 120.37, city: 'Qingdao' },
+  TSN: { lat: 39.12, lng: 117.35, city: 'Tianjin' },
+  DLC: { lat: 38.96, lng: 121.54, city: 'Dalian' },
+  SHE: { lat: 41.64, lng: 123.48, city: 'Shenyang' },
+  HRB: { lat: 45.62, lng: 126.25, city: 'Harbin' },
+  URC: { lat: 43.91, lng: 87.47, city: 'Urumqi' },
+  LHW: { lat: 36.52, lng: 103.62, city: 'Lanzhou' },
+  KWE: { lat: 26.54, lng: 106.80, city: 'Guiyang' },
+  NNG: { lat: 22.61, lng: 108.17, city: 'Nanning' },
+  HAK: { lat: 19.94, lng: 110.46, city: 'Haikou' },
+  SYX: { lat: 18.30, lng: 109.41, city: 'Sanya' },
+  XMN: { lat: 24.54, lng: 118.13, city: 'Xiamen' },
+  FOC: { lat: 25.93, lng: 119.66, city: 'Fuzhou' },
+  NKG: { lat: 31.74, lng: 118.86, city: 'Nanjing' },
+  KHN: { lat: 28.86, lng: 115.90, city: 'Nanchang' },
+  HET: { lat: 40.85, lng: 111.82, city: 'Hohhot' },
+  LXA: { lat: 29.30, lng: 90.91, city: 'Lhasa' },
+  MFM: { lat: 22.15, lng: 113.59, city: 'Macau' },
+  KHH: { lat: 22.58, lng: 120.35, city: 'Kaohsiung' },
   BKK: { lat: 13.69, lng: 100.75, city: 'Bangkok' },
   SIN: { lat: 1.36, lng: 103.99, city: 'Singapore' },
   KUL: { lat: 2.75, lng: 101.71, city: 'Kuala Lumpur' },
@@ -119,7 +151,24 @@ const WeatherForecast: React.FC<WeatherForecastProps> = ({
   const [isFallback, setIsFallback] = useState(false);
 
   const fetchWeatherForCode = async (code: string): Promise<{ days: DailyWeather[]; city: string; fallback: boolean } | null> => {
-    const coords = AIRPORT_COORDS[code.toUpperCase()];
+    let coords = AIRPORT_COORDS[code.toUpperCase()];
+    // Bug 2548298: 当出发机场(尤其是用户当前定位的小型机场)不在
+    // AIRPORT_COORDS 静态表里时，回退到后端 /v1/airports/coordinates/{code}
+    // 拉取实际经纬度，避免出发城市天气长期空白只显示到达。
+    if (!coords) {
+      try {
+        const remote = await getAirportCoordinates(code);
+        if (remote && typeof remote.latitude === 'number' && typeof remote.longitude === 'number') {
+          coords = {
+            lat: remote.latitude,
+            lng: remote.longitude,
+            city: remote.municipality || remote.name || code.toUpperCase(),
+          };
+        }
+      } catch {
+        // ignore — fall through to null
+      }
+    }
     if (!coords) return null;
 
     const today = new Date();

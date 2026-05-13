@@ -3,6 +3,7 @@ import { X, Mail, Lock, User, Loader2, Briefcase, Users, GraduationCap, ArrowLef
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { validatePasswordStrength } from '../../utils/crypto';
+import { extractErrorMessage, validateEmailFormat } from '../../utils/authValidation';
 import type { UserLabel } from '../../api/types';
 import { cn } from '../../utils/cn';
 
@@ -62,6 +63,14 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
     e.preventDefault();
     setError('');
 
+    // Strict email format check (Bug 2548057): refuse user@com / user@.x.com
+    // before the request, so we never get a 422 with array-shaped detail.
+    const emailErrKey = validateEmailFormat(email);
+    if (emailErrKey) {
+      setError(t(emailErrKey));
+      return;
+    }
+
     // Validate password strength before hashing
     const passwordError = validatePasswordStrength(password);
     if (passwordError) {
@@ -79,8 +88,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
       // Focus first code input after transition
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || t('auth.registrationFailed'));
+      setError(extractErrorMessage(err, t('auth.registrationFailed')));
     } finally {
       setIsLoading(false);
     }
@@ -111,9 +119,10 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
       setStep('form');
       setVerificationCode(['', '', '', '', '', '']);
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      const detail = error.response?.data?.detail || '';
-      
+      // Use the shared extractor — FastAPI 422 returns detail as an *array of
+      // objects*, so naive `.includes()` on it crashes React (Bug 2548057).
+      const detail = extractErrorMessage(err, '');
+
       // Map backend-specific errors to user-friendly messages
       let errorMsg: string;
       if (detail.includes('expired')) {
@@ -125,7 +134,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
       } else {
         errorMsg = detail || 'Verification failed. Please try again.';
       }
-      
+
       setError(errorMsg);
       setVerificationCode(['', '', '', '', '', '']);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
@@ -147,8 +156,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onSwitch
       setVerificationCode(['', '', '', '', '', '']);
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || 'Failed to resend code. Please try again.');
+      setError(extractErrorMessage(err, 'Failed to resend code. Please try again.'));
     } finally {
       setIsLoading(false);
     }

@@ -13,6 +13,9 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: API_URL,
+      // 后端偏慎时（AI/SerpAPI 调用）一般几秒内返回，30s 足够覆盖常规路径；
+      // 超时后 axios 会抛 ECONNABORTED，拦截器会发送 service-busy 事件提示用户。
+      timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -41,6 +44,17 @@ class ApiClient {
             window.dispatchEvent(new Event('auth:logout'));
           }
         }
+
+        // Service-busy gentle reminder: 后端超时 / 网络不可达 / 5xx 时提示用户服务繁忙，
+        // 避免页面沉默等待。不覆盖原始 error，调用方仍可自行补充处理。
+        const status = error.response?.status;
+        const isTimeout = error.code === 'ECONNABORTED' || error.message === 'Network Error';
+        if (typeof window !== 'undefined' && (isTimeout || (typeof status === 'number' && status >= 500))) {
+          window.dispatchEvent(new CustomEvent('airease:service-busy', {
+            detail: { status: status ?? 0, isTimeout, url: error.config?.url || '' },
+          }));
+        }
+
         return Promise.reject(error);
       }
     );

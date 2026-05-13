@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, Loader2, Eye, EyeOff, ShieldAlert, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { authApi } from '../../api/auth';
+import { extractErrorMessage } from '../../utils/authValidation';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface PasswordUpdateModalProps {
@@ -69,7 +70,7 @@ const PasswordUpdateModal: React.FC<PasswordUpdateModalProps> = ({ isOpen, onClo
       }, 1500);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || t('auth.failedChangePassword'));
+      setError(extractErrorMessage(error, t('auth.failedChangePassword')));
     } finally {
       setIsLoading(false);
     }

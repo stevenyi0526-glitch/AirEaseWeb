@@ -37,6 +37,14 @@ export const useFavoritesStore = create<FavoritesState>()(
       },
 
       addFavorite: async (flight: FlightWithScore) => {
+        // Bug 2548089: skip the API call entirely if this flight is already
+        // favorited locally. Combined with the backend's existing duplicate
+        // guard this prevents the same flight appearing twice (which used to
+        // happen when the heart was double-clicked or when an outdated
+        // persisted store let the optimistic prepend slip through).
+        if (get().favorites.some(f => f.flightId === flight.flight.id)) {
+          return;
+        }
         try {
           const favorite = await favoritesApi.add({
             flightId: flight.flight.id,
@@ -45,12 +53,21 @@ export const useFavoritesStore = create<FavoritesState>()(
             departureCity: flight.flight.departureCityCode,
             arrivalCity: flight.flight.arrivalCityCode,
             departureTime: flight.flight.departureTime,
+            // Bug 2548275: snapshot arrival time so the favorites card can
+            // show both ends of the leg (matches the search result card).
+            arrivalTime: flight.flight.arrivalTime,
             price: flight.flight.price,
-            score: Math.round(flight.score.overallScore),
+            // Bug 2548059: keep the precise score (e.g. 8.7). Math.round here
+            // used to push 8.7 → 9, then ScoreBadge rendered 4.5/5 in the
+            // favorites view while the search result kept showing 4.4/5.
+            score: flight.score.overallScore,
           });
           
           set(state => ({
-            favorites: [favorite, ...state.favorites]
+            // Bug 2548089: defensively de-dupe again here in case a stale
+            // backend record was returned while the local guard above let
+            // through a race.
+            favorites: [favorite, ...state.favorites.filter(f => f.flightId !== favorite.flightId)]
           }));
         } catch (error) {
           console.error('Failed to add favorite:', error);

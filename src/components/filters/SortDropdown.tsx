@@ -38,7 +38,14 @@ const SortDropdown: React.FC<SortDropdownProps> = ({
 
   return (
     <Menu as="div" className={cn('relative', className)}>
-      <Menu.Button className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-text-secondary hover:text-text-primary bg-surface border border-border rounded-button hover:border-text-muted transition-colors">
+      <Menu.Button
+        onClick={() => {
+          // Bug 2548371: tell any open FilterDropdown to close so the two
+          // panels don't visually overlap when the user opens both.
+          window.dispatchEvent(new Event('airease:dropdown-open:sort'));
+        }}
+        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-text-secondary hover:text-text-primary bg-surface border border-border rounded-button hover:border-text-muted transition-colors"
+      >
         <CurrentIcon className="w-4 h-4 text-primary" />
         <span className="hidden sm:inline">{t(currentOption.labelKey)}</span>
         <ChevronDown className="w-4 h-4" />

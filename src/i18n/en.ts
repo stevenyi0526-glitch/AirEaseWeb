@@ -27,6 +27,8 @@ const en = {
       copyright: '© 2025 Airease Inc.',
       feedback: 'Feedback',
       poweredBy: 'Powered by Google Flights',
+      serviceBusy: 'Service is busy',
+      serviceBusyHint: 'Our servers are taking a moment to respond. Please try again shortly.',
     },
 
     // ─── Header / Nav ───
@@ -34,6 +36,12 @@ const en = {
       signIn: 'Sign In',
       signUp: 'Sign Up',
       languageDeveloping: 'This language is under development, stay tuned!',
+    },
+
+    // ─── AI Search Bar ───
+    aiSearchBar: {
+      flightNumberNotSupported: 'Direct flight-number lookup (e.g. "AA 1313") is not supported. Please describe your trip with origin, destination, and date — for example: "Find a morning flight from New York to Los Angeles next Friday".',
+      parseFailed: 'Failed to parse search query. Please rephrase your request.',
     },
 
     // ─── Home Page ───
@@ -49,6 +57,7 @@ const en = {
       aiSearch: 'AI Search',
       classic: 'Classic',
       aiSearchHint: 'Just describe what you\'re looking for in natural language',
+      aiSingleFlightOnly: 'Note: AI search currently supports single-flight queries only. For multi-city itineraries please use Classic search.',
       recentSearches: 'Recent Searches',
       noSearchHistory: 'No search history yet. Start searching to see your recent flights here.',
       whyChoose: 'Why Choose Airease?',
@@ -103,7 +112,12 @@ const en = {
       noFlightsFound: 'No flights found',
       noFlightsForDate: 'There are no flights remaining on {{date}}',
       tryNextDay: 'Try {{date}}',
-      tryNearbyAirports: '{{code}} may not have public flights — try a nearby airport:',
+      tryReturnDate: 'Try return on {{date}}',
+      localTimeBadge: 'Local time',
+      localTimeHint: 'Departure and arrival are shown in each airport’s local time. The duration is the actual flight length.',
+      tryNearbyAirports: '{{code}} may not have flights — try a nearby airport:',
+      tryNearbyDepartureAirports: 'No flights from {{code}} — try a nearby departure airport:',
+      tryNearbyArrivalAirports: 'No flights to {{code}} — try a nearby arrival airport:',
       noFlightsDesc: 'Try adjusting your search criteria or dates.',
       noFlightsFilterDesc: 'Try adjusting your filters or search criteria.',
       newSearch: 'New Search',
@@ -364,6 +378,7 @@ const en = {
       defaultTraveler: 'Default Traveler',
       setAsDefault: 'Set as Default',
       duplicateError: 'A traveler named "{{name}}" already exists.',
+      futureDobError: 'Date of birth cannot be in the future.',
     },
 
     // ─── Auth Modals ───
@@ -444,6 +459,9 @@ const en = {
       failedResendCode: 'Failed to resend code.',
       failedChangePassword: 'Failed to change password. Please try again.',
       enterFullCodeBeforeReset: 'Please enter the full 6-digit code',
+      emailRequired: 'Please enter your email address.',
+      invalidEmailFormat: 'Please enter a valid email address (e.g. name@example.com).',
+      emailNotRegistered: 'This email is not registered. Please sign up first or check the address.',
     },
 
     // ─── User Profile Dropdown ───
@@ -736,6 +754,7 @@ const en = {
     // ─── Safety ───
     safety: {
       ntsbSafety: 'NTSB Safety: {{score}}/10',
+      genericSafety: 'Safety Score: {{score}}/10',
       excellent: 'Excellent record',
       good: 'Good record',
       moderate: 'Moderate record',
@@ -945,6 +964,65 @@ const en = {
       poor: 'Poor',
     },
 
+    // ─── Score Explanation Tooltips (data from backend) ───
+    scoreExplain: {
+      seatPitch: {
+        title: 'Seat Pitch (Legroom)',
+        detail: '{{inches}} inches — {{quality}} for {{cabin}}',
+      },
+      seatWidth: {
+        title: 'Seat Width',
+        detail: '{{inches}} inches — {{quality}} average',
+      },
+      ifeScreen: {
+        title: 'Entertainment Screen',
+        detail: '{{inches}}-inch display — {{quality}} average',
+      },
+      seatComfortStandard: {
+        title: 'Seat Comfort',
+        detail: 'Standard seating for {{cabin}}',
+      },
+      wideBody: {
+        title: 'Wide-body Aircraft',
+        detail: '{{aircraft}} offers a more spacious cabin with lower noise levels',
+      },
+      foodBeverage: {
+        title: 'Food & Beverage',
+        detail: 'Rated {{rating}}/10 by {{reviewCount}} travelers',
+      },
+      groundService: {
+        title: 'Ground Service',
+        detail: 'Check-in and boarding rated {{rating}}/10',
+      },
+      cabinCrewService: {
+        title: 'Cabin Crew Service',
+        detail: 'In-flight service rated {{rating}}/10',
+      },
+      travelerRecommendations: {
+        title: 'Traveler Recommendations',
+        detail: '{{percent}}% of travelers recommend this airline',
+      },
+      serviceQualityStandard: {
+        title: 'Service Quality',
+        detail: 'Standard airline service',
+      },
+      qualifier: {
+        aboveAverage: 'above average',
+        standard: 'standard',
+        belowAverage: 'below average',
+        widerThan: 'wider than',
+        narrowerThan: 'narrower than',
+        largerThan: 'larger than',
+        smallerThan: 'smaller than',
+      },
+      cabin: {
+        economy: 'economy',
+        premium_economy: 'premium economy',
+        business: 'business',
+        first: 'first',
+      },
+    },
+
     // ─── Score Radar Chart ───
     scoreRadar: {
       overall: 'Overall',
@@ -996,6 +1074,65 @@ const en = {
         efficiencyGood: 'Quick flight with minimal stops',
         efficiencyFair: 'Moderate journey time',
         efficiencyPoor: 'Long journey with stops',
+      },
+      // Bug 2548128: Calculation reference rows must follow the page locale.
+      calc: {
+        safety: [
+          '• Starts at 10.0 (perfect safety)',
+          '• Airline accidents (10yr): -0.3 each (max -3)',
+          '• Model accidents: -0.15 each (max -2)',
+          '• This plane accidents: -1.0 each (max -3)',
+          '• Based on NTSB safety records',
+        ],
+        reliability: [
+          '• On-time rate ≥90%: High score (8-10)',
+          '• On-time rate 75-90%: Good score (6-8)',
+          '• On-time rate <75%: Fair score (3-6)',
+          '• Based on airline historical OTP data',
+        ],
+        comfort: [
+          '• Seat pitch ≥34": +2.5 pts (Extra legroom)',
+          '• Seat pitch 32-34": +1.5 pts (Standard+)',
+          '• Seat pitch <32": +0.5 pts (Compact)',
+          '• Seat width ≥18": +1.5 pts',
+          '• Recline ≥5°: +1.0 pts',
+          '• Newer aircraft (<10 yrs): +1.0 pts',
+        ],
+        service: [
+          '• Service rating ≥4.5/5: +3.0 pts',
+          '• Service rating 3.5-4.5: +2.0 pts',
+          '• Food quality ≥4.0/5: +2.0 pts',
+          '• Crew friendliness ≥4.0: +1.5 pts',
+          '• Lounge access (business): +1.0 pts',
+        ],
+        value: [
+          '• Price ≥20% below avg: High (8-10)',
+          '• Price ±10% of avg: Good (6-8)',
+          '• Price 10-30% above avg: Fair (4-6)',
+          '• Price >30% above avg: Low (2-4)',
+          '• Includes quality vs price ratio',
+        ],
+        amenities: [
+          '• WiFi available: +2.5 pts',
+          '• Power outlets: +2.5 pts',
+          '• In-flight entertainment: +2.5 pts',
+          '• Meals included: +2.5 pts',
+          '• Max score: 10 (all amenities)',
+        ],
+        efficiency: [
+          '• Duration score: shortest flight = 10',
+          '• -1 point per 30 min over shortest',
+          '• Direct (0 stops): × 1.0 multiplier',
+          '• 1 stop: × 0.8 multiplier',
+          '• 2+ stops: × 0.6 multiplier',
+          '• Final = duration × stop multiplier',
+        ],
+        amenityWifi: '• WiFi available: +2.5 pts',
+        amenityPower: '• Power outlets: +2.5 pts',
+        amenityIFE: '• In-flight entertainment: +2.5 pts',
+        amenityMeal: '• Meals included: +2.5 pts',
+        amenityNone: '• No amenities data available',
+        amenityTotal: '• Total: {{score}} pts',
       },
     },
 

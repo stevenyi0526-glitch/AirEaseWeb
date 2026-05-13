@@ -344,7 +344,10 @@ export function FeedbackModal({
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Bug 2548164: 浏览器原生 validation 气泡使用浏览器 OS 语言(常默认中文)，
+            英文站点会出现"请填写此字段"中文提示。改用 noValidate + JS 校验 (handleSubmit
+            已经覆盖) + 手动 setErrorMessage(t(...))，保证错误文案随 i18n。 */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4" noValidate>
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -371,12 +374,18 @@ export function FeedbackModal({
                 {t('feedbackModal.flightInformation')} <span className="text-gray-400 font-normal">{t('feedbackModal.optional')}</span>
               </p>
               <div className="grid grid-cols-2 gap-3">
+                {/* Bug 2548342: 之前航班资讯三个手填字段没有 maxLength，
+                    用户粘贴上千字节文本后，后端会因 flight_info JSON 过大或
+                    其他校验返回 4xx，前端只能笼统提示「提交失败」。这里把
+                    长度限制收紧到合理范围，超长输入直接在输入阶段截断，
+                    避免提交才报错。 */}
                 <div>
                   <input
                     type="text"
                     value={manualFlightNumber}
                     onChange={(e) => setManualFlightNumber(e.target.value)}
                     placeholder={t('feedbackModal.flightNumberPlaceholder')}
+                    maxLength={20}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                              focus:ring-2 focus:ring-[#034891] focus:border-transparent
@@ -390,6 +399,7 @@ export function FeedbackModal({
                     value={manualAirline}
                     onChange={(e) => setManualAirline(e.target.value)}
                     placeholder={t('feedbackModal.airlinePlaceholder')}
+                    maxLength={100}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                              focus:ring-2 focus:ring-[#034891] focus:border-transparent
@@ -403,6 +413,7 @@ export function FeedbackModal({
                     value={manualRoute}
                     onChange={(e) => setManualRoute(e.target.value)}
                     placeholder={t('feedbackModal.routePlaceholder')}
+                    maxLength={100}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                              focus:ring-2 focus:ring-[#034891] focus:border-transparent
@@ -411,13 +422,19 @@ export function FeedbackModal({
                   />
                 </div>
                 <div>
+                  {/* Bug 2548172: 之前在 onFocus 中直接修改 input.type 是绕过 React 的
+                      命令式 DOM 操作，且按 Enter 选择日期时会触发 form 隐式提交，
+                      在 email/content 未填的情况下校验报错，给用户造成"页面重载"的错觉。
+                      改为原生 type="date"，并阻止 Enter 触发 submit。 */}
                   <input
-                    type="text"
+                    type="date"
                     value={manualDate}
                     onChange={(e) => setManualDate(e.target.value)}
-                    onFocus={(e) => (e.target.type = 'date')}
-                    onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
-                    placeholder={t('feedbackModal.flightDatePlaceholder')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.preventDefault();
+                    }}
+                    aria-label={t('feedbackModal.flightDatePlaceholder')}
+                    title={t('feedbackModal.flightDatePlaceholder')}
                     className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 
                              bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                              focus:ring-2 focus:ring-[#034891] focus:border-transparent

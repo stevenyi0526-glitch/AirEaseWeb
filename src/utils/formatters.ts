@@ -1,8 +1,26 @@
 // Date and time formatters
 import i18n from '../i18n';
 
+/**
+ * Format an ISO datetime string as the time portion (HH:MM) without applying
+ * any timezone conversion.
+ *
+ * Bug 2548341: SerpAPI returns flight times that are already expressed in the
+ * relevant airport's local time (e.g. "2025-08-15T10:30:00" for a SFO
+ * departure). The previous implementation passed this string into
+ * `new Date(...).toLocaleTimeString(...)`, which interprets the value in the
+ * **browser's** local timezone — so a user in Asia would see a SFO departure
+ * shifted by 15+ hours. We now slice the time substring directly to preserve
+ * the airport-local clock time the user expects to see on a boarding pass.
+ */
 export const formatTime = (dateString: string): string => {
+  if (!dateString) return '';
+  // Match "T" or " " separator, then capture HH:MM (allow optional seconds).
+  const match = dateString.match(/[T\s](\d{2}):(\d{2})/);
+  if (match) return `${match[1]}:${match[2]}`;
+  // Fallback for unexpected formats — still avoid timezone conversion if we can.
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
   return date.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',

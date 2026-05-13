@@ -84,8 +84,8 @@ export function useFlightSearchParams() {
       date: searchParams.get('date') || new Date().toISOString().split('T')[0],
       returnDate: searchParams.get('returnDate') || '',
       tripType: (searchParams.get('tripType') as TripType) || 'roundtrip',
-      adults: parseInt(searchParams.get('adults') || '1', 10),
-      children: parseInt(searchParams.get('children') || '0', 10),
+      adults: Math.min(9, Math.max(1, parseInt(searchParams.get('adults') || '1', 10) || 1)),
+      children: Math.min(8, Math.max(0, parseInt(searchParams.get('children') || '0', 10) || 0)),
       cabin: (searchParams.get('cabin') as CabinClass) || 'economy',
       multiCityLegs,
       stops: searchParams.get('stops') || 'any',
@@ -168,12 +168,15 @@ export function useFlightSearchParams() {
     setSearchParams(newParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  // Reset filters to defaults (keeping search params)
+  // Reset filters to defaults (keeping core search params)
+  // Bug 2548183: 之前把 adults/children/cabin 加在 keepParams 里，导致筛选弹窗内
+  // 「重置」按钮虽然把 draft 复位了 1/0/economy，但 URL 仍保留旧值，下次打开
+  // useEffect 又用 URL 值覆盖 draft，给用户的观感是「乘客/舱位重置失败」。
+  // 仅保留出发/到达/日期/行程类型/多城市段，乘客与舱位也参与重置。
   const resetFilters = useCallback(() => {
     const newParams = new URLSearchParams();
 
-    // Keep only essential search params
-    const keepParams = ['from', 'to', 'date', 'returnDate', 'tripType', 'adults', 'children', 'cabin', 'multiCityLegs'];
+    const keepParams = ['from', 'to', 'date', 'returnDate', 'tripType', 'multiCityLegs'];
     keepParams.forEach(key => {
       const value = searchParams.get(key);
       if (value) {

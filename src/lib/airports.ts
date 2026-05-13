@@ -56,15 +56,130 @@ export const AIRPORTS: Airport[] = [
   { code: 'DEN', city: 'Denver', name: 'Denver International Airport', country: 'United States' },
   { code: 'YYZ', city: 'Toronto', name: 'Toronto Pearson International Airport', country: 'Canada' },
   { code: 'YVR', city: 'Vancouver', name: 'Vancouver International Airport', country: 'Canada' },
+  { code: 'IAD', city: 'Washington', name: 'Washington Dulles International Airport', country: 'United States' },
+  { code: 'DCA', city: 'Washington', name: 'Ronald Reagan Washington National Airport', country: 'United States' },
+  { code: 'IAH', city: 'Houston', name: 'George Bush Intercontinental Airport', country: 'United States' },
+  { code: 'PHL', city: 'Philadelphia', name: 'Philadelphia International Airport', country: 'United States' },
+  { code: 'PHX', city: 'Phoenix', name: 'Phoenix Sky Harbor International Airport', country: 'United States' },
+  { code: 'LAS', city: 'Las Vegas', name: 'Harry Reid International Airport', country: 'United States' },
+  { code: 'MSP', city: 'Minneapolis', name: 'Minneapolis-Saint Paul International Airport', country: 'United States' },
 ];
+
+// Bug 2548284: Amadeus 自动补全对中文地名识别不一致（如"华盛顿"返回为空）。
+// 在本地兜底搜索中提供常见中文/繁体中文别名 → 英文城市的映射，让传统搜寻
+// 至少能匹配到本地机场列表中的同城机场。
+const CJK_CITY_ALIASES: Record<string, string> = {
+  '华盛顿': 'Washington',
+  '華盛頓': 'Washington',
+  '北京': 'Beijing',
+  '上海': 'Shanghai',
+  '香港': 'Hong Kong',
+  '东京': 'Tokyo',
+  '東京': 'Tokyo',
+  '首尔': 'Seoul',
+  '首爾': 'Seoul',
+  '新加坡': 'Singapore',
+  '曼谷': 'Bangkok',
+  '伦敦': 'London',
+  '倫敦': 'London',
+  '巴黎': 'Paris',
+  '法兰克福': 'Frankfurt',
+  '法蘭克福': 'Frankfurt',
+  '罗马': 'Rome',
+  '羅馬': 'Rome',
+  '迪拜': 'Dubai',
+  '杜拜': 'Dubai',
+  '多哈': 'Doha',
+  '纽约': 'New York',
+  '紐約': 'New York',
+  '洛杉矶': 'Los Angeles',
+  '洛杉磯': 'Los Angeles',
+  '旧金山': 'San Francisco',
+  '舊金山': 'San Francisco',
+  '芝加哥': 'Chicago',
+  '迈阿密': 'Miami',
+  '邁阿密': 'Miami',
+  '西雅图': 'Seattle',
+  '西雅圖': 'Seattle',
+  '波士顿': 'Boston',
+  '波士頓': 'Boston',
+  '亚特兰大': 'Atlanta',
+  '亞特蘭大': 'Atlanta',
+  '丹佛': 'Denver',
+  '多伦多': 'Toronto',
+  '多倫多': 'Toronto',
+  '温哥华': 'Vancouver',
+  '溫哥華': 'Vancouver',
+  '台北': 'Taipei',
+  '吉隆坡': 'Kuala Lumpur',
+  '马尼拉': 'Manila',
+  '馬尼拉': 'Manila',
+  '新德里': 'New Delhi',
+  '孟买': 'Mumbai',
+  '孟買': 'Mumbai',
+  '悉尼': 'Sydney',
+  '雪梨': 'Sydney',
+  '墨尔本': 'Melbourne',
+  '墨爾本': 'Melbourne',
+  '休斯顿': 'Houston',
+  '休斯敦': 'Houston',
+  '休士頓': 'Houston',
+  '费城': 'Philadelphia',
+  '費城': 'Philadelphia',
+  '凤凰城': 'Phoenix',
+  '鳳凰城': 'Phoenix',
+  '拉斯维加斯': 'Las Vegas',
+  '拉斯維加斯': 'Las Vegas',
+  '明尼阿波利斯': 'Minneapolis',
+  '明尼阿波利斯市': 'Minneapolis',
+  // Bug 2548086 / 2548112 / 2548192 / 2548383
+  '雷克雅未克': 'Reykjavik',
+  '雷克雅維克': 'Reykjavik',
+  '雷克雅维克': 'Reykjavik',
+  '聖彼得堡': 'Saint Petersburg',
+  '圣彼得堡': 'Saint Petersburg',
+  '聖彼德堡': 'Saint Petersburg',
+  '圣彼德堡': 'Saint Petersburg',
+  '莫斯科': 'Moscow',
+  '喀什': 'Kashgar',
+  '喀什噶爾': 'Kashgar',
+  '喀什噶尔': 'Kashgar',
+  '海口': 'Haikou',
+  '三亚': 'Sanya',
+  '三亞': 'Sanya',
+  '广州': 'Guangzhou',
+  '廣州': 'Guangzhou',
+  '深圳': 'Shenzhen',
+  '成都': 'Chengdu',
+  '杭州': 'Hangzhou',
+  '南京': 'Nanjing',
+  '青岛': 'Qingdao',
+  '青島': 'Qingdao',
+  '厦门': 'Xiamen',
+  '廈門': 'Xiamen',
+};
 
 // Search airports by query (code, city, or name)
 export function searchAirports(query: string, limit: number = 10): Airport[] {
-  if (!query || query.length < 2) {
+  // Bug 2548109: 中文 / 日文输入单字时(如 "上")也应能命中 "上海/上海浦东"，
+  // 不能像英文那样要求至少两个字符。
+  const hasCjk = /[\u3400-\u9fff]/.test(query || '');
+  const minLen = hasCjk ? 1 : 2;
+  if (!query || query.length < minLen) {
     return AIRPORTS.slice(0, limit);
   }
 
-  const q = query.toLowerCase();
+  // Bug 2548284: 中文/繁体输入先经过别名映射，再走原有的英文匹配。
+  // Bug 2548109: 当用户只输入单字(如 "上") 时，也尝试用 startsWith 匹配
+  // 别名表里的城市名，让 "上" → "上海" → "Shanghai" 也能命中。
+  let aliasMatchKey: string | undefined = Object.keys(CJK_CITY_ALIASES).find((alias) =>
+    query.includes(alias),
+  );
+  if (!aliasMatchKey && /[\u3400-\u9fff]/.test(query)) {
+    aliasMatchKey = Object.keys(CJK_CITY_ALIASES).find((alias) => alias.startsWith(query));
+  }
+  const effectiveQuery = aliasMatchKey ? CJK_CITY_ALIASES[aliasMatchKey] : query;
+  const q = effectiveQuery.toLowerCase();
 
   // Exact code match first
   const exactMatch = AIRPORTS.filter(a => a.code.toLowerCase() === q);

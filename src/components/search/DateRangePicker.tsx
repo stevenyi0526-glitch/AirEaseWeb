@@ -30,9 +30,11 @@ interface DateRangePickerProps {
 /**
  * Travel-style date range picker.
  * Round-trip mode:
- *   1st click  → sets departure date (clears return)
- *   2nd click  → sets return date (must be after departure)
- *   3rd click  → resets: sets new departure, clears return
+ *   1st click on a day            → sets departure (clears return)
+ *   2nd click on the SAME day     → same-day round trip (return = departure)
+ *   2nd click on a LATER day      → sets return
+ *   2nd click on an EARLIER day   → restart: that day becomes new departure
+ *   3rd click on the SAME day     → deselect both (only when dep == ret == that day)
  * One-way mode:
  *   Each click sets the departure date.
  */
@@ -60,9 +62,13 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Parse current selections
+  // Parse current selections.
+  // Bug 2548162: in one-way mode the parent may still be holding a stale
+  // returnDate from a previous round-trip search. Ignore it locally so the
+  // calendar never shows two highlighted days when the user has switched to
+  // a single-leg trip.
   const depDate = departureDate ? new Date(departureDate + 'T00:00:00') : null;
-  const retDate = returnDate ? new Date(returnDate + 'T00:00:00') : null;
+  const retDate = isRoundTrip && returnDate ? new Date(returnDate + 'T00:00:00') : null;
 
   // Which month to show (left calendar)
   const [viewMonth, setViewMonth] = useState(() => {
@@ -83,15 +89,23 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
-  // Compute & keep dropdown position in sync with trigger (scroll/resize aware)
+  // Compute & keep dropdown position in sync with trigger (scroll/resize aware).
+  // Bug 2548101: when the trigger scrolls behind a sticky page header the
+  // dropdown was visually "floating" on top of that header. Auto-close the
+  // picker once the trigger scrolls partially off-screen so the user gets a
+  // consistent visual stack instead of overlap.
   const updatePosition = useCallback(() => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setDropdownPos({
-        top: rect.bottom + 8,   // 8px gap below trigger
-        left: rect.left,
-      });
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    // Approximate sticky-header height (~64px) plus a small margin.
+    if (rect.bottom < 80 || rect.top > window.innerHeight - 40) {
+      setOpen(false);
+      return;
     }
+    setDropdownPos({
+      top: rect.bottom + 8,   // 8px gap below trigger
+      left: rect.left,
+    });
   }, []);
 
   useEffect(() => {
@@ -129,23 +143,37 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     }
 
     // Round trip logic
+    const clickedDep = !!depDate && isSameDay(date, depDate);
+    const clickedRet = !!retDate && isSameDay(date, retDate);
+
+    // Third-click deselect: same-day round trip already set, click that day again → clear both
+    if (clickedDep && clickedRet) {
+      onDepartureChange('');
+      onReturnChange('');
+      return;
+    }
+
     if (isSelectingReturn) {
       // We're picking the return date
-      if (isBefore(date, depDate!) || isSameDay(date, depDate!)) {
-        // Clicked same or earlier date → restart: set as new departure
+      if (clickedDep) {
+        // Same-day round trip — return on the same day as departure
+        onReturnChange(dateStr);
+        setOpen(false);
+      } else if (isBefore(date, depDate!)) {
+        // Earlier than departure → restart: that day becomes new departure
         onDepartureChange(dateStr);
         onReturnChange('');
       } else {
-        // Valid return date
+        // Valid (later) return date
         onReturnChange(dateStr);
         setOpen(false);
       }
     } else {
-      // Picking departure (or resetting)
+      // Picking departure (or both were set and user is restarting from this day)
       onDepartureChange(dateStr);
       onReturnChange('');
     }
-  }, [isRoundTrip, isSelectingReturn, depDate, today, onDepartureChange, onReturnChange]);
+  }, [isRoundTrip, isSelectingReturn, depDate, retDate, today, onDepartureChange, onReturnChange]);
 
   // Build calendar grid for a month
   const buildCalendarDays = (monthStart: Date) => {
@@ -228,15 +256,17 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   inMonth && !isPast && 'hover:bg-primary/10 cursor-pointer text-text-primary',
                   // Range background
                   inRange && 'bg-primary/10',
-                  // Departure date
-                  isDep && 'bg-[#034891] text-white rounded-l-full font-semibold',
-                  // Return date
-                  isRet && 'bg-[#034891] text-white rounded-r-full font-semibold',
+                  // Same-day round trip → single fully-rounded pill
+                  isDep && isRet && 'bg-[#034891] text-white rounded-full font-semibold',
+                  // Departure date (multi-day)
+                  isDep && !isRet && 'bg-[#034891] text-white rounded-l-full font-semibold',
+                  // Return date (multi-day)
+                  isRet && !isDep && 'bg-[#034891] text-white rounded-r-full font-semibold',
                   // Hovered preview
                   isHovered && !isDep && !isRet && 'bg-primary/20 rounded-r-full',
-                  // Range start/end rounding
-                  isDep && retDate && 'rounded-r-none',
-                  isRet && 'rounded-l-none',
+                  // Range start/end rounding (only when dep and ret are on different days)
+                  isDep && retDate && !isRet && 'rounded-r-none',
+                  isRet && !isDep && 'rounded-l-none',
                   // Today indicator
                   isSameDay(day, today) && !isDep && !isRet && 'font-bold text-primary',
                 )}
