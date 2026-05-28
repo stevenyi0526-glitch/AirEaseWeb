@@ -114,7 +114,13 @@ const FlightDetailPage: React.FC = () => {
   // Check if we have flight data passed via router state (from SerpAPI)
   const stateFlightData = location.state?.flightWithScore as FlightWithScore | undefined;
   const returnFlightData = location.state?.returnFlight as FlightWithScore | undefined;
-  const isRoundTrip = location.state?.isRoundTrip as boolean | undefined;
+  // Round-trip detection: prefer explicit state flag, but also fall back to
+  // the URL `tripType=roundtrip` query and the presence of returnFlight data,
+  // so the "Round trip / 來回" label still renders when users land here from
+  // bookmarks / shared links / favorites that don't carry router state.
+  const isRoundTrip = (location.state?.isRoundTrip as boolean | undefined)
+    || urlSearchParams.get('tripType') === 'roundtrip'
+    || !!returnFlightData;
   const totalPrice = location.state?.totalPrice as number | undefined;
   const displayCurrency = (location.state?.displayCurrency as string) || 'USD';
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -349,9 +355,9 @@ const FlightDetailPage: React.FC = () => {
             <div className="flex flex-col items-center md:items-end gap-2 sm:gap-3 pt-3 sm:pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-divider md:pl-6">
               <div className="text-center md:text-right">
                 <p className="text-2xl sm:text-3xl font-bold text-primary">
-                  {formatPriceWithCurrency(flight.price, displayCurrency)}
+                  {formatPriceWithCurrency(isRoundTrip ? (totalPrice || flight.price) : flight.price, displayCurrency)}
                 </p>
-                <p className="text-xs sm:text-sm text-text-muted">{t('detail.perPerson')}</p>
+                <p className="text-xs sm:text-sm text-text-muted">{isRoundTrip ? t('common.roundTrip') : t('detail.perPerson')}</p>
               </div>
               <div className="flex items-center gap-2">
                 <FavoriteButton flightWithScore={flightData} size="md" />

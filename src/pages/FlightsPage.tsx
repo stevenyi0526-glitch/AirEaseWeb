@@ -878,6 +878,31 @@ const FlightsPage: React.FC = () => {
   // search is also the round-trip total. So we must NOT sum them.
   const usingCombinedPricing = !!(combinedReturnFlights && combinedReturnFlights.length > 0);
 
+  // Bug 2548352: if filters / pax changes filter the previously-selected
+  // flight out of the visible list, drop the selection so the floating bar
+  // doesn't keep showing a flight the user can no longer book.
+  React.useEffect(() => {
+    if (!selectedDepartureFlight) return;
+    if (!roundTripData?.departureFlights || roundTripData.departureFlights.length === 0) {
+      // Underlying search returned nothing — clear stale selection.
+      setSelectedDepartureFlight(null);
+      return;
+    }
+    const stillVisible = filteredDepartureFlights.some(
+      (f) => f.flight.id === selectedDepartureFlight.flight.id,
+    );
+    if (!stillVisible) setSelectedDepartureFlight(null);
+  }, [filteredDepartureFlights, roundTripData?.departureFlights, selectedDepartureFlight]);
+
+  React.useEffect(() => {
+    if (!selectedReturnFlight) return;
+    if (combinedReturnFlights && combinedReturnFlights.length === 0) return; // still loading
+    const stillVisible = filteredReturnFlights.some(
+      (f) => f.flight.id === selectedReturnFlight.flight.id,
+    );
+    if (!stillVisible) setSelectedReturnFlight(null);
+  }, [filteredReturnFlights, combinedReturnFlights, selectedReturnFlight]);
+
   // ============================================================================
   // UNIFIED ACTIVE LEG FLIGHTS
   // ============================================================================
@@ -1569,7 +1594,16 @@ const FlightsPage: React.FC = () => {
             {/* Back + Route */}
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
               <button
-                onClick={() => navigate('/')}
+                onClick={() => {
+                  // Bug 2548177: when on the round-trip 'return' sub-tab, the
+                  // back arrow should drop users back to the departure list
+                  // first, not exit the flights page entirely.
+                  if (filters.tripType === 'roundtrip' && activeFlightTab === 'return') {
+                    setActiveFlightTab('departure');
+                    return;
+                  }
+                  navigate('/');
+                }}
                 className="flex-shrink-0 p-1.5 sm:p-2 -ml-1 sm:-ml-2 text-text-secondary hover:text-text-primary rounded-lg hover:bg-surface-alt transition-colors"
                 aria-label="Go back"
               >
@@ -1641,7 +1675,7 @@ const FlightsPage: React.FC = () => {
 
               {/* Ski Finder Button */}
               <button
-                onClick={() => alert(t('flights.skiFinderComingSoon'))}
+                onClick={() => window.open('https://skifinder.ai', '_blank', 'noopener,noreferrer')}
                 className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
                 style={{ backgroundColor: '#0ABAB5', color: '#fff' }}
                 title={t('flights.skiFinder')}
@@ -2060,7 +2094,7 @@ const FlightsPage: React.FC = () => {
                         const isRoundTripReturnTooEarly =
                           filters.tripType === 'roundtrip' &&
                           !!filters.returnDate &&
-                          filters.returnDate <= filters.date;
+                          filters.returnDate < filters.date;
 
                         if (isRoundTripReturnTooEarly) {
                           const newReturn = new Date(filters.date);

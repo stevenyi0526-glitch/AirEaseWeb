@@ -409,25 +409,18 @@ const TravelersPage: React.FC = () => {
           )}
         </div>
 
-        {/* Add/Edit Form */}
-        {(showForm || editingTraveler) && (
+        {/* Add Form (only for adding new — edit form renders inline
+            inside the corresponding traveler card below). */}
+        {showForm && !editingTraveler && (
           <div className="mb-6">
             <TravelerForm
-              // Bug 2548221: re-mount the form when the user switches to a
-              // different traveler from the list. Without this `key`, the
-              // form's internal `useState` keeps its initial values from the
-              // first traveler, so clicking "Edit" on a second traveler
-              // appeared to do nothing (and would also POST traveler A's
-              // data into traveler B on save).
-              key={editingTraveler?.id ?? 'new'}
-              traveler={editingTraveler || undefined}
-              onSave={editingTraveler ? handleUpdate : handleAdd}
+              key="new"
+              onSave={handleAdd}
               onCancel={() => {
                 setShowForm(false);
-                setEditingTraveler(null);
                 setFormError(null);
               }}
-              isLoading={editingTraveler ? isLoading : isSaving}
+              isLoading={isSaving}
               error={formError}
             />
           </div>
@@ -536,11 +529,19 @@ const TravelersPage: React.FC = () => {
                   {/* Actions */}
                   <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-divider">
                     <button
-                      onClick={() => setEditingTraveler(traveler)}
+                      onClick={() =>
+                        setEditingTraveler(
+                          editingTraveler?.id === traveler.id ? null : traveler
+                        )
+                      }
                       className="flex items-center gap-1 text-primary hover:text-primary-hover transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />
-                      <span className="text-sm font-medium">{t('common.edit')}</span>
+                      <span className="text-sm font-medium">
+                        {editingTraveler?.id === traveler.id
+                          ? t('common.cancel')
+                          : t('common.edit')}
+                      </span>
                     </button>
                     {!traveler.isPrimary && (
                       <button
@@ -553,6 +554,25 @@ const TravelersPage: React.FC = () => {
                     )}
                   </div>
                 </div>
+                {/* Bug 2548221 follow-up: render the edit form INSIDE the
+                    matching traveler card so the form sticks visually next to
+                    the traveler being edited, instead of being pinned at the
+                    top of the page. */}
+                {editingTraveler?.id === traveler.id && (
+                  <div className="px-4 md:px-5 pb-4 md:pb-5 pt-0 border-t border-divider bg-gray-50">
+                    <TravelerForm
+                      key={`edit-${traveler.id}`}
+                      traveler={editingTraveler}
+                      onSave={handleUpdate}
+                      onCancel={() => {
+                        setEditingTraveler(null);
+                        setFormError(null);
+                      }}
+                      isLoading={isLoading}
+                      error={formError}
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>

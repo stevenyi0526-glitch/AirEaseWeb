@@ -42,6 +42,13 @@ const en = {
     aiSearchBar: {
       flightNumberNotSupported: 'Direct flight-number lookup (e.g. "AA 1313") is not supported. Please describe your trip with origin, destination, and date — for example: "Find a morning flight from New York to Los Angeles next Friday".',
       parseFailed: 'Failed to parse search query. Please rephrase your request.',
+      specifyDestination: 'Please specify a destination. For example: "fly to Tokyo" or "去上海".',
+      couldNotRecognizeDeparture: 'Could not recognize departure city "{{userTyped}}". Please use the city name or its 3-letter IATA code (e.g. "from San Francisco to {{destination}}" or "SFO to {{destinationCode}}").',
+      locationUndetermined: 'Could not determine your location. Please specify where you are flying from.',
+      locationUndeterminedHint: 'Could not determine your location. Please specify where you are flying from, e.g., "from Hong Kong to Tokyo".',
+      locationDenied: 'Location access denied. Please specify where you are flying from, e.g., "from Hong Kong to Tokyo".',
+      pastDate: 'Cannot search flights for a past date ({{date}}). Please specify a future date.',
+      sameCity: 'Departure and destination cannot be the same city. Please specify a different destination.',
     },
 
     // ─── Home Page ───
@@ -115,6 +122,7 @@ const en = {
       tryReturnDate: 'Try return on {{date}}',
       localTimeBadge: 'Local time',
       localTimeHint: 'Departure and arrival are shown in each airport’s local time. The duration is the actual flight length.',
+      tzDelta: 'TZ {{delta}}',
       tryNearbyAirports: '{{code}} may not have flights — try a nearby airport:',
       tryNearbyDepartureAirports: 'No flights from {{code}} — try a nearby departure airport:',
       tryNearbyArrivalAirports: 'No flights to {{code}} — try a nearby arrival airport:',
@@ -1005,6 +1013,22 @@ const en = {
       serviceQualityStandard: {
         title: 'Service Quality',
         detail: 'Standard airline service',
+      },
+      reliability: {
+        title: 'Airline Reliability',
+        detail: 'On-time performance: {{otp}}%{{delay}}',
+        oftenDelayed: ' (this flight often delayed 30+ min)',
+      },
+      reliabilityNoData: {
+        title: 'Airline Reliability',
+        detail: 'On-time data not available for this airline',
+      },
+      valueForMoney: {
+        title: 'Value for Money',
+        detail: '${{price}} {{level}} (typical: ${{low}}–${{high}})',
+        low: 'below typical price 🎉',
+        high: 'above typical price',
+        typical: 'within typical range',
       },
       qualifier: {
         aboveAverage: 'above average',

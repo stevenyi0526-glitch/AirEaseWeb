@@ -134,6 +134,19 @@ const FlightCard: React.FC<FlightCardProps> = ({
   const arrivalDate = new Date(flight.arrivalTime);
   const isNextDay = arrivalDate.getDate() !== departureDate.getDate();
 
+  // Bug 2548341: SerpAPI returns naive local times for both legs. The wall-clock
+  // delta therefore equals (arrival_local - departure_local), but the real flight
+  // duration is `durationMinutes`. The difference between them is the timezone
+  // delta (positive ⇒ arrival airport is ahead of departure airport).
+  const wallClockDeltaMin = Math.round((arrivalDate.getTime() - departureDate.getTime()) / 60000);
+  const tzDeltaMin = wallClockDeltaMin - (flight.durationMinutes || 0);
+  const hasTzDelta = Number.isFinite(tzDeltaMin) && Math.abs(tzDeltaMin) >= 30;
+  const tzDeltaLabel = hasTzDelta
+    ? `${tzDeltaMin > 0 ? '+' : '-'}${Math.floor(Math.abs(tzDeltaMin) / 60)}h${
+        Math.abs(tzDeltaMin) % 60 ? ` ${Math.abs(tzDeltaMin) % 60}m` : ''
+      }`
+    : '';
+
   // Determine effective price label
   // If priceLabel is explicitly set, use it. Otherwise fall back to isRoundTrip behavior.
   const effectivePriceLabel = priceLabel ?? (isRoundTrip ? 'round trip' : 'per person');
@@ -222,6 +235,11 @@ const FlightCard: React.FC<FlightCardProps> = ({
               title={t('flights.localTimeHint')}
             >
               <span>{formatDuration(flight.durationMinutes)}</span>
+              {hasTzDelta && (
+                <span className="text-[10px] sm:text-xs text-accent font-semibold whitespace-nowrap">
+                  · {t('flights.tzDelta', { delta: tzDeltaLabel, defaultValue: 'TZ {{delta}}' })}
+                </span>
+              )}
             </div>
             <p className="text-[10px] text-text-muted text-center mb-1">{t('flights.localTimeBadge')}</p>
             <div className="relative">

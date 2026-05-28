@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Share2, Download, X, Plane, CheckCircle } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import type { FlightWithScore } from '../../api/types';
-import ScoreRadarChart from './ScoreRadarChart';
 import { formatTime, formatDuration, formatDate } from '../../utils/formatters';
 import { formatPriceWithCurrency } from '../common/CurrencySelector';
 import { cn } from '../../utils/cn';
@@ -217,41 +216,28 @@ const SharePoster: React.FC<SharePosterProps> = ({
               </div>
             </div>
 
-            {/* Radar Chart */}
+            {/* Score Breakdown — Bug 2548215: mirror FlightDetailPage exactly.
+                Removed the 0-10 radar chart (deprecated) and use the same
+                7-dimension /5 grid + i18n labels as the detail page. */}
             <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
               <h4 className="text-sm font-semibold text-gray-700 mb-3 text-center">
                 {t('sharePoster.scoreBreakdown')}
               </h4>
-              <div className="flex justify-center">
-                <ScoreRadarChart
-                  dimensions={score.dimensions}
-                  size="md"
-                  flightData={{
-                    price: flight.price,
-                    durationMinutes: flight.durationMinutes,
-                    stops: flight.stops,
-                    hasWifi: facilities?.hasWifi,
-                    hasPower: facilities?.hasPower,
-                    hasIFE: facilities?.hasIFE,
-                    mealIncluded: facilities?.mealIncluded,
-                  }}
-                />
-              </div>
-              <div className="grid grid-cols-4 gap-2 mt-3">
+              <div className="grid grid-cols-4 gap-2">
                 {[
-                  { label: 'Safety', value: score.dimensions.safety ?? 10 },
-                  { label: 'Reliability', value: score.dimensions.reliability },
-                  { label: 'Comfort', value: score.dimensions.comfort },
-                  { label: 'Service', value: score.dimensions.service },
-                  { label: 'Value', value: score.dimensions.value },
-                  { label: 'Amenities', value: calculateAmenitiesScore() },
-                  { label: 'Efficiency', value: calculateEfficiencyScore() },
+                  { label: t('detail.scoreDimSafety'),      value: score.dimensions.safety ?? 10 },
+                  { label: t('detail.scoreDimReliability'), value: score.dimensions.reliability },
+                  { label: t('detail.scoreDimComfort'),     value: score.dimensions.comfort },
+                  { label: t('detail.scoreDimService'),     value: score.dimensions.service },
+                  { label: t('detail.scoreDimValue'),       value: score.dimensions.value },
+                  { label: t('detail.scoreDimAmenities'),   value: calculateAmenitiesScore() },
+                  { label: t('detail.scoreDimEfficiency'),  value: calculateEfficiencyScore() },
                 ].map((dim) => {
                   const fp = toFivePointScale(dim.value);
                   return (
                     <div key={dim.label} className="text-center">
                       <p className={cn('text-lg font-bold', getScoreColor(fp))}>
-                        {fp.toFixed(1)}
+                        {fp.toFixed(1)}<span className="text-xs font-normal text-gray-400">/5</span>
                       </p>
                       <p className="text-xs text-gray-500">{dim.label}</p>
                     </div>

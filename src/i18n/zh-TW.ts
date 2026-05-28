@@ -42,6 +42,13 @@ const zhTW = {
     aiSearchBar: {
       flightNumberNotSupported: 'AirEase 暫不支援以航班號（例如 "AA 1313"）直接查詢航班，請改以路線描述：出發地 → 目的地 + 日期。例如：「下週五從台北飛東京的早班機」。',
       parseFailed: '無法解析您的搜尋內容，請換個方式描述您的行程。',
+      specifyDestination: '請指定目的地。例如：「飛往東京」或「去上海」。',
+      couldNotRecognizeDeparture: '無法識別出發城市「{{userTyped}}」。請輸入城市名稱或 3 位 IATA 代碼（例如「從台北到{{destination}}」或「TPE 到 {{destinationCode}}」）。',
+      locationUndetermined: '無法取得您的所在位置，請手動指定出發城市。',
+      locationUndeterminedHint: '無法取得您的所在位置，請指定出發城市，例如「從香港到東京」。',
+      locationDenied: '已拒絕定位權限，請指定出發城市，例如「從香港到東京」。',
+      pastDate: '無法搜尋過去日期（{{date}}）的航班，請指定未來的日期。',
+      sameCity: '出發地與目的地不能是同一城市，請指定不同的目的地。',
     },
 
     // ─── 首頁 ───
@@ -115,6 +122,7 @@ const zhTW = {
       tryReturnDate: '試試回程 {{date}}',
       localTimeBadge: '當地時間',
       localTimeHint: '起飛與抵達時間均為當地時間顯示，飛行時長為實際耗時。',
+      tzDelta: '時差 {{delta}}',
       tryNearbyAirports: '{{code}} 可能沒有航班，請試試附近的機場：',
       tryNearbyDepartureAirports: '從 {{code}} 出發的航班不可用，請試試附近的出發機場：',
       tryNearbyArrivalAirports: '前往 {{code}} 的航班不可用，請試試附近的抵達機場：',
@@ -1005,6 +1013,22 @@ const zhTW = {
       serviceQualityStandard: {
         title: '服務品質',
         detail: '標準航空服務',
+      },
+      reliability: {
+        title: '航空公司準時率',
+        detail: '準點率：{{otp}}%{{delay}}',
+        oftenDelayed: '（此航班常延誤 30 分鐘以上）',
+      },
+      reliabilityNoData: {
+        title: '航空公司準時率',
+        detail: '此航空公司暫無準點數據',
+      },
+      valueForMoney: {
+        title: '性價比',
+        detail: '${{price}} {{level}} (典型區間：${{low}}–${{high}})',
+        low: '低於典型價格 🎉',
+        high: '高於典型價格',
+        typical: '在典型區間內',
       },
       qualifier: {
         aboveAverage: '高於平均',

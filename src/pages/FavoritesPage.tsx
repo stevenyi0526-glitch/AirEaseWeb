@@ -9,7 +9,9 @@ import CurrencySelector, {
   CURRENCIES,
   type CurrencyCode,
   formatPriceWithCurrency,
+  setLiveExchangeRates,
 } from '../components/common/CurrencySelector';
+import { fetchExchangeRates } from '../api/exchangeRates';
 import { findNearestAirport } from '../api/airports';
 import { getUserLocation } from '../api/aiSearch';
 import { formatDate, formatTime } from '../utils/formatters';
@@ -36,6 +38,13 @@ const FavoritesPage: React.FC = () => {
       fetchFavorites();
     }
   }, [isAuthenticated, fetchFavorites]);
+
+  // Bug 2548273: load live FX rates on mount so the favorites page can
+  // actually convert the stored USD price into the user's selected currency.
+  // Without this, _liveRates is empty and convertPrice falls back to 1×.
+  useEffect(() => {
+    fetchExchangeRates().then(setLiveExchangeRates).catch(() => {});
+  }, []);
 
   // Bug 2548273: auto-detect currency once on mount; user can override via the
   // CurrencySelector. Mirrors FlightsPage so prices stay consistent across views.

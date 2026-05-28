@@ -157,11 +157,11 @@ const SearchForm: React.FC<SearchFormProps> = ({
     
     if (!from || !to || !departureDate) return;
 
-    // Bug 2548103: 当往返日期相同时，SerpAPI 只会返回单边结果。在提交前
-    // 主动校验，提示用户调整，避免结果页只显示单边却没有任何线索。
-    if (tripType === 'roundtrip' && returnDate && returnDate <= departureDate) {
+    // Bug 2548103: 允许同一天往返(SerpAPI 仍可返回单边 economy/商务舱
+    // 价格用作参考)。仅当 returnDate 严格早于 departureDate 时才报错。
+    if (tripType === 'roundtrip' && returnDate && returnDate < departureDate) {
       // eslint-disable-next-line no-alert
-      window.alert(t('search.returnDateMustBeAfter', { defaultValue: 'Return date must be after the departure date.' }));
+      window.alert(t('search.returnDateMustBeAfter', { defaultValue: 'Return date must be on or after the departure date.' }));
       return;
     }
 

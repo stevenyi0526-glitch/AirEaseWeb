@@ -1,6 +1,20 @@
 import type { TFunction } from 'i18next';
 import type { ScoreExplanation } from '../api/types';
 
+// Fallback titles per dimension when backend ships an explanation without an
+// i18nKey. Without this, hover tooltips render the backend's English (or
+// hard-coded simplified Chinese) title verbatim, leaking untranslated text
+// like "Airline Reliability" or "Value for Money" in zh-TW / other locales.
+const DIMENSION_TITLE_FALLBACK_KEYS: Record<string, string> = {
+  safety: 'detail.scoreDimSafety',
+  reliability: 'detail.scoreDimReliability',
+  comfort: 'detail.scoreDimComfort',
+  service: 'detail.scoreDimService',
+  value: 'detail.scoreDimValue',
+  amenities: 'detail.scoreDimAmenities',
+  efficiency: 'detail.scoreDimEfficiency',
+};
+
 /**
  * Render a localized title + detail for a score explanation.
  *
@@ -17,7 +31,14 @@ export function renderScoreExplanation(
   t: TFunction,
 ): { title: string; detail: string } {
   if (!exp.i18nKey) {
-    return { title: exp.title, detail: exp.detail };
+    // No i18n key — try to at least translate the dimension-name title via the
+    // standard detail.scoreDim* keys so users don't see raw English nouns.
+    const dimKey = (exp.dimension || '').toLowerCase();
+    const fallbackTitleKey = DIMENSION_TITLE_FALLBACK_KEYS[dimKey];
+    const title = fallbackTitleKey
+      ? t(fallbackTitleKey, { defaultValue: exp.title })
+      : exp.title;
+    return { title, detail: exp.detail };
   }
 
   const titleKey = `${exp.i18nKey}.title`;

@@ -63,6 +63,30 @@ export const AIRPORTS: Airport[] = [
   { code: 'PHX', city: 'Phoenix', name: 'Phoenix Sky Harbor International Airport', country: 'United States' },
   { code: 'LAS', city: 'Las Vegas', name: 'Harry Reid International Airport', country: 'United States' },
   { code: 'MSP', city: 'Minneapolis', name: 'Minneapolis-Saint Paul International Airport', country: 'United States' },
+
+  // Bug 2548086 / 2548112 / 2548192: missing major / regional cities that
+  // CJK alias mapping previously pointed to but were not present in the
+  // local airports DB. Without IATA presence here, classic search would show
+  // "no airports" because Amadeus also returns nothing for some of these.
+  // China (mainland)
+  { code: 'CAN', city: 'Guangzhou', name: 'Guangzhou Baiyun International Airport', country: 'China' },
+  { code: 'SZX', city: 'Shenzhen', name: "Shenzhen Bao'an International Airport", country: 'China' },
+  { code: 'CTU', city: 'Chengdu', name: 'Chengdu Shuangliu International Airport', country: 'China' },
+  { code: 'HGH', city: 'Hangzhou', name: 'Hangzhou Xiaoshan International Airport', country: 'China' },
+  { code: 'NKG', city: 'Nanjing', name: 'Nanjing Lukou International Airport', country: 'China' },
+  { code: 'TAO', city: 'Qingdao', name: 'Qingdao Jiaodong International Airport', country: 'China' },
+  { code: 'XMN', city: 'Xiamen', name: 'Xiamen Gaoqi International Airport', country: 'China' },
+  { code: 'HAK', city: 'Haikou', name: 'Haikou Meilan International Airport', country: 'China' },
+  { code: 'SYX', city: 'Sanya', name: 'Sanya Phoenix International Airport', country: 'China' },
+  { code: 'KHG', city: 'Kashgar', name: 'Kashgar Airport', country: 'China' },
+  // Russia
+  { code: 'LED', city: 'Saint Petersburg', name: 'Pulkovo Airport', country: 'Russia' },
+  { code: 'SVO', city: 'Moscow', name: 'Sheremetyevo International Airport', country: 'Russia' },
+  { code: 'DME', city: 'Moscow', name: 'Domodedovo International Airport', country: 'Russia' },
+  // Iceland
+  { code: 'KEF', city: 'Reykjavik', name: 'Keflavik International Airport', country: 'Iceland' },
+  // Kyrgyzstan
+  { code: 'OSS', city: 'Osh', name: 'Osh Airport', country: 'Kyrgyzstan' },
 ];
 
 // Bug 2548284: Amadeus 自动补全对中文地名识别不一致（如"华盛顿"返回为空）。

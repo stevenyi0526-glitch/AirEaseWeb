@@ -128,11 +128,11 @@ const HomePage: React.FC = () => {
           )}
         >
           <div className="mb-12">
-            <AISearchBar />
-            {/* Bug 2548295: clarify AI search currently supports single flights only */}
-            <p className="text-center text-slate-400 text-xs mt-2">
+            {/* Bug 2548295: clarify AI search currently supports single flights only — placed ABOVE input per UX request */}
+            <p className="text-center text-slate-400 text-xs mb-2">
               {t('home.aiSingleFlightOnly')}
             </p>
+            <AISearchBar />
             <p className="text-center text-slate-400 text-sm mt-6">
               {t('home.aiSearchHint')}
             </p>

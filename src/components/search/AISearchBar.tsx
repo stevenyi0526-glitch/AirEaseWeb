@@ -83,6 +83,14 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
     // enrich it into a full sentence using defaults so the AI parser always has enough context.
     const looksLikeBareCityOrMinimal = (q: string): boolean => {
       const lower = q.toLowerCase();
+      // Bug: queries containing CJK characters were being mis-classified as
+      // "bare city" because `\b` word boundaries don't fire between CJK
+      // characters. A query like "5月22日北京飞伦敦的头等舱" then got wrapped
+      // in "Give me the top rated economy flight from {nearestAirport} to ... for 1 person"
+      // which the parser misinterpreted (e.g. cabin defaulted to economy).
+      // Any query containing CJK characters is treated as a real natural-language
+      // query and passed through unchanged.
+      if (/[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff\uff00-\uffef]/.test(q)) return false;
       // If it contains flight-related keywords, it's already a proper query
       const flightKeywords = /\b(to|fly|flight|cheap|direct|morning|afternoon|evening|business|first class|economy|from|到|去|飞|便宜|最|航班|机票|直飞|商务|头等|至)\b/i;
       if (flightKeywords.test(q)) return false;
@@ -124,8 +132,19 @@ const AISearchBar: React.FC<AISearchBarProps> = ({
       } else {
         // Map stable backend error codes to localized messages.
         const errorCode = (result as { errorCode?: string }).errorCode;
-        if (errorCode === 'FLIGHT_NUMBER_LOOKUP_NOT_SUPPORTED') {
-          setError(t('aiSearchBar.flightNumberNotSupported'));
+        const errorContext = (result as { errorContext?: Record<string, string> }).errorContext;
+        const codeToKey: Record<string, string> = {
+          FLIGHT_NUMBER_LOOKUP_NOT_SUPPORTED: 'aiSearchBar.flightNumberNotSupported',
+          SPECIFY_DESTINATION: 'aiSearchBar.specifyDestination',
+          COULD_NOT_RECOGNIZE_DEPARTURE: 'aiSearchBar.couldNotRecognizeDeparture',
+          LOCATION_UNDETERMINED: 'aiSearchBar.locationUndetermined',
+          LOCATION_UNDETERMINED_HINT: 'aiSearchBar.locationUndeterminedHint',
+          LOCATION_DENIED: 'aiSearchBar.locationDenied',
+          PAST_DATE: 'aiSearchBar.pastDate',
+          SAME_CITY: 'aiSearchBar.sameCity',
+        };
+        if (errorCode && codeToKey[errorCode]) {
+          setError(t(codeToKey[errorCode], errorContext || {}));
         } else {
           setError(result.error || t('aiSearchBar.parseFailed'));
         }

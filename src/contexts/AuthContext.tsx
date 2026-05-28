@@ -38,6 +38,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPasswordUpdateRequired(false);
     setJustLoggedIn(false);
     localStorage.removeItem('airease_token');
+    // Bug 2548311: regardless of which page the user logged out from
+    // (e.g. flight detail, booking, etc.), force navigation back to the
+    // home/search page so they never end up on a guarded blank screen.
+    if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+      window.location.assign('/');
+    }
   }, []);
 
   const clearPasswordUpdateRequired = useCallback(() => {

@@ -41,6 +41,8 @@ export interface AISearchResult {
   error?: string;
   /** Stable backend error code that the UI can translate via i18n. */
   errorCode?: string;
+  /** Optional placeholder values for the i18n template. */
+  errorContext?: Record<string, string>;
   message?: string;
 }
 
@@ -242,7 +244,8 @@ export async function parseNaturalLanguageSearch(
     if (!parsed.has_destination || !parsed.destination_code) {
       return {
         success: false,
-        error: 'Please specify a destination. For example: "fly to Tokyo" or "去上海"'
+        errorCode: 'SPECIFY_DESTINATION',
+        error: 'Please specify a destination. For example: "fly to Tokyo" or "去上海".',
       };
     }
 
@@ -263,7 +266,13 @@ export async function parseNaturalLanguageSearch(
         const userTyped = explicitFromMatch[1].trim();
         return {
           success: false,
-          error: `Could not recognize departure city "${userTyped}". Please use the city name or its 3-letter IATA code (e.g. "from San Francisco to ${parsed.destination_city || parsed.destination_code}" or "SFO to ${parsed.destination_code}").`
+          errorCode: 'COULD_NOT_RECOGNIZE_DEPARTURE',
+          errorContext: {
+            userTyped,
+            destination: parsed.destination_city || parsed.destination_code,
+            destinationCode: parsed.destination_code,
+          },
+          error: `Could not recognize departure city "${userTyped}". Please use the city name or its 3-letter IATA code.`,
         };
       }
       // Try to get from user's location
@@ -279,7 +288,8 @@ export async function parseNaturalLanguageSearch(
         } catch (e) {
           return {
             success: false,
-            error: 'Could not determine your location. Please specify where you are flying from.'
+            errorCode: 'LOCATION_UNDETERMINED',
+            error: 'Could not determine your location. Please specify where you are flying from.',
           };
         }
       } else {
@@ -292,13 +302,15 @@ export async function parseNaturalLanguageSearch(
           } else {
             return {
               success: false,
-              error: 'Could not determine your location. Please specify where you are flying from, e.g., "from Hong Kong to Tokyo"'
+              errorCode: 'LOCATION_UNDETERMINED_HINT',
+              error: 'Could not determine your location. Please specify where you are flying from.',
             };
           }
         } catch (e) {
           return {
             success: false,
-            error: 'Location access denied. Please specify where you are flying from, e.g., "from Hong Kong to Tokyo"'
+            errorCode: 'LOCATION_DENIED',
+            error: 'Location access denied. Please specify where you are flying from.',
           };
         }
       }
@@ -316,6 +328,8 @@ export async function parseNaturalLanguageSearch(
     if (date < today) {
       return {
         success: false,
+        errorCode: 'PAST_DATE',
+        errorContext: { date },
         error: `Cannot search flights for a past date (${date}). Please specify a future date.`,
       };
     }
@@ -329,6 +343,7 @@ export async function parseNaturalLanguageSearch(
     ) {
       return {
         success: false,
+        errorCode: 'SAME_CITY',
         error: 'Departure and destination cannot be the same city. Please specify a different destination.',
       };
     }
@@ -402,6 +417,15 @@ export async function parseNaturalLanguageSearch(
  */
 export function paramsToSearchURL(params: ParsedSearchParams, originalQuery?: string): string {
   // Bug 2548104: respect AI-detected return date and switch trip type to round-trip.
+  // Map AI sort_by → FlightsPage SortBy enum. AI returns
+  // 'score'|'price'|'duration'|'comfort'; FlightsPage understands
+  // 'score'|'price'|'model'. Score is the safest default — it surfaces all
+  // results ordered by overall flight quality. (Previously we hard-coded
+  // 'model' which silently dropped older-aircraft routes and made some AI
+  // queries return zero flights even though the route was actually served.)
+  const aiSort = params.sort_by;
+  const flightsPageSort: 'score' | 'price' | 'model' =
+    aiSort === 'price' ? 'price' : 'score';
   const isRoundTrip = !!(params.return_date && params.return_date.length > 0);
   const urlParams = new URLSearchParams({
     from: params.departure_city_code,
@@ -411,7 +435,7 @@ export function paramsToSearchURL(params: ParsedSearchParams, originalQuery?: st
     adults: String(params.passengers.adults),
     children: String(params.passengers.children),
     tripType: isRoundTrip ? 'roundtrip' : 'oneway',
-    sortBy: 'model',
+    sortBy: flightsPageSort,
   });
   if (params.passengers.infants > 0) {
     urlParams.set('infants', String(params.passengers.infants));
