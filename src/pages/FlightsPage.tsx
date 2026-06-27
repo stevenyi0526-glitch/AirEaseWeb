@@ -1215,45 +1215,46 @@ const FlightsPage: React.FC = () => {
       
       setIsLoadingRecommendations(true);
       try {
+        // ============================================================
+        // AI TOP PICK — ranked by the LIVE sort dropdown for BOTH classic
+        // and AI searches, so the recommendation always tracks whatever
+        // sorter the user applies and never goes stale (Bug 2548129 +
+        // AI-search parity). Filters are already baked into
+        // currentLegFlights, so the pick is inherently "filter-applied" too.
+        //
+        // The sort dropdown only exposes score/price/model → map those to
+        // the recommendation engine's criteria. For AI searches the query's
+        // own priority (aiSortBy) — which can additionally be
+        // 'duration'/'comfort' — is the baseline until the user overrides it
+        // via the dropdown.
+        // ============================================================
+        const recommendationSortBy: 'price' | 'duration' | 'comfort' | 'score' =
+          filters.sortBy === 'price'
+            ? 'price'
+            : filters.sortBy === 'model'
+              ? 'comfort'
+              : filters.sortBy === 'score'
+                ? 'score'
+                : isAISearch
+                  ? (aiSortBy as 'price' | 'duration' | 'comfort' | 'score')
+                  : 'score';
+        const queryRecommendation = findBestFlightForQuery(
+          currentLegFlights,
+          recommendationSortBy,
+          // Time-of-day preference only applies to AI natural-language searches.
+          isAISearch ? aiTimePreference : 'any',
+        );
+        setRecommendations(queryRecommendation.recommendations);
+
         if (isAISearch) {
-          // ============================================================
-          // AI SEARCH MODE: Match flights to the user's query intent
-          // Instead of user preference history, score based on what
-          // the user explicitly asked for in their natural language query.
-          // ============================================================
-          const queryRecommendation = findBestFlightForQuery(
-            currentLegFlights,
-            aiSortBy,
-            aiTimePreference,
-          );
-          setRecommendations(queryRecommendation.recommendations);
-          // No explanation text for AI search
+          // AI search surfaces the requirement checklist instead of prose copy.
           setRecommendationExplanation('');
         } else {
-          // ============================================================
-          // CLASSIC SEARCH MODE: blend the user's currently-selected sort
-          // criterion (filters.sortBy) into the recommendation pipeline so
-          // toggling “Best”/“Cheapest”/“Latest model” actually refreshes the
-          // AI picks below — Bug 2548129.
-          // ============================================================
-          const classicSortBy: 'price' | 'duration' | 'comfort' | 'score' =
-            filters.sortBy === 'price'
-              ? 'price'
-              : filters.sortBy === 'model'
-                ? 'comfort'
-                : 'score';
-          const queryRecommendation = findBestFlightForQuery(
-            currentLegFlights,
-            classicSortBy,
-            'any',
-          );
-          setRecommendations(queryRecommendation.recommendations);
-          // Try to enrich the explanation with the server-side preference
-          // copy, but never block the UI if the request fails.
+          // Classic search: enrich with the server-side preference copy when
+          // available, but never block the UI if the request fails.
           try {
             const result = await generateRecommendations(currentLegFlights);
-            if (result.explanation) setRecommendationExplanation(result.explanation);
-            else setRecommendationExplanation(queryRecommendation.explanation);
+            setRecommendationExplanation(result.explanation || queryRecommendation.explanation);
           } catch {
             setRecommendationExplanation(queryRecommendation.explanation);
           }
